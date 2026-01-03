@@ -1,0 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ton-blue: #0088CC;
+  --ton-blue-dark: #0077B5;
+  --ton-blue-light: #1DA1F2;
+  --cook-orange: #F97316;
+  --cook-orange-light: #FB923C;
+  --cook-yellow: #FBBF24;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #FFFFFF;
+  color: #1F2937;
+}
+
+body {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFBF5 100%);
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F3F4F6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #F97316;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #EA580C;
+}
+
+/* TON Connect modal styles override */
+.tc-modal {
+  --tc-modal-background: #FFFFFF !important;
+  --tc-modal-backdrop: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Gradient text - TON blue */
+.gradient-text {
+  background: linear-gradient(135deg, #0088CC 0%, #00D4FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient text - Cook yellow to orange */
+.gradient-text-cook {
+  background: linear-gradient(135deg, #FBBF24 0%, #F97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient text - Ice blue */
+.gradient-text-ice {
+  background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient text - Jetton 2.0 (blue to dark blue to light blue) */
+.gradient-text-jetton {
+  background: linear-gradient(135deg, #60A5FA 0%, #1E40AF 50%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glowing effect */
+.glow {
+  box-shadow: 0 0 40px rgba(249, 115, 22, 0.2);
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 60px rgba(249, 115, 22, 0.3);
+}
+
+/* Card styles - Light theme */
+.card {
+  @apply bg-white rounded-2xl border border-cook-border p-6 transition-all duration-300;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
+}
+
+.card:hover {
+  @apply border-cook-orange/30;
+  box-shadow: 0 4px 40px rgba(249, 115, 22, 0.1);
+}
+
+/* Card styles - Ice theme */
+.card-ice {
+  @apply bg-white rounded-2xl border border-blue-200 p-6 transition-all duration-300;
+  box-shadow: 0 2px 20px rgba(59, 130, 246, 0.08);
+}
+
+.card-ice:hover {
+  @apply border-blue-400/50;
+  box-shadow: 0 4px 40px rgba(59, 130, 246, 0.15);
+}
+
+/* Input styles - Light theme */
+.input-ton {
+  @apply w-full bg-cook-bg-secondary border border-cook-border rounded-xl px-4 py-3 text-cook-text 
+         placeholder-cook-text-secondary focus:outline-none focus:border-cook-orange transition-all duration-200;
+}
+
+.input-ton:focus {
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+/* Input styles - Ice theme */
+.input-ice {
+  @apply w-full bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-gray-800 
+         placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-all duration-200;
+}
+
+.input-ice:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Button styles */
+.btn-primary {
+  @apply px-6 py-3 bg-gradient-ton rounded-xl font-semibold text-white 
+         transition-all duration-300 hover:opacity-90 hover:shadow-ton;
+}
+
+.btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.btn-cook {
+  @apply px-6 py-3 rounded-xl font-semibold text-white 
+         transition-all duration-300 hover:opacity-90 hover:shadow-cook;
+  background: linear-gradient(135deg, #FBBF24 0%, #F97316 100%);
+}
+
+.btn-cook:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.btn-ice {
+  @apply px-6 py-3 rounded-xl font-semibold text-white 
+         transition-all duration-300 hover:opacity-90;
+  background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+}
+
+.btn-ice:hover {
+  box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4);
+}
+
+.btn-ice:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-cook-bg-secondary border border-cook-border rounded-xl font-semibold text-cook-text 
+         transition-all duration-300 hover:border-cook-orange/50;
+}
+
+/* Animation for background shapes */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid #E5E7EB;
+  border-top: 3px solid #F97316;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-ice {
+  border: 3px solid #DBEAFE;
+  border-top: 3px solid #3B82F6;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Step indicator */
+.step-active {
+  @apply bg-cook-orange text-white;
+}
+
+.step-completed {
+  @apply bg-green-500 text-white;
+}
+
+.step-pending {
+  @apply bg-cook-bg-secondary text-cook-text-secondary;
+}

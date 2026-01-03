@@ -1,0 +1,40 @@
+;; Standard library functions for FunC
+
+int throw_unless(int test, int error_code) asm "THROWIFNOT";
+int throw(int error_code) asm "THROW";
+int equal_slices(slice a, slice b) asm "SDEQ";
+int equal_cells(cell a, cell b) asm "CDEQ";
+
+slice get_data() asm "GETPARAM";
+() set_data(cell data) impure asm "SETPARAM";
+
+builder begin_cell() asm "NEWC";
+cell end_cell() impure asm "ENDC";
+
+slice load_msg_addr() asm "LDMSGADDR";
+int load_coins() asm "LDGRAMS";
+int load_uint(int bits) asm "LDU";
+slice load_slice(int bits) asm "LDSLICE";
+cell load_ref() asm "LDREF";
+
+builder store_slice(slice s) asm "STSLICE";
+builder store_coins(int amount) asm "STGRAMS";
+builder store_uint(int value, int bits) asm "STU";
+builder store_ref(cell c) asm "STREF";
+
+slice begin_parse() asm "CTOS";
+int slice_empty?() asm "SEMPTY";
+int slice_bits(slice s) asm "SBITS";
+int slice_refs(slice s) asm "SREFS";
+
+int my_address() asm "MYADDR";
+int now() asm "NOW";
+
+() send_raw_message(cell msg, int flags) impure asm "SENDRAWMSG";
+
+dict new_dict() asm "NEWDICT";
+dict dict_set(dict d, int key, int value) asm "DICTUSET";
+int dict_get?(dict d, int key) asm "DICTUGET";
+dict dict_set_ref(dict d, int key, cell value) asm "DICTSETREF";
+cell dict_get_ref?(dict d, int key) asm "DICTGETREF";
+

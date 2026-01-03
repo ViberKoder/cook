@@ -1,0 +1,7 @@
+;; Jetton parameters and error codes
+
+int error::unauthorized() asm "401";
+int error::insufficient_balance() asm "402";
+int error::unknown_op() asm "403";
+int error::not_supported() asm "404";
+int error::not_mintable() asm "405";

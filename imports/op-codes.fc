@@ -1,0 +1,15 @@
+;; Operation codes for Jetton 2.0
+
+int op::mint() asm "0x21";
+int op::internal_transfer() asm "0x178d4519";
+int op::internal_transfer_response() asm "0x178d4519";
+int op::transfer() asm "0xf8a7ea5";
+int op::transfer_notification() asm "0x7362d09c";
+int op::burn() asm "0x595f07bc";
+int op::burn_notification() asm "0x595f07bc";
+int op::burn_response() asm "0x595f07bc";
+int op::provide_wallet_address() asm "0x2fcb26a2";
+int op::take_wallet_address() asm "0xd1735400";
+int op::excesses() asm "0xd53276db";
+int op::change_admin() asm "0x65074f2d";
+int op::change_content() asm "0x0";

@@ -1,0 +1,31 @@
+;; Jetton 2.0 Utility Functions
+
+cell calculate_jetton_wallet_state_init(slice owner_address, slice jetton_master_address) inline {
+    cell wallet_code = get_wallet_code();
+    cell data = begin_cell()
+        .store_coins(0)
+        .store_slice(owner_address)
+        .store_slice(jetton_master_address)
+        .store_ref(wallet_code)
+        .end_cell();
+    return begin_cell()
+        .store_uint(0, 2)
+        .store_dict(wallet_code)
+        .store_dict(data)
+        .end_cell();
+}
+
+slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_master_address, cell wallet_code) inline {
+    cell state_init = calculate_jetton_wallet_state_init(owner_address, jetton_master_address);
+    return calculate_user_jetton_wallet_address_from_init(state_init);
+}
+
+slice calculate_user_jetton_wallet_address_from_init(cell state_init) inline {
+    return begin_cell()
+        .store_uint(4, 3)
+        .store_ref(state_init)
+        .end_cell()
+        .begin_parse()
+        .load_msg_addr();
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "cook-jetton-contracts",
+  "version": "1.0.0",
+  "description": "Jetton 2.0 contracts with onchain metadata",
+  "main": "index.js",
+  "scripts": {
+    "build": "blueprint build",
+    "test": "blueprint test",
+    "deploy": "blueprint run"
+  },
+  "keywords": ["ton", "jetton", "blockchain"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ton/core": "^0.57.0",
+    "@ton/crypto": "^3.2.0",
+    "@ton/blueprint": "^0.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+

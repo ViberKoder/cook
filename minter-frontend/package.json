@@ -1,0 +1,40 @@
+{
+  "name": "jetton-2.0-minter",
+  "version": "1.0.0",
+  "description": "Jetton 2.0 Token Minter for TON Blockchain",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@noble/hashes": "^1.3.3",
+    "@orbs-network/ton-access": "^2.3.3",
+    "@ton-community/sandbox": "^0.11.0",
+    "@ton/core": "^0.62.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/ton": "^15.1.0",
+    "@tonconnect/ui-react": "^2.0.9",
+    "buffer": "^6.0.3",
+    "next": "^14.2.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.4.1",
+    "ton-core": "^0.53.0",
+    "tonweb": "^0.0.66"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.21",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}

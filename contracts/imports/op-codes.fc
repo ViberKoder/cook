@@ -1,0 +1,11 @@
+;; Opcodes for Jetton 2.0
+
+int op::mint() asm "0x15";
+int op::transfer() asm "0xf8a7ea5";
+int op::transfer_notification() asm "0x7362d09c";
+int op::internal_transfer() asm "0x178d4519";
+int op::burn() asm "0x595f07bc";
+int op::burn_notification() asm "0x7bdd97de";
+int op::change_admin() asm "0x03";
+int op::change_content() asm "0x04";
+
