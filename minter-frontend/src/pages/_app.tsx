@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 // TON Connect manifest URL - dynamically use current origin
 const manifestUrl = typeof window !== 'undefined' 
   ? `${window.location.origin}/tonconnect-manifest.json`
-  : 'https://www.cook.tg/tonconnect-manifest.json';
+  : 'https://jetton-minter-viber-koders-projects.vercel.app/tonconnect-manifest.json';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
