@@ -13,97 +13,58 @@ export interface StonfiPool {
 }
 
 /**
- * Check liquidity via DYOR.io
+ * Check liquidity via DYOR.io official API
+ * Documentation: https://docs.dyor.io/rest-api/jettonsservice/getjettons
  * Returns liquidity value in USD and optional pool address
  */
 async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: number; poolAddress?: string } | null> {
   try {
-    // Normalize address format
+    // Normalize address format - DYOR.io uses EQ format
     const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
     
-    // Try multiple API endpoints
-    const apiEndpoints = [
-      `https://dyor.io/api/v1/token/${normalizedEQ}`,
-      `https://dyor.io/api/token/${normalizedEQ}`,
-      `https://api.dyor.io/v1/token/${normalizedEQ}`,
-      `https://api.dyor.io/token/${normalizedEQ}`,
-    ];
+    // Use official DYOR.io API: GET /v1/jettons with address parameter
+    // According to docs: https://docs.dyor.io/rest-api/jettonsservice/getjettons
+    const apiUrl = `https://api.dyor.io/v1/jettons?address=${normalizedEQ}`;
     
-    for (const endpoint of apiEndpoints) {
-      try {
-        const response = await fetch(endpoint, {
-          signal: AbortSignal.timeout(5000),
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Check various possible liquidity fields
-          const liquidityValue = data.liquidity || data.liquidity_usd || data.total_liquidity || 
-                               data.liquidityUSD || data.liquidityUsd || data.liquidity_value ||
-                               data.liquidityValue;
-          
-          if (liquidityValue) {
-            const liquidityNum = typeof liquidityValue === 'string' 
-              ? parseFloat(liquidityValue.replace(/[^0-9.]/g, '')) 
-              : parseFloat(liquidityValue);
-            
-            if (liquidityNum > 0) {
-              console.log(`DYOR.io API (${endpoint}) found liquidity for ${tokenAddress}: $${liquidityNum}`);
-              return {
-                liquidity: liquidityNum,
-                poolAddress: data.pool_address || data.poolAddress || data.pool || data.pool_id,
-              };
-            }
-          }
-        }
-      } catch (apiError) {
-        // Try next endpoint
-        continue;
-      }
-    }
+    const response = await fetch(apiUrl, {
+      signal: AbortSignal.timeout(5000),
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     
-    // Fallback: try to fetch the page and parse HTML
-    try {
-      const pageResponse = await fetch(`https://dyor.io/token/${normalizedEQ}`, {
-        signal: AbortSignal.timeout(5000),
-      });
+    if (response.ok) {
+      const data = await response.json();
       
-      if (pageResponse.ok) {
-        const html = await pageResponse.text();
+      // Check if jettons array exists and has data
+      if (data.jettons && Array.isArray(data.jettons) && data.jettons.length > 0) {
+        const jetton = data.jettons[0];
         
-        // Try multiple patterns to find liquidity value
-        const patterns = [
-          /Liquidity[^>]*\$[\s]*([\d,]+\.?\d*)/i,
-          /\$[\s]*([\d,]+\.?\d*)[^<]*Liquidity/i,
-          /liquidity[^>]*>[\s]*\$[\s]*([\d,]+\.?\d*)/i,
-          /"liquidity"[^:]*:\s*"([^"]+)"/i,
-          /liquidity["\s:]+([\d,]+\.?\d*)/i,
-          /Liquidity[\s:]*\$?[\s]*([\d,]+\.?\d*)/i,
-        ];
-        
-        for (const pattern of patterns) {
-          const match = html.match(pattern);
-          if (match && match[1]) {
-            const liquidityNum = parseFloat(match[1].replace(/[^0-9.]/g, ''));
-            if (liquidityNum > 0) {
-              console.log(`DYOR.io page found liquidity for ${tokenAddress}: $${liquidityNum}`);
-              return {
-                liquidity: liquidityNum,
-              };
-            }
+        // Extract liquidity from liquidityUsd field
+        // Format: { "value": "1000500000", "decimals": 9 }
+        if (jetton.liquidityUsd) {
+          const liquidityValue = jetton.liquidityUsd.value || jetton.liquidityUsd;
+          const liquidityDecimals = jetton.liquidityUsd.decimals || 9;
+          
+          // Calculate liquidity in USD
+          const liquidityNum = typeof liquidityValue === 'string'
+            ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+            : parseFloat(liquidityValue);
+          
+          if (liquidityNum > 0) {
+            console.log(`DYOR.io API found liquidity for ${tokenAddress}: $${liquidityNum}`);
+            return {
+              liquidity: liquidityNum,
+              poolAddress: jetton.poolAddress || jetton.pool_address,
+            };
           }
         }
       }
-    } catch (pageError) {
-      console.log('DYOR.io page fetch failed:', pageError);
+    } else {
+      console.log(`DYOR.io API returned status ${response.status} for ${tokenAddress}`);
     }
-    
   } catch (e) {
-    console.log('DYOR.io check failed:', e);
+    console.log('DYOR.io API check failed:', e);
   }
   
   return null;
@@ -273,6 +234,7 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
       const dyorResult = await checkDyorLiquidity(tokenAddress);
       if (dyorResult && dyorResult.liquidity > 0) {
         const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
+        console.log(`DYOR.io API fallback found liquidity for ${tokenAddress}: $${dyorResult.liquidity}`);
         return {
           address: dyorResult.poolAddress || '',
           token0: normalizedEQ,
@@ -283,7 +245,7 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
         };
       }
     } catch (e) {
-      console.error('DYOR.io fallback also failed:', e);
+      console.error('DYOR.io API fallback also failed:', e);
     }
     
     return null;
