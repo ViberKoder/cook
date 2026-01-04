@@ -113,7 +113,10 @@ export default function CreateCookpadPage() {
         // Redirect to cookpad page
         router.push(`/cookpad?contract=${result.address}`);
       } else {
-        throw new Error(result.error || 'Deployment failed');
+        // Show detailed error message
+        const errorMsg = result.error || 'Deployment failed';
+        toast.error(errorMsg, { duration: 10000 });
+        throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error('Cookpad deployment error:', error);

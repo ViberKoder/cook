@@ -96,20 +96,24 @@ export async function deployCookpad(
       .storeRef(configCell)
       .endCell();
 
-    // TODO: Create state init with actual compiled code
-    // const stateInit = {
-    //   code: COOKPAD_CODE,
-    //   data: storageCell,
-    // };
-
-    // const contractAddress = contractAddress(0, stateInit);
-
-    toast.success('Cookpad contract prepared!', { id: 'deploy-cookpad' });
-
+    // TODO: Load compiled cookpad contract code
+    // The contract needs to be compiled first:
+    // func build contracts/cookpad/s_minter.fc -o build/cookpad.fif
+    // Then load the compiled code here
+    // const COOKPAD_CODE = ...; // Load from compiled .fif file
+    
+    // For now, show error that contract is not compiled
+    const errorMessage = 'Cookpad contract is not compiled yet. Please compile the contract first:\n\n' +
+      '1. Install FunC compiler\n' +
+      '2. Run: func build contracts/cookpad/s_minter.fc -o build/cookpad.fif\n' +
+      '3. Load the compiled code into lib/deployCookpad.ts\n\n' +
+      'Until the contract is compiled, deployment is not possible.';
+    
+    toast.error(errorMessage, { id: 'deploy-cookpad', duration: 10000 });
+    
     return {
-      success: true,
-      // address: contractAddress.toString(),
-      address: 'EQ...', // Placeholder until contract is compiled
+      success: false,
+      error: 'Cookpad contract is not compiled. Please compile the contract first.',
     };
   } catch (error: any) {
     console.error('Cookpad deployment error:', error);
