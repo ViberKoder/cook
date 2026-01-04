@@ -86,16 +86,33 @@ export async function deployJettonMinter(
     toast.loading('Preparing Jetton 2.0 contract...', { id: 'deploy' });
 
     // Build on-chain metadata (TEP-64)
+    // If imageData (base64) is provided, use data URI format
+    let imageUrl = tokenData.image;
+    if (tokenData.imageData && !imageUrl) {
+      // Create data URI from base64 image data
+      imageUrl = `data:image/png;base64,${tokenData.imageData}`;
+    }
+    
     const metadata: JettonMetadata = {
-      name: tokenData.name,
-      symbol: tokenData.symbol.toUpperCase(),
-      description: tokenData.description || tokenData.name,
-      image: tokenData.image || undefined,
+      name: tokenData.name.trim(),
+      symbol: tokenData.symbol.toUpperCase().trim(),
+      description: (tokenData.description || tokenData.name).trim(),
+      image: imageUrl?.trim() || undefined,
       decimals: tokenData.decimals.toString(),
     };
 
-    console.log('Building on-chain metadata:', metadata);
+    console.log('Building on-chain metadata:', {
+      name: metadata.name,
+      symbol: metadata.symbol,
+      description: metadata.description?.substring(0, 50),
+      image: metadata.image ? (metadata.image.length > 100 ? metadata.image.substring(0, 100) + '...' : metadata.image) : 'none',
+      decimals: metadata.decimals,
+    });
+    
     const contentCell = buildTokenMetadataCell(metadata);
+    
+    // Verify content cell
+    console.log('Content cell created, bits:', contentCell.bits.length, 'refs:', contentCell.refs.length);
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 

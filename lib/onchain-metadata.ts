@@ -17,6 +17,13 @@ const SNAKE_PREFIX = 0x00;
 // Standard Jetton metadata keys
 export type JettonMetadataKeys = 'name' | 'description' | 'image' | 'symbol' | 'decimals';
 
+// SHA256 hash function
+function sha256(str: string): Buffer {
+  const hash = new Sha256();
+  hash.update(str);
+  return Buffer.from(hash.digestSync());
+}
+
 // Convert string to snake format cell
 function makeSnakeCell(data: Buffer): Cell {
   const CELL_MAX_SIZE_BYTES = 127;
@@ -84,10 +91,7 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   for (const [key, value] of entries) {
     if (value === undefined || value === '') continue;
     
-    // Hash the key using SHA256
-    const hash = new Sha256();
-    hash.update(key);
-    const keyHash = Buffer.from(hash.digestSync());
+    const keyHash = sha256(key);
     const valueBuffer = Buffer.from(value, 'utf-8');
     const valueCell = makeSnakeCell(valueBuffer);
     
