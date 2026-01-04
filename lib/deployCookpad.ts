@@ -104,8 +104,12 @@ export async function deployCookpad(
     let COOKPAD_CODE: Cell;
     
     try {
+      toast.loading('Loading contract code...', { id: 'deploy-cookpad' });
+      
       // Fetch contract code from example memepad contract
       const exampleAddress = 'EQCHqNToJxTBPHc91_O7HRULzH4bfX6lLU5b1_76zPnlq3Mz';
+      
+      // Use TonAPI to get contract state with code
       const contractResponse = await fetch(`https://tonapi.io/v2/blockchain/accounts/${exampleAddress}`);
       
       if (!contractResponse.ok) {
@@ -114,30 +118,60 @@ export async function deployCookpad(
       
       const contractData = await contractResponse.json();
       
-      // Get code from account state
-      if (!contractData.code) {
+      // Get code from account state - it might be in different formats
+      let codeBoc: string | undefined;
+      
+      if (contractData.code) {
+        codeBoc = contractData.code;
+      } else if (contractData.interfaces?.[0]?.code) {
+        codeBoc = contractData.interfaces[0].code;
+      } else if (contractData.state?.code) {
+        codeBoc = contractData.state.code;
+      }
+      
+      if (!codeBoc) {
         throw new Error('Contract code not found in response');
       }
       
-      // Parse code from base64
-      const codeBoc = contractData.code;
-      const codeBuffer = Buffer.from(codeBoc, 'base64');
-      const codeCells = Cell.fromBoc(codeBuffer);
+      // Parse code - try different formats
+      let codeCells: Cell[] = [];
       
-      if (codeCells.length === 0) {
-        throw new Error('Failed to parse contract code');
+      // Try base64 first (most common)
+      try {
+        const codeBuffer = Buffer.from(codeBoc, 'base64');
+        codeCells = Cell.fromBoc(codeBuffer);
+      } catch (e1) {
+        // Try hex
+        try {
+          const hexString = codeBoc.startsWith('0x') ? codeBoc.slice(2) : codeBoc;
+          const codeBuffer = Buffer.from(hexString, 'hex');
+          codeCells = Cell.fromBoc(codeBuffer);
+        } catch (e2) {
+          // Try as raw string (might be already in correct format)
+          try {
+            const codeBuffer = Buffer.from(codeBoc);
+            codeCells = Cell.fromBoc(codeBuffer);
+          } catch (e3) {
+            throw new Error(`Failed to parse contract code. Tried base64, hex, and raw formats. Error: ${e3}`);
+          }
+        }
       }
       
+      if (codeCells.length === 0) {
+        throw new Error('No cells found in contract code');
+      }
+      
+      // Get the first cell (main code cell)
       COOKPAD_CODE = codeCells[0];
       
-      console.log('Contract code loaded successfully');
+      console.log('Contract code loaded successfully, cells:', codeCells.length);
     } catch (error: any) {
       console.error('Failed to load contract code:', error);
       toast.error(`Failed to load contract code: ${error.message}`, { id: 'deploy-cookpad', duration: 10000 });
       
       return {
         success: false,
-        error: `Failed to load contract code: ${error.message}. Please check your internet connection and try again.`,
+        error: `Failed to load contract code: ${error.message}. The example contract may not be accessible or the API format has changed.`,
       };
     }
 
