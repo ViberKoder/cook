@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
+import { addCookToken } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
