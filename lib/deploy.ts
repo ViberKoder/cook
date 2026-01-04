@@ -133,19 +133,39 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
-    // For off-chain metadata, use fixed API endpoint URL
-    // This avoids circular dependency: contract address depends on content cell,
-    // but if content cell contains contract address in URL, we get a cycle
-    // Solution: use fixed URL, API endpoint will identify contract from request path
-    const contentCell = buildTokenMetadataCell(metadata);
+    // For off-chain metadata, we need to calculate contract address first
+    // Build temporary content cell with placeholder URL to calculate address
+    const tempUri = 'https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/PLACEHOLDER.json';
+    const tempContentCell = beginCell()
+      .storeStringRefTail(tempUri)
+      .endCell();
+    
+    const tempMinterData = beginCell()
+      .storeCoins(0)
+      .storeAddress(walletAddress)
+      .storeAddress(null)
+      .storeRef(getWalletCode())
+      .storeRef(tempContentCell)
+      .endCell();
+    
+    const tempStateInit = {
+      code: getMinterCode(),
+      data: tempMinterData,
+    };
+    
+    // Calculate contract address
+    const calculatedAddress = contractAddress(0, tempStateInit);
+    
+    // Now build final content cell with correct GitHub URL
+    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
     
     // Verify content cell is unique
     const contentCellHash = contentCell.hash().toString('hex');
-    console.log('Content cell created (off-chain metadata):', {
+    console.log('Content cell created (off-chain metadata via GitHub):', {
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
-      apiUrl: buildMetadataUri(metadata),
+      githubUrl: buildMetadataUri(metadata, calculatedAddress.toString()),
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
@@ -277,7 +297,7 @@ export async function deployJettonMinter(
     }
     
         if (result) {
-          // Store metadata in API endpoint (off-chain storage)
+          // Store metadata in GitHub (off-chain storage)
           const metadataJson = {
             name: metadata.name,
             symbol: metadata.symbol,
@@ -286,15 +306,20 @@ export async function deployJettonMinter(
             image: metadata.image || undefined,
           };
           
-          // Store metadata via API endpoint POST request
+          // GitHub API endpoint to create/update file
+          // Note: This requires GitHub token, so we'll use API endpoint as fallback
+          const githubApiUrl = `https://api.github.com/repos/ViberKoder/cook/contents/metadata/${minterAddress.toString()}.json`;
           const apiUrl = typeof window !== 'undefined' 
             ? `${window.location.origin}/api/jetton-metadata/${minterAddress.toString()}`
             : `https://www.cook.tg/api/jetton-metadata/${minterAddress.toString()}`;
           
-          console.log('Storing metadata at:', apiUrl);
-          console.log('Metadata to store:', metadataJson);
+          console.log('Storing metadata:', {
+            githubUrl: `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${minterAddress.toString()}.json`,
+            apiUrl: apiUrl,
+            metadata: metadataJson,
+          });
           
-          // Call API to store metadata (async, don't wait for response)
+          // Call API to store metadata (API will handle GitHub storage)
           if (typeof window !== 'undefined') {
             fetch(apiUrl, {
               method: 'POST',

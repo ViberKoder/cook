@@ -195,10 +195,89 @@ export async function POST(
     const body = await request.json();
     const addressStr = contractAddress.toString();
     
-    // Store metadata in Vercel KV
+    // Store metadata in GitHub using GitHub API
+    // This requires GITHUB_TOKEN environment variable
+    const githubToken = process.env.GITHUB_TOKEN;
+    const githubApiUrl = `https://api.github.com/repos/ViberKoder/cook/contents/metadata/${addressStr}.json`;
+    
+    if (githubToken) {
+      try {
+        // Check if file exists
+        let sha: string | undefined;
+        try {
+          const checkResponse = await fetch(githubApiUrl, {
+            headers: {
+              'Authorization': `token ${githubToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+            },
+          });
+          
+          if (checkResponse.ok) {
+            const existingFile = await checkResponse.json();
+            sha = existingFile.sha;
+          }
+        } catch (e) {
+          // File doesn't exist, will create new
+        }
+        
+        // Create or update file
+        const fileContent = JSON.stringify(body, null, 2);
+        const base64Content = Buffer.from(fileContent, 'utf-8').toString('base64');
+        
+        const githubResponse = await fetch(githubApiUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: `Add/update metadata for ${addressStr}`,
+            content: base64Content,
+            sha: sha, // Include SHA if updating existing file
+          }),
+        });
+        
+        if (githubResponse.ok) {
+          const result = await githubResponse.json();
+          console.log('Metadata stored in GitHub:', result.content.html_url);
+          
+          // Also store in Vercel KV as backup
+          try {
+            await kv.set(`jetton:${addressStr}`, JSON.stringify(body));
+          } catch (kvError) {
+            // KV not available, continue
+          }
+          
+          return NextResponse.json({ 
+            success: true, 
+            address: addressStr,
+            githubUrl: result.content.html_url,
+            rawUrl: `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${addressStr}.json`,
+          }, {
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            },
+          });
+        } else {
+          const errorText = await githubResponse.text();
+          console.error('Failed to store in GitHub:', errorText);
+          // Fallback to KV
+        }
+      } catch (githubError: any) {
+        console.error('GitHub API error:', githubError);
+        // Fallback to KV
+      }
+    }
+    
+    // Fallback: Store in Vercel KV
     try {
       await kv.set(`jetton:${addressStr}`, JSON.stringify(body));
-      return NextResponse.json({ success: true, address: addressStr }, {
+      return NextResponse.json({ 
+        success: true, 
+        address: addressStr,
+        warning: 'Metadata stored in KV only (GitHub token not configured)'
+      }, {
         headers: {
           'Access-Control-Allow-Origin': '*',
         },
@@ -209,7 +288,7 @@ export async function POST(
       return NextResponse.json({ 
         success: true, 
         address: addressStr,
-        warning: 'Metadata stored in memory only (Vercel KV not configured)'
+        warning: 'Metadata storage failed (GitHub token and KV not configured)'
       }, {
         headers: {
           'Access-Control-Allow-Origin': '*',

@@ -41,15 +41,21 @@ export interface JettonMetadata {
  * @returns API endpoint URL
  */
 export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
-  // Use fixed API endpoint URL that doesn't depend on contract address
-  // This avoids circular dependency: contract address depends on content cell,
-  // but content cell contains URL with contract address
-  // The API endpoint will identify the contract from the request path
+  // Use GitHub raw content URL for metadata storage
+  // Format: https://raw.githubusercontent.com/{owner}/{repo}/main/metadata/{address}.json
+  // This provides reliable, decentralized metadata hosting
+  if (contractAddress) {
+    const githubUrl = `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${contractAddress}.json`;
+    console.log('Using GitHub raw content for off-chain metadata:', githubUrl);
+    return githubUrl;
+  }
+  
+  // Fallback: use API endpoint if address not provided
   const apiUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/api/jetton-metadata`
     : `https://www.cook.tg/api/jetton-metadata`;
   
-  console.log('Using API endpoint for off-chain metadata:', apiUrl, contractAddress ? `(contract: ${contractAddress})` : '');
+  console.log('Using API endpoint for off-chain metadata (fallback):', apiUrl);
   
   return apiUrl;
 }
