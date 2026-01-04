@@ -84,9 +84,6 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         <h2 className="text-2xl font-bold text-cook-text mb-2">Token Cooked Successfully!</h2>
         <p className="text-cook-text-secondary mb-8">Your Jetton 2.0 token is now deployed on TON with on-chain metadata.</p>
 
-        {/* Auto-add token to list */}
-
-
         {/* Contract Address */}
         <div className="p-4 bg-cook-bg-secondary rounded-xl mb-6">
           <p className="text-sm text-cook-text-secondary mb-2">Contract Address</p>
