@@ -1,59 +1,52 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
+import { TonConnectButton } from '@tonconnect/ui-react';
+import Link from 'next/link';
 
 export default function Header() {
-  const [tonConnectUI] = useTonConnectUI()
-  const wallet = useTonWallet()
-
-  const handleConnect = () => {
-    tonConnectUI.openModal()
-  }
-
-  const handleDisconnect = () => {
-    tonConnectUI.disconnect()
-  }
-
   return (
-    <header className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-2xl">🍳</span>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">Cook</span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-cook-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2 group">
+            <img 
+              src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+              alt="Cook" 
+              className="w-10 h-10 group-hover:scale-110 transition-transform"
+            />
+            <span className="text-xl font-bold gradient-text-cook">Cook</span>
+          </Link>
+
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link 
+              href="/"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Jetton 2.0
             </Link>
-            <nav className="hidden md:flex space-x-6">
-              <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-ton-blue">
-                Jetton 2.0
-              </Link>
-              <Link href="/admin" className="text-gray-700 dark:text-gray-300 hover:text-ton-blue">
-                Admin
-              </Link>
-              <Link 
-                href="https://tonviewer.com" 
-                target="_blank"
-                className="text-gray-700 dark:text-gray-300 hover:text-ton-blue"
-              >
-                Explorer
-              </Link>
-            </nav>
+            <Link 
+              href="/admin"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Admin
+            </Link>
+            <Link 
+              href="https://tonviewer.com" 
+              target="_blank"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Explorer
+            </Link>
+          </nav>
+
+          {/* Wallet Connect Button */}
+          <div className="flex items-center space-x-4">
+            <TonConnectButton />
           </div>
-          <button
-            onClick={wallet ? handleDisconnect : handleConnect}
-            className="flex items-center space-x-2 px-4 py-2 bg-ton-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <span>🔗</span>
-            <span>
-              {wallet 
-                ? `${wallet.account.address.slice(0, 4)}...${wallet.account.address.slice(-4)}`
-                : 'Connect Wallet'}
-            </span>
-          </button>
         </div>
       </div>
     </header>
-  )
+  );
 }
-

@@ -9,7 +9,7 @@
  */
 
 import { beginCell, Cell, Dictionary } from '@ton/core';
-import { sha256_sync } from '@ton/crypto';
+import { Sha256 } from '@aws-crypto/sha256-js';
 
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;
@@ -85,7 +85,9 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
     if (value === undefined || value === '') continue;
     
     // Hash the key using SHA256
-    const keyHash = Buffer.from(sha256_sync(Buffer.from(key)));
+    const hash = new Sha256();
+    hash.update(key);
+    const keyHash = Buffer.from(hash.digestSync());
     const valueBuffer = Buffer.from(value, 'utf-8');
     const valueCell = makeSnakeCell(valueBuffer);
     
