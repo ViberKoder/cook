@@ -257,7 +257,7 @@ export default function CookpadPage() {
                 {sellAmount && (
                   <div className="p-4 bg-cook-bg-secondary rounded-xl space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-cook-text-secondary">You'll receive</span>
+                      <span className="text-cook-text-secondary">You&apos;ll receive</span>
                       <span className="text-cook-text font-medium">{sellPrice.toFixed(6)} TON</span>
                     </div>
                     <div className="flex justify-between text-sm">
