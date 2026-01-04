@@ -86,11 +86,10 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
  * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  * 
  * @param metadata - Token metadata object
- * @param contractAddress - Optional contract address for API endpoint URL
  * @returns Cell with metadata URI stored in ref
  */
-export function buildTokenMetadataCell(metadata: JettonMetadata, contractAddress?: string): Cell {
-  const uri = buildMetadataUri(metadata, contractAddress);
+export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
+  const uri = buildMetadataUri(metadata);
   
   console.log('Building metadata URI for Jetton 2.0:', {
     uriLength: uri.length,
