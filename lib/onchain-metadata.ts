@@ -28,16 +28,27 @@ export interface JettonMetadata {
 
 /**
  * Build metadata URI for Jetton 2.0
- * Creates a data URI containing the JSON metadata inline.
- * This avoids the need for external hosting and works as on-chain metadata.
  * 
- * IMPORTANT: Using base64 encoding for better explorer compatibility.
+ * Strategy: Use API endpoint URL for better explorer compatibility.
+ * The API endpoint will read the data URI from contract and return JSON.
+ * This provides the best of both worlds: on-chain storage + explorer compatibility.
  * 
- * NOTE: Some explorers may not support data URI decoding from contracts.
- * In that case, consider using off-chain metadata via API endpoint.
+ * Fallback: If contractAddress is not provided, use data URI directly.
  */
 export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
-  // Build JSON object with all required fields
+  // If we have contract address, use API endpoint for better explorer support
+  // The API will read data URI from contract and return JSON
+  if (contractAddress) {
+    // Use API endpoint that will serve metadata from contract
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/jetton-metadata/${contractAddress}`
+      : `https://www.cook.tg/api/jetton-metadata/${contractAddress}`;
+    
+    console.log('Using API endpoint for metadata:', apiUrl);
+    return apiUrl;
+  }
+  
+  // Fallback: Use data URI (on-chain, but some explorers may not support it)
   const jsonMetadata: any = {
     name: metadata.name,
     symbol: metadata.symbol,
@@ -45,26 +56,18 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
     decimals: metadata.decimals || '9',
   };
   
-  // Add image if provided (must be a valid URL or data URI)
   if (metadata.image && metadata.image.trim()) {
     jsonMetadata.image = metadata.image.trim();
   }
   
-  // Stringify JSON - use compact format (no spaces) to minimize size
   const jsonString = JSON.stringify(jsonMetadata);
-  
-  // Use base64 encoding for better compatibility
   const base64Encoded = Buffer.from(jsonString, 'utf-8').toString('base64');
-  
-  // Return data URI with base64 encoding
-  // Format: data:application/json;base64,<base64_json>
   const dataUri = `data:application/json;base64,${base64Encoded}`;
   
-  console.log('Built metadata URI:', {
+  console.log('Using data URI (fallback):', {
     jsonLength: jsonString.length,
     base64Length: base64Encoded.length,
     uriLength: dataUri.length,
-    jsonPreview: jsonString.substring(0, 100) + '...',
   });
   
   return dataUri;
@@ -83,10 +86,11 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
  * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  * 
  * @param metadata - Token metadata object
+ * @param contractAddress - Optional contract address for API endpoint URL
  * @returns Cell with metadata URI stored in ref
  */
-export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  const uri = buildMetadataUri(metadata);
+export function buildTokenMetadataCell(metadata: JettonMetadata, contractAddress?: string): Cell {
+  const uri = buildMetadataUri(metadata, contractAddress);
   
   console.log('Building metadata URI for Jetton 2.0:', {
     uriLength: uri.length,
