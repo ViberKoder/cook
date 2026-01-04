@@ -200,5 +200,5 @@ export async function loadCookpadState(contractAddress: string): Promise<Cookpad
   }
 }
 
-export { FEE_WALLET, MAX_LIQUIDITY_TON, FEE_PERCENT, Op };
+export { Op };
 
