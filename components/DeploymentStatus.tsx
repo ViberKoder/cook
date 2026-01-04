@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { addCookToken } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
@@ -62,11 +61,6 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         <h2 className="text-2xl font-bold text-cook-text mb-2">Token Cooked Successfully!</h2>
         <p className="text-cook-text-secondary mb-8">Your Jetton 2.0 token is now deployed on TON with on-chain metadata.</p>
 
-        {/* Add token to cook.tg list */}
-        {(() => {
-          addCookToken(deployedAddress);
-          return null;
-        })()}
 
         {/* Contract Address */}
         <div className="p-4 bg-cook-bg-secondary rounded-xl mb-6">

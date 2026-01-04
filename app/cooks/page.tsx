@@ -43,7 +43,7 @@ export default function CooksPage() {
       const storedTokens = getCookTokens();
       const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
-      // Load all known tokens in parallel for faster loading
+      // Load all known tokens and check liquidity
       const tokenPromises = allTokenAddresses.map(async (tokenAddress): Promise<CookToken | null> => {
         try {
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
@@ -54,9 +54,22 @@ export default function CooksPage() {
           
           const tokenData = await tokenResponse.json();
           
-          // Return token immediately with default liquidity status
-          // Known tokens are assumed to have liquidity
-          const token: CookToken = {
+          // Check liquidity - only show tokens with liquidity
+          let hasLiquidity = false;
+          try {
+            const pool = await checkStonfiLiquidity(tokenAddress);
+            hasLiquidity = pool !== null;
+          } catch (e) {
+            console.warn(`Failed to check liquidity for ${tokenAddress}:`, e);
+            hasLiquidity = false;
+          }
+          
+          // Only return token if it has liquidity
+          if (!hasLiquidity) {
+            return null;
+          }
+          
+          return {
             address: tokenAddress,
             name: tokenData.metadata?.name || 'Unknown',
             symbol: tokenData.metadata?.symbol || '???',
@@ -64,10 +77,8 @@ export default function CooksPage() {
             description: tokenData.metadata?.description,
             totalSupply: tokenData.total_supply || '0',
             decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity: true, // Default to true for known tokens
+            hasLiquidity: true,
           };
-          
-          return token;
         } catch (err) {
           console.error(`Error loading token ${tokenAddress}:`, err);
           return null;
