@@ -95,12 +95,26 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
     const valueBuffer = Buffer.from(value, 'utf-8');
     const valueCell = makeSnakeCell(valueBuffer);
     
+    console.log(`Adding metadata key "${key}":`, {
+      hash: keyHash.toString('hex').substring(0, 16) + '...',
+      valueLength: value.length,
+      valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
+    });
+    
     dict.set(keyHash, valueCell);
   }
   
-  return beginCell()
+  const resultCell = beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
     .storeDict(dict)
     .endCell();
+  
+  console.log('Metadata cell created:', {
+    bits: resultCell.bits.length,
+    refs: resultCell.refs.length,
+    dictSize: dict.size,
+  });
+  
+  return resultCell;
 }
 
