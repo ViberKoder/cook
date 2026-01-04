@@ -23,7 +23,6 @@ import {
   getOffchainBalance,
   storeOffchainBalance,
   type OffchainBalance
-  type OffchainBalance
 } from '@/lib/cookpadOffchain';
 import toast from 'react-hot-toast';
 
