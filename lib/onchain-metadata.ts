@@ -115,16 +115,37 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   
   console.log('Final dictionary size:', dict.size, 'keys added');
   
+  // Build the content cell with TEP-64 format
+  // Prefix (8 bits) + Dictionary (stored in ref if large)
   const resultCell = beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
     .storeDict(dict)
     .endCell();
   
+  // Verify the cell structure
+  const cellBits = resultCell.bits.length;
+  const cellRefs = resultCell.refs.length;
+  const dictSize = dict.size;
+  
   console.log('Metadata cell created (TEP-64 format):', {
-    bits: resultCell.bits.length,
-    refs: resultCell.refs.length,
-    dictSize: dict.size,
+    bits: cellBits,
+    refs: cellRefs,
+    dictSize: dictSize,
+    hasDict: dictSize > 0,
   });
+  
+  // CRITICAL: If dict is empty or not stored correctly, this is a bug
+  if (dictSize === 0) {
+    console.error('ERROR: Dictionary is empty! No metadata will be stored!');
+    throw new Error('Metadata dictionary is empty - check that all values are provided');
+  }
+  
+  // Verify dictionary is actually in the cell
+  if (cellBits <= 8 && cellRefs === 0) {
+    console.error('ERROR: Cell appears empty! Dictionary may not be stored correctly.');
+    console.error('Expected: at least 8 bits (prefix) + dictionary data');
+    console.error('Got:', { bits: cellBits, refs: cellRefs });
+  }
   
   return resultCell;
 }
