@@ -24,14 +24,10 @@ interface CookToken {
 
 // No hardcoded tokens - only tokens added via "Add on Cooks" button (after payment)
 
-type SortOption = 'newest' | 'volume' | 'liquidity';
-
 export default function CooksPage() {
   const [tokens, setTokens] = useState<CookToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showOnlyWithLiquidity, setShowOnlyWithLiquidity] = useState(false); // Removed filter - show all tokens
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
     loadCookTokens();
@@ -122,33 +118,14 @@ export default function CooksPage() {
     }
   };
 
-  const formatLiquidity = (value: number) => {
-    if (value >= 1_000_000) {
-      return `$${(value / 1_000_000).toFixed(1)}M`;
-    }
-    if (value >= 1_000) {
-      return `$${(value / 1_000).toFixed(1)}K`;
-    }
-    return `$${value.toFixed(2)}`;
-  };
-
-  // Sort tokens (no filtering - show all)
-  const filteredAndSortedTokens = useMemo(() => {
-    return tokens.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
+      // Sort tokens by newest first
+      const sortedTokens = useMemo(() => {
+        return [...tokens].sort((a, b) => {
           const aTime = a.deployedAt || 0;
           const bTime = b.deployedAt || 0;
           return bTime - aTime; // Newest first
-        case 'liquidity':
-          return b.totalLiquidity - a.totalLiquidity; // Highest liquidity first
-        case 'volume':
-          return b.totalLiquidity - a.totalLiquidity; // Highest volume first (using liquidity as proxy)
-        default:
-          return 0;
-      }
-    });
-  }, [tokens, sortBy]);
+        });
+      }, [tokens]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -163,11 +140,11 @@ export default function CooksPage() {
 
       <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold text-cook-text mb-2 text-center">
-            <span className="gradient-text-cook">Cooks</span> with Liquidity
+          <h1 className="text-5xl md:text-6xl font-bold text-cook-text mb-2 text-center">
+            <span className="gradient-text-cook">Cooks</span>
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Tokens added to Cooks section via &quot;Add on Cooks&quot; button
+            Jetton created by Cook, who decided to show themselves
           </p>
 
           {loading && (
@@ -188,23 +165,24 @@ export default function CooksPage() {
 
           {!loading && !error && (
             <>
-              {/* Sorting */}
-              <div className="flex flex-col sm:flex-row justify-end items-center gap-4 mb-8 p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-cook-text-secondary">Sort by:</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="select-ton"
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="liquidity">Highest Liquidity</option>
-                    <option value="volume">Highest Volume</option>
-                  </select>
-                </div>
+              {/* Add Token Button */}
+              <div className="flex justify-center mb-8">
+                <Link
+                  href="/"
+                  className="btn-cook flex items-center justify-center gap-2 text-lg px-8 py-4"
+                >
+                  <Image 
+                    src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                    alt="" 
+                    width={24}
+                    height={24}
+                    unoptimized
+                  />
+                  Add Your Token to Cooks
+                </Link>
               </div>
 
-              {filteredAndSortedTokens.length === 0 ? (
+                  {sortedTokens.length === 0 ? (
                 <div className="card text-center py-12">
                   <Image 
                     src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
@@ -230,8 +208,8 @@ export default function CooksPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredAndSortedTokens.map((token) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {sortedTokens.map((token) => (
                     <Link
                       key={token.address}
                       href={`/cooks/${token.address}`}

@@ -183,11 +183,20 @@ export async function deployJettonMinter(
 
     // Build TEP-64 on-chain metadata
     console.log('Building on-chain metadata (TEP-64)...');
+    
+    // Handle image: use URL if provided, or create data URL from base64 if uploaded
+    let imageUrl: string | undefined = tokenData.image;
+    if (!imageUrl && tokenData.imageData) {
+      // Create data URL from base64
+      imageUrl = `data:image/png;base64,${tokenData.imageData}`;
+      console.log('Using uploaded image as data URL');
+    }
+    
     contentCell = buildOnchainMetadataCell({
       name: tokenData.name,
       symbol: tokenData.symbol.toUpperCase(),
       description: tokenData.description || tokenData.name,
-      image: tokenData.image || undefined,
+      image: imageUrl || undefined,
       decimals: tokenData.decimals.toString(),
     });
 
@@ -319,7 +328,9 @@ export function getJettonWalletAddress(
 
 // STON.fi pool creation URL
 export function getStonfiPoolUrl(tokenAddress: string): string {
-  return `https://app.ston.fi/pools/create?token0=EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c&token1=${tokenAddress}`;
+  // Normalize address format (ensure EQ format)
+  const normalizedAddress = tokenAddress.replace(/^UQ/, 'EQ');
+  return `https://app.ston.fi/liquidity/provide?type=Balanced&ft=TON&tt=${normalizedAddress}&pool=new`;
 }
 
 export { Op as JettonOpcodes };

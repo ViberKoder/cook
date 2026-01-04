@@ -212,10 +212,6 @@ export default function AdminPage() {
       return;
     }
 
-    if (!confirm('Are you sure you want to revoke admin rights? This is IRREVERSIBLE!')) {
-      return;
-    }
-
     try {
       await sendDropAdminTransaction(contractAddress, sendTransaction);
       toast.success('Admin rights revoked!');

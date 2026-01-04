@@ -101,73 +101,77 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         </div>
 
         {/* Decentralize Token Option */}
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-xl">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <h3 className="font-bold text-red-700 dark:text-red-300">Make Token Decentralized</h3>
+        <div className="mb-4 p-3 rounded-xl border border-red-400 shadow-lg relative overflow-hidden animate-gradient" style={{
+          background: 'linear-gradient(-45deg, #ef4444, #dc2626, #b91c1c, #991b1b)',
+        }}>
+          <div className="relative z-10">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h3 className="font-bold text-white text-sm">Make Token Decentralized</h3>
+            </div>
+            <p className="text-xs text-red-50 mb-3 text-center">
+              Revoke admin rights to make your token fully decentralized
+            </p>
+            <button
+              onClick={handleRevokeAdmin}
+              disabled={!connected || revokingAdmin}
+              className="w-full py-2 px-3 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-lg text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-white/30"
+            >
+              {revokingAdmin ? (
+                <>
+                  <div className="spinner" />
+                  Revoking...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Revoke Admin Rights
+                </>
+              )}
+            </button>
           </div>
-          <p className="text-sm text-red-600 dark:text-red-400 mb-4">
-            Revoke admin rights to make your token fully decentralized. This action is <strong>IRREVERSIBLE</strong>.
-          </p>
-          <button
-            onClick={handleRevokeAdmin}
-            disabled={!connected || revokingAdmin}
-            className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {revokingAdmin ? (
-              <>
-                <div className="spinner" />
-                Revoking...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Revoke Admin Rights
-              </>
-            )}
-          </button>
         </div>
 
         {/* STON.fi Liquidity Pool Creation */}
-        <div className="mb-6 p-4 rounded-xl border border-blue-400 shadow-lg relative overflow-hidden animate-gradient" style={{
+        <div className="mb-4 p-3 rounded-xl border border-blue-400 shadow-lg relative overflow-hidden animate-gradient" style={{
           background: 'linear-gradient(-45deg, #3b82f6, #06b6d4, #2563eb, #0891b2)',
         }}>
           <div className="relative z-10">
-            <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="flex items-center justify-center gap-2 mb-2">
               <Image 
                 src="https://ston.fi/images/tild3236-3266-4139-a562-376139323438__ston_logo_light.svg"
                 alt="STON.fi"
-                width={120}
-                height={25}
+                width={100}
+                height={20}
                 className="brightness-0 invert"
                 unoptimized
               />
-              <h3 className="font-bold text-white text-lg">Create Liquidity Pool</h3>
+              <h3 className="font-bold text-white text-sm">Create Liquidity Pool</h3>
             </div>
-            <p className="text-sm text-blue-50 mb-4">
+            <p className="text-xs text-blue-50 mb-3 text-center">
               Add liquidity for your token on STON.fi DEX to enable trading
             </p>
             
             {!showStonfi ? (
               <button
                 onClick={() => setShowStonfi(true)}
-                className="w-full py-3 px-4 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/30 transition-all flex items-center justify-center gap-2 border border-white/30"
+                className="w-full py-2 px-3 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-lg text-sm hover:bg-white/30 transition-all flex items-center justify-center gap-2 border border-white/30"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Create Pool on STON.fi
               </button>
             ) : (
-              <div className="space-y-3">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden">
+              <div className="space-y-2">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden">
                   <iframe
                     src={stonfiUrl}
-                    className="w-full h-[500px]"
+                    className="w-full h-[400px]"
                     title="STON.fi Pool Creation"
                     sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                   />
@@ -177,16 +181,16 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
                     href={stonfiUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-2 px-4 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors flex items-center justify-center gap-2 border border-white/30"
+                    className="flex-1 py-2 px-3 bg-white/20 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-white/30 transition-colors flex items-center justify-center gap-2 border border-white/30"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                     Open in New Tab
                   </a>
                   <button
                     onClick={() => setShowStonfi(false)}
-                    className="py-2 px-4 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors border border-white/30"
+                    className="py-2 px-3 bg-white/20 backdrop-blur-sm text-white rounded-lg text-xs font-medium hover:bg-white/30 transition-colors border border-white/30"
                   >
                     Close
                   </button>
@@ -197,43 +201,47 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         </div>
 
         {/* Add to Cooks */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300 dark:border-orange-700 rounded-xl">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Image 
-              src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
-              alt="Cook" 
-              width={24}
-              height={24}
-              unoptimized
-            />
-            <h3 className="font-bold text-cook-text">Add Token to Cooks</h3>
+        <div className="mb-4 p-3 rounded-xl border border-orange-400 shadow-lg relative overflow-hidden animate-gradient" style={{
+          background: 'linear-gradient(-45deg, #f97316, #ea580c, #fb923c, #f59e0b)',
+        }}>
+          <div className="relative z-10">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Image 
+                src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                alt="Cook" 
+                width={20}
+                height={20}
+                unoptimized
+              />
+              <h3 className="font-bold text-white text-sm">Add Token to Cooks</h3>
+            </div>
+            <p className="text-xs text-orange-50 mb-3 text-center">
+              Pay 0.2 TON to add your token to the Cooks section
+            </p>
+            <button
+              onClick={handleAddToCooks}
+              disabled={!connected || addingToCooks}
+              className="w-full py-2 px-3 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-lg text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-white/30"
+            >
+              {addingToCooks ? (
+                <>
+                  <div className="spinner" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Image 
+                    src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                    alt="" 
+                    width={16}
+                    height={16}
+                    unoptimized
+                  />
+                  Add on Cooks (0.2 TON)
+                </>
+              )}
+            </button>
           </div>
-          <p className="text-sm text-cook-text-secondary mb-4 text-center">
-            Pay 0.2 TON to add your token to the Cooks section. Your token will appear immediately without any filters.
-          </p>
-          <button
-            onClick={handleAddToCooks}
-            disabled={!connected || addingToCooks}
-            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {addingToCooks ? (
-              <>
-                <div className="spinner" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Image 
-                  src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
-                  alt="" 
-                  width={20}
-                  height={20}
-                  unoptimized
-                />
-                Add on Cooks (0.2 TON)
-              </>
-            )}
-          </button>
         </div>
 
         {/* Actions */}
