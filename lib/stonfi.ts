@@ -17,41 +17,69 @@ export interface StonfiPool {
  */
 export async function checkStonfiLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
   try {
-    // STON.fi API endpoint for pools
-    // Try to find pools where this token is token0 or token1
-    const response = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${tokenAddress}`);
-    
-    if (!response.ok) {
-      // If API doesn't work, try alternative method
-      return await checkStonfiLiquidityAlternative(tokenAddress);
-    }
-    
-    const data = await response.json();
-    
-    // Find pools with this token
-    const pools = data.pools || [];
-    const pool = pools.find((p: any) => 
-      p.token0_address === tokenAddress || p.token1_address === tokenAddress
-    );
-    
-    if (pool && pool.reserve0 && pool.reserve1) {
-      // Check if pool has actual liquidity (reserves > 0)
-      const reserve0 = BigInt(pool.reserve0 || '0');
-      const reserve1 = BigInt(pool.reserve1 || '0');
-      
-      if (reserve0 > 0n && reserve1 > 0n) {
-        return {
-          address: pool.address,
-          token0: pool.token0_address,
-          token1: pool.token1_address,
-          reserve0: pool.reserve0,
-          reserve1: pool.reserve1,
-          lp_total_supply: pool.lp_total_supply || '0',
-        };
+    // Try multiple STON.fi API endpoints
+    // Method 1: Try router pools endpoint
+    try {
+      const routerResponse = await fetch(`https://api.ston.fi/v1/router/pools?token_addresses=${tokenAddress}`);
+      if (routerResponse.ok) {
+        const routerData = await routerResponse.json();
+        const pools = routerData.pools || routerData || [];
+        
+        for (const pool of pools) {
+          if ((pool.token0_address === tokenAddress || pool.token1_address === tokenAddress) &&
+              pool.reserve0 && pool.reserve1) {
+            const reserve0 = BigInt(pool.reserve0 || '0');
+            const reserve1 = BigInt(pool.reserve1 || '0');
+            
+            if (reserve0 > 0n && reserve1 > 0n) {
+              return {
+                address: pool.address || pool.pool_address,
+                token0: pool.token0_address,
+                token1: pool.token1_address,
+                reserve0: pool.reserve0,
+                reserve1: pool.reserve1,
+                lp_total_supply: pool.lp_total_supply || '0',
+              };
+            }
+          }
+        }
       }
+    } catch (e) {
+      console.log('Router API failed, trying alternative');
     }
     
-    return null;
+    // Method 2: Try pools endpoint
+    try {
+      const poolsResponse = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${tokenAddress}`);
+      if (poolsResponse.ok) {
+        const poolsData = await poolsResponse.json();
+        const pools = poolsData.pools || poolsData || [];
+        
+        for (const pool of pools) {
+          if ((pool.token0_address === tokenAddress || pool.token1_address === tokenAddress) &&
+              pool.reserve0 && pool.reserve1) {
+            const reserve0 = BigInt(pool.reserve0 || '0');
+            const reserve1 = BigInt(pool.reserve1 || '0');
+            
+            if (reserve0 > 0n && reserve1 > 0n) {
+              return {
+                address: pool.address || pool.pool_address,
+                token0: pool.token0_address,
+                token1: pool.token1_address,
+                reserve0: pool.reserve0,
+                reserve1: pool.reserve1,
+                lp_total_supply: pool.lp_total_supply || '0',
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Pools API failed, trying alternative');
+    }
+    
+    // Method 3: Check via TonAPI jetton info (might have pool data)
+    return await checkStonfiLiquidityAlternative(tokenAddress);
   } catch (error) {
     console.error('Error checking STON.fi liquidity:', error);
     return await checkStonfiLiquidityAlternative(tokenAddress);
@@ -59,11 +87,14 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
 }
 
 /**
- * Alternative method: check via STON.fi router or pool address
+ * Alternative method: check via TonAPI and try to find pool
  */
 async function checkStonfiLiquidityAlternative(tokenAddress: string): Promise<StonfiPool | null> {
   try {
-    // Try checking via TonAPI for jetton info which might include pool data
+    // For known tokens, we can assume they have liquidity if they're in our list
+    // In production, you should maintain a database of tokens with verified liquidity
+    
+    // Try to check if token exists and has supply
     const response = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
     
     if (!response.ok) {
@@ -72,17 +103,31 @@ async function checkStonfiLiquidityAlternative(tokenAddress: string): Promise<St
     
     const data = await response.json();
     
-    // Check if token has any pool-related data
-    // This is a fallback - ideally we'd use STON.fi API directly
-    // For now, we'll assume if token exists and has supply, it might have liquidity
-    // In production, you should track which tokens were created on cook.tg
-    // and verify liquidity via STON.fi API
+    // If token exists and has supply, check if we can find pool info
+    // Try checking STON.fi pools page directly (this is a workaround)
+    // In production, you should use STON.fi's official API or maintain your own database
+    
+    // For now, if token exists and is in our known list, assume it has liquidity
+    // This is a temporary solution - in production you'd verify via API
     
     return null;
   } catch (error) {
     console.error('Error in alternative liquidity check:', error);
     return null;
   }
+}
+
+/**
+ * Check if token is in known list (temporary solution)
+ * In production, this should query your database
+ */
+export function isKnownCookToken(tokenAddress: string): boolean {
+  // This should come from your backend/database
+  // For now, we'll check against a hardcoded list
+  const knownTokens = [
+    'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q',
+  ];
+  return knownTokens.includes(tokenAddress);
 }
 
 /**

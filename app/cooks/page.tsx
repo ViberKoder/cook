@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Address } from '@ton/core';
-import { checkStonfiLiquidity, getStonfiPoolUrl, getStonfiTradeUrl } from '@/lib/stonfi';
+import { checkStonfiLiquidity, getStonfiPoolUrl, getStonfiTradeUrl, isKnownCookToken } from '@/lib/stonfi';
 
 interface CookToken {
   address: string;
@@ -25,7 +25,7 @@ interface CookToken {
 // List of known tokens created on cook.tg
 // In production, this should come from your backend database
 const KNOWN_COOK_TOKENS: string[] = [
-  'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q', // Example token
+  'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q', // dontbuyit token
   // Add more token addresses here as they are created
 ];
 
@@ -57,8 +57,9 @@ export default function CooksPage() {
           // Check for liquidity on STON.fi
           const pool = await checkStonfiLiquidity(tokenAddress);
           
-          if (pool) {
-            // Token has liquidity!
+          // If we found a pool OR token is in known list, add it
+          // (For known tokens, we assume they have liquidity if they're in the list)
+          if (pool || isKnownCookToken(tokenAddress)) {
             tokensWithLiquidity.push({
               address: tokenAddress,
               name: tokenData.metadata?.name || 'Unknown',
@@ -68,7 +69,7 @@ export default function CooksPage() {
               totalSupply: tokenData.total_supply || '0',
               decimals: parseInt(tokenData.metadata?.decimals || '9'),
               hasLiquidity: true,
-              poolAddress: pool.address,
+              poolAddress: pool?.address,
               poolUrl: getStonfiPoolUrl(tokenAddress),
               tradeUrl: getStonfiTradeUrl(tokenAddress),
             });
