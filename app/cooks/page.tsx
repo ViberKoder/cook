@@ -5,8 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Address } from '@ton/core';
-import { checkStonfiLiquidity, getStonfiPoolUrl, getStonfiTradeUrl, isKnownCookToken } from '@/lib/stonfi';
+import { isKnownCookToken } from '@/lib/stonfi';
 
 interface CookToken {
   address: string;
@@ -17,9 +16,6 @@ interface CookToken {
   totalSupply: string;
   decimals: number;
   hasLiquidity: boolean;
-  poolAddress?: string;
-  poolUrl?: string;
-  tradeUrl?: string;
 }
 
 // List of known tokens created on cook.tg
@@ -43,89 +39,34 @@ export default function CooksPage() {
     setError(null);
     
     try {
-      const tokensWithLiquidity: CookToken[] = [];
-      
-      // Check each known cook.tg token for liquidity
-      for (const tokenAddress of KNOWN_COOK_TOKENS) {
+      // Load all known tokens in parallel for faster loading
+      const tokenPromises = KNOWN_COOK_TOKENS.map(async (tokenAddress) => {
         try {
-          // Load token info from TonAPI
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
-          if (!tokenResponse.ok) continue;
+          if (!tokenResponse.ok) return null;
           
           const tokenData = await tokenResponse.json();
           
-          // For known cook.tg tokens, check if they exist and assume they have liquidity
-          // (since they're in our known list, they should have been verified)
-          if (isKnownCookToken(tokenAddress)) {
-            // Try to check for actual liquidity, but don't fail if API is down
-            let pool = null;
-            try {
-              pool = await checkStonfiLiquidity(tokenAddress);
-            } catch (e) {
-              console.log('Liquidity check failed, but token is known:', e);
-            }
-            
-            tokensWithLiquidity.push({
-              address: tokenAddress,
-              name: tokenData.metadata?.name || 'Unknown',
-              symbol: tokenData.metadata?.symbol || '???',
-              image: tokenData.metadata?.image,
-              description: tokenData.metadata?.description,
-              totalSupply: tokenData.total_supply || '0',
-              decimals: parseInt(tokenData.metadata?.decimals || '9'),
-              hasLiquidity: true,
-              poolAddress: pool?.address,
-              poolUrl: getStonfiPoolUrl(tokenAddress),
-              tradeUrl: getStonfiTradeUrl(tokenAddress),
-            });
-          }
+          return {
+            address: tokenAddress,
+            name: tokenData.metadata?.name || 'Unknown',
+            symbol: tokenData.metadata?.symbol || '???',
+            image: tokenData.metadata?.image,
+            description: tokenData.metadata?.description,
+            totalSupply: tokenData.total_supply || '0',
+            decimals: parseInt(tokenData.metadata?.decimals || '9'),
+            hasLiquidity: true, // Known tokens are assumed to have liquidity
+          };
         } catch (err) {
           console.error(`Error loading token ${tokenAddress}:`, err);
-          // Continue with next token
+          return null;
         }
-      }
+      });
       
-      // Also try to find tokens via TonAPI trending that might be from cook.tg
-      // This is a fallback - ideally you'd track all cook.tg tokens in a database
-      try {
-        const trendingResponse = await fetch('https://tonapi.io/v2/jettons/trending?limit=100');
-        if (trendingResponse.ok) {
-          const trendingData = await trendingResponse.json();
-          
-          for (const jetton of trendingData.jettons || []) {
-            // Skip if already in our list
-            if (tokensWithLiquidity.find(t => t.address === jetton.address)) {
-              continue;
-            }
-            
-            // Check for liquidity
-            const pool = await checkStonfiLiquidity(jetton.address);
-            
-            if (pool) {
-              // Check if this might be a cook.tg token
-              // In production, you'd verify this against your database
-              // For now, we'll include tokens with liquidity that match certain criteria
-              tokensWithLiquidity.push({
-                address: jetton.address,
-                name: jetton.metadata?.name || 'Unknown',
-                symbol: jetton.metadata?.symbol || '???',
-                image: jetton.metadata?.image,
-                description: jetton.metadata?.description,
-                totalSupply: jetton.total_supply || '0',
-                decimals: parseInt(jetton.metadata?.decimals || '9'),
-                hasLiquidity: true,
-                poolAddress: pool.address,
-                poolUrl: getStonfiPoolUrl(jetton.address),
-                tradeUrl: getStonfiTradeUrl(jetton.address),
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error loading trending tokens:', err);
-      }
+      const loadedTokens = await Promise.all(tokenPromises);
+      const validTokens = loadedTokens.filter((t): t is CookToken => t !== null);
       
-      setTokens(tokensWithLiquidity);
+      setTokens(validTokens);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
       setError(err.message || 'Failed to load tokens');
@@ -168,7 +109,7 @@ export default function CooksPage() {
           {loading && (
             <div className="card text-center py-12">
               <div className="spinner mx-auto mb-4" />
-              <p className="text-cook-text-secondary">Loading tokens with liquidity...</p>
+              <p className="text-cook-text-secondary">Loading tokens...</p>
             </div>
           )}
 
@@ -211,7 +152,11 @@ export default function CooksPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {tokens.map((token) => (
-                    <div key={token.address} className="card hover:shadow-xl transition-shadow">
+                    <Link
+                      key={token.address}
+                      href={`/cooks/${token.address}`}
+                      className="card hover:shadow-xl transition-all hover:scale-105"
+                    >
                       <div className="flex items-center gap-4 mb-4">
                         <div className="w-16 h-16 rounded-xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
                           {token.image ? (
@@ -257,34 +202,10 @@ export default function CooksPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <Link
-                          href={`https://tonviewer.com/${token.address}`}
-                          target="_blank"
-                          className="flex-1 btn-secondary text-sm text-center"
-                        >
-                          View
-                        </Link>
-                        {token.tradeUrl && (
-                          <Link
-                            href={token.tradeUrl}
-                            target="_blank"
-                            className="flex-1 btn-cook text-sm text-center"
-                          >
-                            Trade
-                          </Link>
-                        )}
-                        {token.poolUrl && (
-                          <Link
-                            href={token.poolUrl}
-                            target="_blank"
-                            className="flex-1 btn-secondary text-sm text-center"
-                          >
-                            Pool
-                          </Link>
-                        )}
+                      <div className="text-center text-sm text-cook-orange font-medium">
+                        View Details →
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
