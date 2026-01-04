@@ -1,107 +1,136 @@
 /**
  * Jetton 2.0 On-Chain Metadata Utilities
+ * Based on: https://github.com/ViberKoder/tolya/commit/60974f08c11f37e7804c9987b491729a0af4a76b
  * 
  * CRITICAL: Proper TEP-64 on-chain metadata format:
- * - Prefix 0x01 (8 bits) for on-chain data (TEP-64 flag)
- * - Dictionary with keys = sha256(key_name) as Buffer(32)
- * - Values = Cell with string via storeStringTail (snake format for long strings)
- * 
- * Based on TEP-64 standard: https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md
+ * - Prefix 0x00 (8 bits) for on-chain data
+ * - Dictionary with keys = sha256(key_name) as BigUint(256)
+ * - Values = Cell with snake format string (prefix 0x00 + data)
  */
 
 import { beginCell, Cell, Dictionary } from '@ton/core';
-import { sha256_sync } from '@ton/crypto';
+
+// TEP-64 metadata keys
+const ONCHAIN_CONTENT_PREFIX = 0x00;
+const SNAKE_PREFIX = 0x00;
+
+// Pre-computed SHA256 hashes for standard metadata keys
+const METADATA_KEYS = {
+  name: BigInt('0x82a3537ff0dbce7eec35d69edc3a189ee6f17d82f353a553f9aa96cb0be3ce89'),
+  description: BigInt('0xc9046f7a37ad0ea7cee73355984fa5428982f8b37c8f7bcec91f7ac71a7cd104'),
+  image: BigInt('0x6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d'),
+  symbol: BigInt('0xb76a7ca153c24671658335bbd08946350ffc621fa1c516e7123095d4ffd5c581'),
+  decimals: BigInt('0xee80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e'),
+  image_data: BigInt('0xd9a88ccec79eef59c84b671136a20ece4cd00caaad5bc47e2c208829154ee9e4'),
+};
+
+function makeSnakeCellSimple(data: string): Cell {
+  const bytes = new TextEncoder().encode(data);
+  return beginCell()
+    .storeUint(SNAKE_PREFIX, 8)
+    .storeBuffer(Buffer.from(bytes))
+    .endCell();
+}
 
 export interface JettonMetadata {
   name: string;
   symbol: string;
   description?: string;
   image?: string;
-  decimals?: string;
+  decimals: string; // обязательно string, например '9'
 }
 
-/**
- * Build on-chain metadata cell for Jetton 2.0 (TEP-64 format)
- * 
- * @param metadata - Token metadata object
- * @returns Cell with TEP-64 on-chain metadata (prefix 0x00 + dictionary)
- */
 export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  // Build dictionary: key = sha256(key_name) as Buffer(32), value = Cell with string
-  const dict = Dictionary.empty<Buffer, Cell>(
-    Dictionary.Keys.Buffer(32),
-    Dictionary.Values.Cell()
-  );
-
-  // Process all metadata fields (including custom ones)
-  Object.entries(metadata).forEach(([key, value]) => {
-    if (value !== undefined && value !== '' && value !== null) {
-      // Hash the key name - sha256_sync returns Buffer directly
-      const keyBuffer = sha256_sync(key);
-      
-      // Store value as snake-string (storeStringTail handles long strings automatically)
-      const valueCell = beginCell()
-        .storeStringTail(value)
-        .endCell();
-      
-      dict.set(keyBuffer, valueCell);
-      
-      console.log(`Added metadata key "${key}":`, {
-        keyHash: keyBuffer.toString('hex'),
-        valueLength: value.length,
-        valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
-      });
-    }
-  });
-
-  // CRITICAL: Use prefix 0x01 for on-chain metadata (TEP-64 flag)
-  // This is the correct flag according to TEP-64 standard
+  const dict = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+  
+  // Name
+  if (metadata.name) {
+    dict.set(METADATA_KEYS.name, makeSnakeCellSimple(metadata.name));
+  }
+  
+  // Symbol
+  if (metadata.symbol) {
+    dict.set(METADATA_KEYS.symbol, makeSnakeCellSimple(metadata.symbol));
+  }
+  
+  // Description
+  if (metadata.description) {
+    dict.set(METADATA_KEYS.description, makeSnakeCellSimple(metadata.description));
+  }
+  
+  // Image
+  if (metadata.image) {
+    dict.set(METADATA_KEYS.image, makeSnakeCellSimple(metadata.image));
+  }
+  
+  // Decimals
+  dict.set(METADATA_KEYS.decimals, makeSnakeCellSimple(metadata.decimals));
+  
   return beginCell()
-    .storeUint(1, 8)              // 0x01 — флаг on-chain по TEP-64
-    .storeDict(dict)               // Dictionary with metadata
+    .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
+    .storeDict(dict)
     .endCell();
 }
 
 /**
  * Parse on-chain metadata cell back to metadata object
- * 
- * @param cell - Cell with TEP-64 on-chain metadata
- * @returns Parsed metadata object
  */
 export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
   const slice = cell.beginParse();
   
   // Check prefix
   const prefix = slice.loadUint(8);
-  if (prefix !== 1) {
-    throw new Error('Not an on-chain metadata cell (missing 0x01 prefix)');
+  if (prefix !== ONCHAIN_CONTENT_PREFIX) {
+    throw new Error('Not an on-chain metadata cell (missing 0x00 prefix)');
   }
   
   // Load dictionary
   const dict = slice.loadDict(
-    Dictionary.Keys.Buffer(32),
+    Dictionary.Keys.BigUint(256),
     Dictionary.Values.Cell()
   );
   
   const result: Partial<JettonMetadata> = {};
   
-  // Standard metadata keys
-  const keys: (keyof JettonMetadata)[] = ['name', 'symbol', 'description', 'image', 'decimals'];
+  // Parse standard keys
+  if (dict.get(METADATA_KEYS.name)) {
+    const nameCell = dict.get(METADATA_KEYS.name)!;
+    const nameSlice = nameCell.beginParse();
+    nameSlice.loadUint(8); // Skip snake prefix
+    const nameBytes = nameSlice.loadBuffer(nameSlice.remainingBits / 8);
+    result.name = new TextDecoder().decode(nameBytes);
+  }
   
-  for (const key of keys) {
-    const keyHash = sha256_sync(key);
-    const valueCell = dict.get(keyHash);
-    
-    if (valueCell) {
-      try {
-        // Parse string from cell (storeStringTail format)
-        const valueSlice = valueCell.beginParse();
-        const value = valueSlice.loadStringTail();
-        result[key] = value as any;
-      } catch (e) {
-        console.warn(`Failed to parse metadata key "${key}":`, e);
-      }
-    }
+  if (dict.get(METADATA_KEYS.symbol)) {
+    const symbolCell = dict.get(METADATA_KEYS.symbol)!;
+    const symbolSlice = symbolCell.beginParse();
+    symbolSlice.loadUint(8); // Skip snake prefix
+    const symbolBytes = symbolSlice.loadBuffer(symbolSlice.remainingBits / 8);
+    result.symbol = new TextDecoder().decode(symbolBytes);
+  }
+  
+  if (dict.get(METADATA_KEYS.description)) {
+    const descCell = dict.get(METADATA_KEYS.description)!;
+    const descSlice = descCell.beginParse();
+    descSlice.loadUint(8); // Skip snake prefix
+    const descBytes = descSlice.loadBuffer(descSlice.remainingBits / 8);
+    result.description = new TextDecoder().decode(descBytes);
+  }
+  
+  if (dict.get(METADATA_KEYS.image)) {
+    const imageCell = dict.get(METADATA_KEYS.image)!;
+    const imageSlice = imageCell.beginParse();
+    imageSlice.loadUint(8); // Skip snake prefix
+    const imageBytes = imageSlice.loadBuffer(imageSlice.remainingBits / 8);
+    result.image = new TextDecoder().decode(imageBytes);
+  }
+  
+  if (dict.get(METADATA_KEYS.decimals)) {
+    const decimalsCell = dict.get(METADATA_KEYS.decimals)!;
+    const decimalsSlice = decimalsCell.beginParse();
+    decimalsSlice.loadUint(8); // Skip snake prefix
+    const decimalsBytes = decimalsSlice.loadBuffer(decimalsSlice.remainingBits / 8);
+    result.decimals = new TextDecoder().decode(decimalsBytes);
   }
   
   return result;
@@ -110,13 +139,11 @@ export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
 // Alias for backward compatibility
 export const buildOnchainMetadataCell = buildTokenMetadataCell;
 
-// Legacy functions (for off-chain metadata, not used anymore)
+// Legacy functions (not used)
 export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
-  // Not used for on-chain metadata
   return '';
 }
 
 export function buildOffchainMetadataCell(url: string): Cell {
-  // Not used for on-chain metadata
   return beginCell().storeUint(0, 8).endCell();
 }
