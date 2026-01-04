@@ -179,13 +179,15 @@ export default function CooksPage() {
       const liquidityResults = await Promise.all(liquidityCheckPromises);
       console.log('Liquidity check results:', liquidityResults);
       
-      // Build final token list - show ALL tokens from localStorage (they were deployed on cook.tg)
+      // Build final token list
+      // All tokens here were deployed on cook.tg (from localStorage)
+      // We check their liquidity status via API - if they have liquidity, they appear on /cooks
       const allTokens: CookToken[] = validMetadata
         .map(item => {
           const liquidityData = liquidityResults.find(r => r.address === item.address);
           const deployedAt = getTokenDeployedAt(item.address);
           
-          return {
+          const token: CookToken = {
             address: item.address,
             name: item.data.metadata?.name || 'Unknown',
             symbol: item.data.metadata?.symbol || '???',
@@ -198,9 +200,20 @@ export default function CooksPage() {
             totalLiquidity: liquidityData?.totalLiquidity || 0,
             deployedAt,
           };
+          
+          // Log token status
+          if (token.hasLiquidity) {
+            console.log(`✅ Token ${token.symbol} (${item.address}) deployed on cook.tg and has liquidity: $${token.totalLiquidity}`);
+          } else {
+            console.log(`⏳ Token ${token.symbol} (${item.address}) deployed on cook.tg but no liquidity yet`);
+          }
+          
+          return token;
         });
       
-      console.log(`Found ${allTokens.length} tokens total`);
+      const tokensWithLiquidity = allTokens.filter(t => t.hasLiquidity).length;
+      console.log(`Summary: ${allTokens.length} tokens deployed on cook.tg, ${tokensWithLiquidity} have liquidity (will appear on /cooks)`);
+      
       setTokens(allTokens);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
