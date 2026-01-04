@@ -16,7 +16,8 @@ export interface CookpadDeployData {
   walletCode: Cell; // Jetton wallet code
   curveTon: string; // Initial curve TON amount
   author: string; // Author address
-  factory: string; // Factory address (optional)
+  factory?: string; // Factory address (optional)
+  totalSupply: string; // Total supply - 100% goes to bonding curve
 }
 
 /**

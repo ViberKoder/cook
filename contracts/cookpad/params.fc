@@ -7,9 +7,10 @@ const phase::pending_dex_liquidity = 1;
 const phase::listed = 2;
 
 ;; For cookpad: max liquidity is 300 TON
-;; We'll use a threshold supply that corresponds to 300 TON in bonding curve
-const max_supply = 1000000000000000000; ;; 1B tokens
-const threshold_supply = 800000000000000000; ;; 800M tokens (adjusted to reach ~300 TON in bonding curve)
+;; threshold_supply is set dynamically based on user input (100% of supply goes to bonding curve)
+;; max_supply = threshold_supply + remaining tokens for DEX
+const max_supply = 1000000000000000000; ;; 1B tokens (will be set from user input)
+const threshold_supply = 800000000000000000; ;; 800M tokens (will be set from user input - 100% of supply)
 
 const precision = 9;
 

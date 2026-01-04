@@ -19,18 +19,21 @@ import {
   COOKPAD_MAX_LIQUIDITY_TON,
   COOKPAD_FEE_PERCENT
 } from '@/lib/cookpadConfig';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 export default function CookpadPage() {
   const { connected, wallet, sendTransaction } = useTonConnect();
+  const searchParams = useSearchParams();
   const [buyAmount, setBuyAmount] = useState('');
   const [sellAmount, setSellAmount] = useState('');
   const [cookpadState, setCookpadState] = useState<CookpadState | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(true);
   
-  // Contract address from config
-  const COOKPAD_CONTRACT = COOKPAD_CONTRACT_ADDRESS;
+  // Contract address from config or URL parameter
+  const contractFromUrl = searchParams.get('contract');
+  const COOKPAD_CONTRACT = contractFromUrl || COOKPAD_CONTRACT_ADDRESS;
 
   useEffect(() => {
     if (COOKPAD_CONTRACT) {
@@ -169,8 +172,25 @@ export default function CookpadPage() {
             <span className="gradient-text-cook">Cookpad</span>
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Memepad with bonding curve. Virtual liquidity until 300 TON, then DEX listing.
+            Memepad with bonding curve. 100% of supply goes to bonding curve. After 300 TON, token goes to DEX.
           </p>
+
+          {/* Create Cookpad Button */}
+          {!COOKPAD_CONTRACT && (
+            <div className="card text-center mb-8">
+              <p className="text-cook-text-secondary mb-4">No Cookpad contract deployed yet.</p>
+              <Link href="/cookpad/create" className="btn-cook inline-flex items-center gap-2">
+                <Image 
+                  src="https://em-content.zobj.net/source/telegram/386/cooking_1f373.webp" 
+                  alt="" 
+                  width={24}
+                  height={24}
+                  unoptimized
+                />
+                Create Cookpad Token
+              </Link>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

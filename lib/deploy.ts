@@ -335,3 +335,10 @@ export function getStonfiPoolUrl(tokenAddress: string): string {
 
 export { Op as JettonOpcodes };
 export const JETTON_VERSION = '2.0';
+
+/**
+ * Get Jetton Wallet Code as Cell
+ */
+export async function getJettonWalletCode(): Promise<Cell> {
+  return Cell.fromBase64(JETTON_WALLET_CODE_BASE64);
+}

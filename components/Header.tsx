@@ -43,6 +43,12 @@ export default function Header() {
               Cookpad
             </Link>
             <Link 
+              href="/cookpad/create"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Create Cookpad
+            </Link>
+            <Link 
               href="/admin"
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
             >
