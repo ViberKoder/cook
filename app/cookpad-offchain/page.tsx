@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -23,15 +23,7 @@ function CookpadOffchainContent() {
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(true);
 
-  useEffect(() => {
-    if (connected && wallet) {
-      loadOffchainState();
-    } else {
-      setLoadingState(false);
-    }
-  }, [connected, wallet]);
-
-  const loadOffchainState = async () => {
+  const loadOffchainState = useCallback(async () => {
     if (!wallet) return;
     
     setLoadingState(true);
@@ -57,7 +49,15 @@ function CookpadOffchainContent() {
     } finally {
       setLoadingState(false);
     }
-  };
+  }, [wallet]);
+
+  useEffect(() => {
+    if (connected && wallet) {
+      loadOffchainState();
+    } else {
+      setLoadingState(false);
+    }
+  }, [connected, wallet, loadOffchainState]);
 
   const calculateBuyPrice = (supply: number, tonAmount: number): number => {
     // Quadratic bonding curve
@@ -308,7 +308,7 @@ function CookpadOffchainContent() {
                       {buyAmount && (
                         <div className="p-4 bg-cook-bg-secondary rounded-xl">
                           <div className="flex justify-between text-sm mb-2">
-                            <span className="text-cook-text-secondary">You'll receive</span>
+                            <span className="text-cook-text-secondary">You&apos;ll receive</span>
                             <span className="text-cook-text font-medium">{buyPrice.toFixed(2)} tokens</span>
                           </div>
                         </div>
@@ -341,7 +341,7 @@ function CookpadOffchainContent() {
                       {sellAmount && (
                         <div className="p-4 bg-cook-bg-secondary rounded-xl">
                           <div className="flex justify-between text-sm mb-2">
-                            <span className="text-cook-text-secondary">You'll receive</span>
+                            <span className="text-cook-text-secondary">You&apos;ll receive</span>
                             <span className="text-cook-text font-medium">{sellPrice.toFixed(6)} TON</span>
                           </div>
                         </div>
