@@ -317,50 +317,51 @@ export async function deployJettonMinter(
       }
     }
     
-    if (result) {
-      // Store metadata in API endpoint (off-chain storage)
-      try {
-        const metadataJson = {
-          name: metadata.name,
-          symbol: metadata.symbol,
-          description: metadata.description || metadata.name,
-          decimals: metadata.decimals || '9',
-          image: metadata.image || undefined,
-        };
-        
-        // Store metadata via API endpoint POST request
-        const apiUrl = typeof window !== 'undefined' 
-          ? `${window.location.origin}/api/jetton-metadata/${minterAddress.toString()}`
-          : `https://www.cook.tg/api/jetton-metadata/${minterAddress.toString()}`;
-        
-        console.log('Storing metadata at:', apiUrl);
-        
-        // Call API to store metadata (async, don't wait)
-        if (typeof window !== 'undefined') {
-          fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(metadataJson),
-          }).then(() => {
-            console.log('Metadata stored successfully');
-          }).catch((err) => {
-            console.error('Failed to store metadata:', err);
-          });
+        if (result) {
+          // Store metadata in API endpoint (off-chain storage)
+          const metadataJson = {
+            name: metadata.name,
+            symbol: metadata.symbol,
+            description: metadata.description || metadata.name,
+            decimals: metadata.decimals || '9',
+            image: metadata.image || undefined,
+          };
+          
+          // Store metadata via API endpoint POST request
+          const apiUrl = typeof window !== 'undefined' 
+            ? `${window.location.origin}/api/jetton-metadata/${minterAddress.toString()}`
+            : `https://www.cook.tg/api/jetton-metadata/${minterAddress.toString()}`;
+          
+          console.log('Storing metadata at:', apiUrl);
+          console.log('Metadata to store:', metadataJson);
+          
+          // Call API to store metadata (async, don't wait for response)
+          if (typeof window !== 'undefined') {
+            fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(metadataJson),
+            })
+            .then(async (response) => {
+              if (response.ok) {
+                console.log('Metadata stored successfully');
+              } else {
+                const errorText = await response.text();
+                console.error('Failed to store metadata:', response.status, errorText);
+              }
+            })
+            .catch((err) => {
+              console.error('Failed to store metadata (network error):', err);
+            });
+          }
+          
+          toast.success('Jetton 2.0 token created!', { id: 'deploy' });
+          return { success: true, address: minterAddress.toString() };
+        } else {
+          throw new Error('Transaction rejected');
         }
-        
-        toast.success('Jetton 2.0 token created!', { id: 'deploy' });
-        return { success: true, address: minterAddress.toString() };
-      } catch (metadataError: any) {
-        console.error('Failed to store metadata:', metadataError);
-        // Still return success, metadata can be stored later
-        toast.success('Jetton 2.0 token created!', { id: 'deploy' });
-        return { success: true, address: minterAddress.toString() };
-      }
-    } else {
-      throw new Error('Transaction rejected');
-    }
   } catch (error: any) {
     console.error('Deployment failed:', error);
     toast.error(error.message || 'Failed to create token', { id: 'deploy' });

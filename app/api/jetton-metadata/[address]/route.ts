@@ -59,7 +59,7 @@ export async function GET(
       console.log('Vercel KV not available, falling back to contract:', kvError);
     }
 
-    // If not found, try to read from contract (fallback)
+    // If not found in KV, try to read from contract (fallback)
     try {
       const endpoint = await getHttpEndpoint({ network: 'mainnet' });
       const client = new TonClient({ endpoint });
@@ -83,6 +83,8 @@ export async function GET(
         uri = contentSlice.loadStringTail();
       }
 
+      console.log('Read URI from contract:', uri.substring(0, 100) + '...');
+
       // If it's a data URI, decode it
       if (uri.startsWith('data:application/json')) {
         let jsonString: string;
@@ -96,6 +98,14 @@ export async function GET(
         }
         
         const metadata = JSON.parse(jsonString);
+        
+        // Store in KV for future requests
+        try {
+          await kv.set(`jetton:${addressStr}`, JSON.stringify(metadata));
+        } catch (kvError) {
+          // KV not available, continue
+        }
+        
         return NextResponse.json(metadata, {
           headers: {
             'Content-Type': 'application/json',
@@ -104,18 +114,43 @@ export async function GET(
           },
         });
       } else if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        // It's a regular URL, try to fetch it
-        const response = await fetch(uri);
-        const metadata = await response.json();
-        return NextResponse.json(metadata, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
+        // It's a regular URL (API endpoint)
+        // If it's our own API endpoint, we have a circular reference
+        // In this case, we should return 404 or try to fetch from the URL
+        if (uri.includes('/api/jetton-metadata/')) {
+          // Circular reference - metadata should be stored in KV
+          // Return 404 with helpful message
+          return NextResponse.json({ 
+            error: 'Metadata not found. Please ensure metadata was stored after deployment.',
+            hint: 'The contract points to this API endpoint, but metadata is not stored yet.'
+          }, { status: 404 });
+        }
+        
+        // Try to fetch from external URL
+        try {
+          const response = await fetch(uri);
+          if (response.ok) {
+            const metadata = await response.json();
+            // Store in KV for future requests
+            try {
+              await kv.set(`jetton:${addressStr}`, JSON.stringify(metadata));
+            } catch (kvError) {
+              // KV not available, continue
+            }
+            return NextResponse.json(metadata, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'public, max-age=3600',
+              },
+            });
+          }
+        } catch (fetchError) {
+          console.error('Failed to fetch metadata from URL:', fetchError);
+        }
       }
     } catch (e) {
+      console.error('Error reading from contract:', e);
       // Contract read failed, return 404
     }
 
