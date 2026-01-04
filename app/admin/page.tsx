@@ -226,7 +226,7 @@ export default function AdminPage() {
   };
 
   const isAdmin = jettonInfo?.adminAddress && wallet && 
-    Address.parse(jettonInfo.adminAddress).equals(Address.parse(wallet));
+    Address.parse(jettonInfo.adminAddress).equals(wallet);
 
   const formatSupply = (supply: string, decimals: number) => {
     try {
@@ -298,10 +298,13 @@ export default function AdminPage() {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
                     {jettonInfo.image ? (
-                      <img 
+                      <Image 
                         src={jettonInfo.image} 
                         alt={jettonInfo.name}
+                        width={64}
+                        height={64}
                         className="w-full h-full object-cover"
+                        unoptimized={true}
                         onError={(e) => (e.currentTarget.style.display = 'none')}
                       />
                     ) : (
