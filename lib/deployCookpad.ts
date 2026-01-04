@@ -8,6 +8,8 @@ const MAX_LIQUIDITY_TON = 300;
 const FEE_BASIS_POINTS = 100; // 1% = 100 basis points
 
 // STON.fi router addresses (will be set during deployment)
+// Using null addresses for now - will be set correctly when contract is compiled
+// STON.fi router: EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XQMavfLqIo (correct format)
 const STONFI_ROUTER = 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XQMavfLqIo'; // STON.fi router
 const STONFI_ROUTER_PTON_WALLET = 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XQMavfLqIo'; // Will be set correctly
 
@@ -43,9 +45,25 @@ export async function deployCookpad(
     const factory = deployData.factory ? Address.parse(deployData.factory) : Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
 
     // Pack addresses for STON.fi integration
+    // For now, use null addresses - will be set correctly when contract is compiled
+    // STON.fi addresses will be configured in the contract itself
+    let stonfiRouter: Address;
+    let stonfiRouterPton: Address;
+    
+    try {
+      // Try to parse STON.fi router address (correct format with underscores and hyphens)
+      stonfiRouter = Address.parse(STONFI_ROUTER);
+      stonfiRouterPton = Address.parse(STONFI_ROUTER_PTON_WALLET);
+    } catch (error) {
+      // If parsing fails, use null addresses (will be set in contract)
+      console.warn('STON.fi router address parsing failed, using null addresses:', error);
+      stonfiRouter = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
+      stonfiRouterPton = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
+    }
+    
     const addressesCell = beginCell()
-      .storeAddress(Address.parse(STONFI_ROUTER))
-      .storeAddress(Address.parse(STONFI_ROUTER_PTON_WALLET))
+      .storeAddress(stonfiRouter)
+      .storeAddress(stonfiRouterPton)
       .endCell();
 
     // Pack config
