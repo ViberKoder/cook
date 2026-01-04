@@ -254,14 +254,10 @@ export default function CooksPage() {
           const bTime = b.deployedAt || 0;
           return bTime - aTime; // Newest first
         case 'liquidity':
-          const aLiq = a.poolInfo?.totalLiquidity || 0;
-          const bLiq = b.poolInfo?.totalLiquidity || 0;
-          return bLiq - aLiq; // Highest liquidity first
+          return b.totalLiquidity - a.totalLiquidity; // Highest liquidity first
         case 'volume':
           // For now, use liquidity as volume proxy
-          const aVol = a.poolInfo?.totalLiquidity || 0;
-          const bVol = b.poolInfo?.totalLiquidity || 0;
-          return bVol - aVol; // Highest volume first
+          return b.totalLiquidity - a.totalLiquidity; // Highest volume first (using liquidity as proxy)
         default:
           return 0;
       }
