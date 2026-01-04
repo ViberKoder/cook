@@ -158,8 +158,8 @@ export async function sendChangeMetadataTransaction(
     decimals?: string;
   },
   useOffchainUrl: boolean,
-  offchainUrl?: string,
-  sendTransaction: (params: SendTransactionParams) => Promise<any>
+  sendTransaction: (params: SendTransactionParams) => Promise<any>,
+  offchainUrl?: string
 ): Promise<void> {
   let metadataCell: Cell;
   

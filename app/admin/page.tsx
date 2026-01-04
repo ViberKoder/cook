@@ -155,8 +155,8 @@ export default function AdminPage() {
           decimals: newDecimals,
         },
         useOffchainUrl,
-        offchainUrl,
-        sendTransaction
+        sendTransaction,
+        offchainUrl
       );
 
       toast.success('Metadata change transaction sent!');
