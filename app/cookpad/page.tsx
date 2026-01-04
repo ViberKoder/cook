@@ -84,7 +84,7 @@ export default function CookpadPage() {
 
     setLoading(true);
     try {
-      await sendBuyTokensTransaction(COOKPAD_CONTRACT, buyAmount, minTokens.toString(), sendTransaction);
+      await sendBuyTokensTransaction(COOKPAD_CONTRACT, buyAmount, minTokens.toString(), sendTransaction, wallet?.toString());
       toast.success('Buy transaction sent!');
       setTimeout(() => loadState(), 3000); // Reload state after 3 seconds
     } catch (error: any) {
@@ -117,7 +117,7 @@ export default function CookpadPage() {
 
     setLoading(true);
     try {
-      await sendSellTokensTransaction(COOKPAD_CONTRACT, sellAmount, minTon.toString(), sendTransaction);
+      await sendSellTokensTransaction(COOKPAD_CONTRACT, sellAmount, minTon.toString(), sendTransaction, wallet?.toString());
       toast.success('Sell transaction sent!');
       setTimeout(() => loadState(), 3000); // Reload state after 3 seconds
     } catch (error: any) {
