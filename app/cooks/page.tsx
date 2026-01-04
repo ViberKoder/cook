@@ -82,12 +82,14 @@ export default function CooksPage() {
       // Then check liquidity for all tokens in parallel (with timeout)
       const liquidityCheckPromises = validMetadata.map(async (item) => {
         try {
-          // Set timeout for liquidity check (6 seconds max per token - increased for DYOR.io)
+          console.log(`Starting liquidity check for token: ${item.address}`);
+          // Set timeout for liquidity check (8 seconds max per token - increased for DYOR.io)
           const pool = await Promise.race([
             checkStonfiLiquidity(item.address),
-            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 6000)),
+            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 8000)),
           ]);
           const hasLiquidity = pool !== null;
+          console.log(`Liquidity check result for ${item.address}: hasLiquidity=${hasLiquidity}`);
           
           // Calculate total liquidity value
           let totalLiquidity = 0;

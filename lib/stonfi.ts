@@ -241,10 +241,11 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
     
     // Try DYOR.io as fallback even on error
     try {
+      console.log(`Trying DYOR.io liquidity API as fallback for ${tokenAddress}...`);
       const dyorResult = await checkDyorLiquidity(tokenAddress);
       if (dyorResult && dyorResult.liquidity > 0) {
         const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
-        console.log(`DYOR.io API fallback found liquidity for ${tokenAddress}: $${dyorResult.liquidity}`);
+        console.log(`✅ DYOR.io liquidity API fallback found liquidity for ${tokenAddress}: $${dyorResult.liquidity}`);
         return {
           address: dyorResult.poolAddress || '',
           token0: normalizedEQ,
@@ -253,9 +254,11 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
           reserve1: '0',
           lp_total_supply: '0',
         };
+      } else {
+        console.log(`❌ DYOR.io liquidity API fallback found no liquidity for ${tokenAddress}`);
       }
     } catch (e) {
-      console.error('DYOR.io API fallback also failed:', e);
+      console.error('❌ DYOR.io liquidity API fallback also failed:', e);
     }
     
     return null;
