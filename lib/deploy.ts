@@ -118,10 +118,16 @@ export async function deployJettonMinter(
     
     console.log('Deploying Jetton 2.0 to:', minterAddress.toString());
     console.log('Token:', tokenData.name, tokenData.symbol);
+    console.log('Wallet address:', walletAddress.toString());
 
     const stateInitCell = beginCell()
       .store(storeStateInit(stateInit))
       .endCell();
+    
+    // Verify stateInit serialization
+    const stateInitBoc = stateInitCell.toBoc();
+    console.log('StateInit BOC length:', stateInitBoc.length);
+    console.log('StateInit base64:', stateInitBoc.toString('base64').substring(0, 100) + '...');
 
     // Build mint message
     const internalTransferMsg = beginCell()
@@ -144,11 +150,20 @@ export async function deployJettonMinter(
 
     toast.loading('Confirm transaction in wallet (1 TON)...', { id: 'deploy' });
 
+    const stateInitBoc = stateInitCell.toBoc();
+    const mintBodyBoc = mintBody.toBoc();
+    
+    console.log('Deploy message details:');
+    console.log('  Address:', minterAddress.toString());
+    console.log('  Amount:', DEPLOY_FEE.toString());
+    console.log('  StateInit length:', stateInitBoc.length);
+    console.log('  Payload length:', mintBodyBoc.length);
+
     const deployMessage: TransactionMessage = {
       address: minterAddress.toString(),
       amount: DEPLOY_FEE.toString(),
-      stateInit: stateInitCell.toBoc().toString('base64'),
-      payload: mintBody.toBoc().toString('base64'),
+      stateInit: stateInitBoc.toString('base64'),
+      payload: mintBodyBoc.toString('base64'),
     };
 
     const monetizationMessage: TransactionMessage = {
@@ -156,21 +171,26 @@ export async function deployJettonMinter(
       amount: MONETIZATION_FEE.toString(),
     };
 
+    console.log('Sending transaction with:');
+    console.log('  Deploy to:', deployMessage.address);
+    console.log('  Monetization to:', monetizationMessage.address);
+    console.log('  Total amount:', (DEPLOY_FEE + MONETIZATION_FEE).toString());
+
     let result;
     
+    // Always use sendMultipleMessages if available
     if (sendMultipleMessages) {
       result = await sendMultipleMessages([deployMessage, monetizationMessage]);
     } else {
-      // If sendMultipleMessages is not available, we need to send two separate transactions
-      // But TON Connect supports multiple messages, so this should work
+      // Fallback: send deploy first, then monetization
       result = await sendTransaction({
         to: minterAddress.toString(),
         value: DEPLOY_FEE.toString(),
-        stateInit: stateInitCell.toBoc().toString('base64'),
-        body: mintBody.toBoc().toString('base64'),
+        stateInit: stateInitBoc.toString('base64'),
+        body: mintBodyBoc.toString('base64'),
       });
       
-      // Send monetization separately if needed
+      // Send monetization separately if deploy succeeded
       if (result) {
         await sendTransaction({
           to: MONETIZATION_WALLET,
