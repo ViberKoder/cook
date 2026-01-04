@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction, sendAddToCooksTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
