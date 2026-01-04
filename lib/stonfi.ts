@@ -14,7 +14,7 @@ export interface StonfiPool {
 
 /**
  * Check liquidity via DYOR.io official API
- * Documentation: https://docs.dyor.io/rest-api/jettonsservice/getjettons
+ * Documentation: https://docs.dyor.io/rest-api/jettonsservice/getjettonliquidity
  * Returns liquidity value in USD and optional pool address
  */
 async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: number; poolAddress?: string } | null> {
@@ -22,9 +22,9 @@ async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: nu
     // Normalize address format - DYOR.io uses EQ format
     const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
     
-    // Use official DYOR.io API: GET /v1/jettons with address parameter
-    // According to docs: https://docs.dyor.io/rest-api/jettonsservice/getjettons
-    const apiUrl = `https://api.dyor.io/v1/jettons?address=${normalizedEQ}`;
+    // Use official DYOR.io API: GET /v1/jettons/{address}/liquidity
+    // According to docs: https://docs.dyor.io/rest-api/jettonsservice/getjettonliquidity
+    const apiUrl = `https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`;
     
     const response = await fetch(apiUrl, {
       signal: AbortSignal.timeout(5000),
@@ -36,35 +36,45 @@ async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: nu
     if (response.ok) {
       const data = await response.json();
       
-      // Check if jettons array exists and has data
-      if (data.jettons && Array.isArray(data.jettons) && data.jettons.length > 0) {
-        const jetton = data.jettons[0];
+      // Extract liquidity from usd field
+      // Format: { "value": "1000500000", "decimals": 9 }
+      if (data.usd) {
+        const liquidityValue = data.usd.value;
+        const liquidityDecimals = data.usd.decimals || 9;
         
-        // Extract liquidity from liquidityUsd field
-        // Format: { "value": "1000500000", "decimals": 9 }
-        if (jetton.liquidityUsd) {
-          const liquidityValue = jetton.liquidityUsd.value || jetton.liquidityUsd;
-          const liquidityDecimals = jetton.liquidityUsd.decimals || 9;
-          
-          // Calculate liquidity in USD
-          const liquidityNum = typeof liquidityValue === 'string'
-            ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
-            : parseFloat(liquidityValue);
-          
-          if (liquidityNum > 0) {
-            console.log(`DYOR.io API found liquidity for ${tokenAddress}: $${liquidityNum}`);
-            return {
-              liquidity: liquidityNum,
-              poolAddress: jetton.poolAddress || jetton.pool_address,
-            };
-          }
+        // Calculate liquidity in USD: value * pow(10, -decimals)
+        const liquidityNum = typeof liquidityValue === 'string'
+          ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+          : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
+        
+        if (liquidityNum > 0) {
+          console.log(`DYOR.io liquidity API found liquidity for ${tokenAddress}: $${liquidityNum}`);
+          return {
+            liquidity: liquidityNum,
+          };
+        }
+      }
+      
+      // Fallback: try value field
+      if (data.value) {
+        const liquidityValue = data.value.value;
+        const liquidityDecimals = data.value.decimals || 9;
+        const liquidityNum = typeof liquidityValue === 'string'
+          ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+          : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
+        
+        if (liquidityNum > 0) {
+          console.log(`DYOR.io liquidity API (value field) found liquidity for ${tokenAddress}: $${liquidityNum}`);
+          return {
+            liquidity: liquidityNum,
+          };
         }
       }
     } else {
-      console.log(`DYOR.io API returned status ${response.status} for ${tokenAddress}`);
+      console.log(`DYOR.io liquidity API returned status ${response.status} for ${tokenAddress}`);
     }
   } catch (e) {
-    console.log('DYOR.io API check failed:', e);
+    console.log('DYOR.io liquidity API check failed:', e);
   }
   
   return null;

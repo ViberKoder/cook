@@ -100,29 +100,34 @@ export default function CooksPage() {
                 // Simple calculation: TON value * 2 (approximate)
                 totalLiquidity = reserve0TON * 2;
               } else {
-                // If no reserves but pool exists, try to get liquidity from DYOR.io API
+                // If no reserves but pool exists, try to get liquidity from DYOR.io liquidity API
                 // This happens when DYOR.io found liquidity but STON.fi didn't provide reserves
                 try {
                   const normalizedEQ = item.address.replace(/^UQ/, 'EQ');
-                  const dyorResponse = await fetch(`https://api.dyor.io/v1/jettons?address=${normalizedEQ}`, {
+                  const dyorResponse = await fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`, {
                     signal: AbortSignal.timeout(3000),
                   });
                   if (dyorResponse.ok) {
                     const dyorData = await dyorResponse.json();
-                    if (dyorData.jettons && dyorData.jettons.length > 0) {
-                      const jetton = dyorData.jettons[0];
-                      if (jetton.liquidityUsd) {
-                        const liquidityValue = jetton.liquidityUsd.value || jetton.liquidityUsd;
-                        const liquidityDecimals = jetton.liquidityUsd.decimals || 9;
-                        totalLiquidity = typeof liquidityValue === 'string'
-                          ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
-                          : parseFloat(liquidityValue);
-                        console.log(`Extracted liquidity from DYOR.io API for ${item.address}: $${totalLiquidity}`);
-                      }
+                    if (dyorData.usd) {
+                      const liquidityValue = dyorData.usd.value;
+                      const liquidityDecimals = dyorData.usd.decimals || 9;
+                      totalLiquidity = typeof liquidityValue === 'string'
+                        ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+                        : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
+                      console.log(`Extracted liquidity from DYOR.io liquidity API for ${item.address}: $${totalLiquidity}`);
+                    } else if (dyorData.value) {
+                      // Fallback to value field
+                      const liquidityValue = dyorData.value.value;
+                      const liquidityDecimals = dyorData.value.decimals || 9;
+                      totalLiquidity = typeof liquidityValue === 'string'
+                        ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+                        : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
+                      console.log(`Extracted liquidity from DYOR.io (value field) for ${item.address}: $${totalLiquidity}`);
                     }
                   }
                 } catch (e) {
-                  console.log(`DYOR.io API fetch failed for ${item.address}:`, e);
+                  console.log(`DYOR.io liquidity API fetch failed for ${item.address}:`, e);
                   // If DYOR fetch fails but pool exists, set minimal value
                   totalLiquidity = 0.01;
                 }
