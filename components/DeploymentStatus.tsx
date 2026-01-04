@@ -22,17 +22,7 @@ const steps = [
   { id: 'completed', label: 'Completed', description: 'Your token is ready!' },
 ];
 
-// Component to auto-add token to list when deployed
-function TokenAutoAdd({ address }: { address: string }) {
-  useEffect(() => {
-    if (address) {
-      addCookToken(address);
-      setTokenDeployedAt(address);
-      console.log('Token added to cook.tg list:', address);
-    }
-  }, [address]);
-  return null;
-}
+// TokenAutoAdd removed - tokens are only added via "Add on Cooks" button after payment
 
 export default function DeploymentStatus({ step, deployedAddress, onReset }: DeploymentStatusProps) {
   const currentStepIndex = steps.findIndex(s => s.id === step);

@@ -22,13 +22,7 @@ interface CookToken {
   deployedAt?: number; // Timestamp when token was added to localStorage
 }
 
-// Hardcoded known tokens (for tokens deployed before localStorage implementation)
-const HARDCODED_TOKENS: string[] = [
-  'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q', // dontbuyit token
-  'EQCnVx4qmrEg8RB6WyujsKsmFZza6RUrEpTfLzdhuM3eCOci', // donttbuyyitt token
-  'EQAqnsnR53WLm7CpUH5nJ0mRg671E_aWI_I4Ythke_NnYyMX', // 12 token
-  'EQATYt5Gvv6SYFICozdqHWY9hm7v4OeL75Rn_RJjb4jM0rN-', // test5 token
-];
+// No hardcoded tokens - only tokens added via "Add on Cooks" button (after payment)
 
 type SortOption = 'newest' | 'volume' | 'liquidity';
 
@@ -48,10 +42,10 @@ export default function CooksPage() {
     setError(null);
     
     try {
-      // Get ALL tokens from localStorage (added via "Add on Cooks" button)
-      // No liquidity check - just show all tokens that were paid for
+      // Get ONLY tokens from localStorage (added via "Add on Cooks" button after payment)
+      // No hardcoded tokens, no automatic addition - only tokens that were explicitly paid for
       const storedTokens = getCookTokens(); // Returns string[]
-      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
+      const allTokenAddresses = storedTokens; // Only tokens added via "Add on Cooks"
       
       console.log('Loading tokens from Cooks:', {
         hardcoded: HARDCODED_TOKENS.length,
