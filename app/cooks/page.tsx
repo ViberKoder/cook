@@ -99,19 +99,27 @@ export default function CooksPage() {
       // (they are known to have liquidity)
       const hardcodedSet = new Set(HARDCODED_TOKENS);
       
-      // Filter and build final token list (only with liquidity)
+      // Also show tokens from localStorage (they were deployed on cook.tg)
+      // Even if liquidity check fails, show them (user can add liquidity later)
+      const storedSet = new Set(storedTokens);
+      
+      // Filter and build final token list
       const tokensWithLiquidity: CookToken[] = validMetadata
         .filter(item => {
           const hasLiquidity = liquidityMap.get(item.address) === true;
           const isHardcoded = hardcodedSet.has(item.address);
+          const isStored = storedSet.has(item.address);
           
           // Show token if:
           // 1. Liquidity check confirmed it has liquidity, OR
-          // 2. It's in hardcoded list (assumed to have liquidity)
-          const shouldShow = hasLiquidity || isHardcoded;
+          // 2. It's in hardcoded list (assumed to have liquidity), OR
+          // 3. It's in localStorage (deployed on cook.tg - show even without liquidity check)
+          const shouldShow = hasLiquidity || isHardcoded || isStored;
           
           if (!shouldShow) {
-            console.log(`Filtering out token ${item.address} - no liquidity confirmed`);
+            console.log(`Filtering out token ${item.address} - no liquidity confirmed and not in lists`);
+          } else {
+            console.log(`Including token ${item.address} - hasLiquidity: ${hasLiquidity}, isHardcoded: ${isHardcoded}, isStored: ${isStored}`);
           }
           return shouldShow;
         })
@@ -123,10 +131,10 @@ export default function CooksPage() {
           description: item.data.metadata?.description,
           totalSupply: item.data.total_supply || '0',
           decimals: parseInt(item.data.metadata?.decimals || '9'),
-          hasLiquidity: liquidityMap.get(item.address) === true || hardcodedSet.has(item.address),
+          hasLiquidity: liquidityMap.get(item.address) === true || hardcodedSet.has(item.address) || storedSet.has(item.address),
         }));
       
-      console.log(`Found ${tokensWithLiquidity.length} tokens with liquidity out of ${validMetadata.length} total`);
+      console.log(`Found ${tokensWithLiquidity.length} tokens to display out of ${validMetadata.length} total`);
       setTokens(tokensWithLiquidity);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
