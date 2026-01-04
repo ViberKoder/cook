@@ -92,14 +92,25 @@ export default function CooksPage() {
       
       const liquidityMap = new Map(liquidityResults.map(r => [r.address, r.hasLiquidity]));
       
+      // For hardcoded tokens, assume they have liquidity if API check fails
+      // (they are known to have liquidity)
+      const hardcodedSet = new Set(HARDCODED_TOKENS);
+      
       // Filter and build final token list (only with liquidity)
       const tokensWithLiquidity: CookToken[] = validMetadata
         .filter(item => {
           const hasLiquidity = liquidityMap.get(item.address) === true;
-          if (!hasLiquidity) {
-            console.log(`Filtering out token ${item.address} - no liquidity`);
+          const isHardcoded = hardcodedSet.has(item.address);
+          
+          // Show token if:
+          // 1. Liquidity check confirmed it has liquidity, OR
+          // 2. It's in hardcoded list (assumed to have liquidity)
+          const shouldShow = hasLiquidity || isHardcoded;
+          
+          if (!shouldShow) {
+            console.log(`Filtering out token ${item.address} - no liquidity confirmed`);
           }
-          return hasLiquidity;
+          return shouldShow;
         })
         .map(item => ({
           address: item.address,
@@ -109,7 +120,7 @@ export default function CooksPage() {
           description: item.data.metadata?.description,
           totalSupply: item.data.total_supply || '0',
           decimals: parseInt(item.data.metadata?.decimals || '9'),
-          hasLiquidity: true,
+          hasLiquidity: liquidityMap.get(item.address) === true || hardcodedSet.has(item.address),
         }));
       
       console.log(`Found ${tokensWithLiquidity.length} tokens with liquidity out of ${validMetadata.length} total`);
