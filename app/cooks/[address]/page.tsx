@@ -248,11 +248,13 @@ export default function TokenPage() {
                 <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
                 <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-sm font-medium">
-                    Has Liquidity
-                  </span>
+                  {poolInfo && (
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm font-bold">
+                      Has Liquidity
+                    </span>
+                  )}
                   {tokenInfo.adminAddress ? (
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium">
+                    <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full text-sm font-medium">
                       Has Admin
                     </span>
                   ) : (

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
+import { addCookToken } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
@@ -65,6 +66,12 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         <h2 className="text-2xl font-bold text-cook-text mb-2">Token Cooked Successfully!</h2>
         <p className="text-cook-text-secondary mb-8">Your Jetton 2.0 token is now deployed on TON with on-chain metadata.</p>
 
+        {/* Add token to cook.tg list */}
+        {(() => {
+          addCookToken(deployedAddress);
+          return null;
+        })()}
+
         {/* Contract Address */}
         <div className="p-4 bg-cook-bg-secondary rounded-xl mb-6">
           <p className="text-sm text-cook-text-secondary mb-2">Contract Address</p>
@@ -82,20 +89,20 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         </div>
 
         {/* Decentralize Token Option */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-xl">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <h3 className="font-bold text-cook-text">Make Token Decentralized</h3>
+            <h3 className="font-bold text-red-700 dark:text-red-300">Make Token Decentralized</h3>
           </div>
-          <p className="text-sm text-cook-text-secondary mb-4">
+          <p className="text-sm text-red-600 dark:text-red-400 mb-4">
             Revoke admin rights to make your token fully decentralized. This action is <strong>IRREVERSIBLE</strong>.
           </p>
           <button
             onClick={handleRevokeAdmin}
             disabled={!connected || revokingAdmin}
-            className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {revokingAdmin ? (
               <>

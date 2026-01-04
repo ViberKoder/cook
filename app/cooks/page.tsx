@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { isKnownCookToken } from '@/lib/stonfi';
+import { getCookTokens } from '@/lib/cookTokens';
+import { checkStonfiLiquidity } from '@/lib/stonfi';
 
 interface CookToken {
   address: string;
@@ -18,11 +19,10 @@ interface CookToken {
   hasLiquidity: boolean;
 }
 
-// List of known tokens created on cook.tg
-// In production, this should come from your backend database
-const KNOWN_COOK_TOKENS: string[] = [
+// Hardcoded known tokens (for tokens deployed before localStorage implementation)
+const HARDCODED_TOKENS: string[] = [
   'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q', // dontbuyit token
-  // Add more token addresses here as they are created
+  'EQCnVx4qmrEg8RB6WyujsKsmFZza6RUrEpTfLzdhuM3eCOci', // donttbuyyitt token
 ];
 
 export default function CooksPage() {
@@ -39,13 +39,27 @@ export default function CooksPage() {
     setError(null);
     
     try {
+      // Get tokens from localStorage and combine with hardcoded list
+      const storedTokens = getCookTokens();
+      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
+      
       // Load all known tokens in parallel for faster loading
-      const tokenPromises = KNOWN_COOK_TOKENS.map(async (tokenAddress): Promise<CookToken | null> => {
+      const tokenPromises = allTokenAddresses.map(async (tokenAddress): Promise<CookToken | null> => {
         try {
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
           if (!tokenResponse.ok) return null;
           
           const tokenData = await tokenResponse.json();
+          
+          // Check for liquidity (but don't block if it fails)
+          let hasLiquidity = false;
+          try {
+            const pool = await checkStonfiLiquidity(tokenAddress);
+            hasLiquidity = pool !== null;
+          } catch (e) {
+            // If liquidity check fails, still show the token
+            hasLiquidity = true; // Assume it has liquidity if it's in our list
+          }
           
           return {
             address: tokenAddress,
@@ -55,7 +69,7 @@ export default function CooksPage() {
             description: tokenData.metadata?.description,
             totalSupply: tokenData.total_supply || '0',
             decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity: true, // Known tokens are assumed to have liquidity
+            hasLiquidity,
           };
         } catch (err) {
           console.error(`Error loading token ${tokenAddress}:`, err);
