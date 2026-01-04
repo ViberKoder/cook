@@ -31,8 +31,8 @@ export interface JettonMetadata {
  * Creates a data URI containing the JSON metadata inline.
  * This avoids the need for external hosting and works as on-chain metadata.
  * 
- * IMPORTANT: The JSON must be properly formatted and encoded.
- * Some explorers may have issues with data URIs, but this is the standard way.
+ * IMPORTANT: Using base64 encoding for better explorer compatibility.
+ * Some explorers may not support URL-encoded data URIs.
  */
 export function buildMetadataUri(metadata: JettonMetadata): string {
   // Build JSON object with all required fields
@@ -48,16 +48,16 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
     jsonMetadata.image = metadata.image.trim();
   }
   
-  // Stringify with no spaces to minimize size
+  // Stringify JSON
   const jsonString = JSON.stringify(jsonMetadata);
   
-  // Encode the JSON string for data URI
-  // Using encodeURIComponent ensures proper encoding of special characters
-  const encoded = encodeURIComponent(jsonString);
+  // Use base64 encoding instead of URL encoding for better compatibility
+  // This format is more widely supported by explorers
+  const base64Encoded = Buffer.from(jsonString, 'utf-8').toString('base64');
   
-  // Return data URI with proper format
-  // Format: data:application/json,<encoded_json>
-  return `data:application/json,${encoded}`;
+  // Return data URI with base64 encoding
+  // Format: data:application/json;base64,<base64_json>
+  return `data:application/json;base64,${base64Encoded}`;
 }
 
 /**
