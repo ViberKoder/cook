@@ -62,7 +62,7 @@ export async function GET(
         const base64Data = uri.split(';base64,')[1];
         jsonString = Buffer.from(base64Data, 'base64').toString('utf-8');
       } else {
-        // URL encoded
+        // URL encoded (format: data:application/json,<url_encoded_json>)
         const encodedData = uri.split(',')[1];
         jsonString = decodeURIComponent(encodedData);
       }
@@ -77,9 +77,23 @@ export async function GET(
           'Cache-Control': 'public, max-age=3600',
         },
       });
+    } else if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      // It's a regular URL, try to fetch it
+      try {
+        const response = await fetch(uri);
+        const metadata = await response.json();
+        return NextResponse.json(metadata, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      } catch (e) {
+        return NextResponse.json({ error: 'Failed to fetch metadata from URL' }, { status: 500 });
+      }
     } else {
-      // It's a regular URL, redirect or fetch
-      return NextResponse.json({ error: 'Only data URI metadata is supported' }, { status: 400 });
+      return NextResponse.json({ error: 'Unsupported metadata format' }, { status: 400 });
     }
   } catch (error: any) {
     console.error('Error fetching metadata:', error);

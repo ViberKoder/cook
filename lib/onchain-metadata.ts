@@ -48,7 +48,9 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
     return apiUrl;
   }
   
-  // Fallback: Use data URI (on-chain, but some explorers may not support it)
+  // Use data URI with URL encoding (like minter-frontend reference)
+  // This format: data:application/json,<url_encoded_json>
+  // May be more compatible with some explorers than base64
   const jsonMetadata: any = {
     name: metadata.name,
     symbol: metadata.symbol,
@@ -56,18 +58,21 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
     decimals: metadata.decimals || '9',
   };
   
+  // Add image if provided
   if (metadata.image && metadata.image.trim()) {
     jsonMetadata.image = metadata.image.trim();
   }
   
   const jsonString = JSON.stringify(jsonMetadata);
-  const base64Encoded = Buffer.from(jsonString, 'utf-8').toString('base64');
-  const dataUri = `data:application/json;base64,${base64Encoded}`;
   
-  console.log('Using data URI (fallback):', {
+  // Use URL encoding (like the reference minter-frontend)
+  // Format: data:application/json,<url_encoded_json>
+  const dataUri = `data:application/json,${encodeURIComponent(jsonString)}`;
+  
+  console.log('Built metadata data URI (URL encoded):', {
     jsonLength: jsonString.length,
-    base64Length: base64Encoded.length,
     uriLength: dataUri.length,
+    jsonPreview: jsonString.substring(0, 100) + '...',
   });
   
   return dataUri;
