@@ -31,10 +31,11 @@ export interface JettonMetadata {
  * Creates a data URI containing the JSON metadata inline.
  * This avoids the need for external hosting and works as on-chain metadata.
  * 
- * Note: Some explorers may not support data URIs, but this is the standard
- * way to store metadata on-chain for Jetton 2.0.
+ * IMPORTANT: The JSON must be properly formatted and encoded.
+ * Some explorers may have issues with data URIs, but this is the standard way.
  */
 export function buildMetadataUri(metadata: JettonMetadata): string {
+  // Build JSON object with all required fields
   const jsonMetadata: any = {
     name: metadata.name,
     symbol: metadata.symbol,
@@ -42,14 +43,20 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
     decimals: metadata.decimals || '9',
   };
   
-  // Add image if provided
-  if (metadata.image) {
-    jsonMetadata.image = metadata.image;
+  // Add image if provided (must be a valid URL or data URI)
+  if (metadata.image && metadata.image.trim()) {
+    jsonMetadata.image = metadata.image.trim();
   }
   
+  // Stringify with no spaces to minimize size
   const jsonString = JSON.stringify(jsonMetadata);
-  // Use encodeURIComponent to properly encode the JSON
+  
+  // Encode the JSON string for data URI
+  // Using encodeURIComponent ensures proper encoding of special characters
   const encoded = encodeURIComponent(jsonString);
+  
+  // Return data URI with proper format
+  // Format: data:application/json,<encoded_json>
   return `data:application/json,${encoded}`;
 }
 
