@@ -132,7 +132,7 @@ function CookpadOffchainContent() {
         await sendOffchainPayment(
           paymentNode,
           virtualChannel.channelKey,
-          amount,
+          amount.toString(), // Convert to string for Payments Network API
           paymentNode.walletAddress // For now, sending to self (in production, this would be the token contract)
         );
       } else {
