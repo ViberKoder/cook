@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
@@ -429,7 +430,7 @@ export default function AdminPage() {
                       />
                       {wallet && isAdmin && (
                         <button 
-                          onClick={() => setMintTo(wallet)} 
+                          onClick={() => setMintTo(wallet.toString())} 
                           className="text-sm text-cook-orange hover:underline mt-1"
                         >
                           Use my address
