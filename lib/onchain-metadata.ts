@@ -30,6 +30,9 @@ export interface JettonMetadata {
  * Build metadata URI for Jetton 2.0
  * Creates a data URI containing the JSON metadata inline.
  * This avoids the need for external hosting and works as on-chain metadata.
+ * 
+ * Note: Some explorers may not support data URIs, but this is the standard
+ * way to store metadata on-chain for Jetton 2.0.
  */
 export function buildMetadataUri(metadata: JettonMetadata): string {
   const jsonMetadata: any = {
@@ -45,7 +48,9 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
   }
   
   const jsonString = JSON.stringify(jsonMetadata);
-  return `data:application/json,${encodeURIComponent(jsonString)}`;
+  // Use encodeURIComponent to properly encode the JSON
+  const encoded = encodeURIComponent(jsonString);
+  return `data:application/json,${encoded}`;
 }
 
 /**
@@ -54,6 +59,11 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
  * This is the correct way to store metadata in Jetton 2.0.
  * The contract will automatically convert this URI to TEP-64 format
  * when get_jetton_data is called.
+ * 
+ * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
+ * from the official wrapper. This stores the URI in a ref, which is required
+ * because the contract's build_content_cell adds a 0x00 prefix when building
+ * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  * 
  * @param metadata - Token metadata object
  * @returns Cell with metadata URI stored in ref
@@ -73,6 +83,7 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   });
   
   // IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
+  // This stores the string in a ref cell, which is required for Jetton 2.0
   const cell = beginCell()
     .storeStringRefTail(uri)
     .endCell();
@@ -80,6 +91,7 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   console.log('Metadata cell created:', {
     bits: cell.bits.length,
     refs: cell.refs.length,
+    hasRef: cell.refs.length > 0,
   });
   
   return cell;
