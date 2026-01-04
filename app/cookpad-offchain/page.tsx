@@ -23,13 +23,9 @@ import {
   getOffchainBalance,
   storeOffchainBalance,
   type OffchainBalance
+  type OffchainBalance
 } from '@/lib/cookpadOffchain';
 import toast from 'react-hot-toast';
-
-interface OffchainBalance {
-  tokens: number;
-  tonDeposited: number;
-}
 
 function CookpadOffchainContent() {
   const { connected, wallet, sendTransaction } = useTonConnect();
