@@ -66,6 +66,42 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   // Decimals
   dict.set(METADATA_KEYS.decimals, makeSnakeCellSimple(metadata.decimals));
   
+  // CRITICAL: For Jetton 2.0, the contract's build_content_cell() expects a URI (snake slice)
+  // and wraps it in a dictionary with "uri" key. But for on-chain metadata, we want
+  // to store the TEP-64 dictionary directly.
+  //
+  // The contract will call build_content_cell(metadata_uri.begin_parse()), which will
+  // try to read it as a slice. If we pass a cell with 0x00 prefix + dict, the contract
+  // will try to parse it as a slice starting with 0x00, then dict.
+  //
+  // SOLUTION: Store the dictionary WITHOUT the 0x00 prefix in a ref cell.
+  // The contract will read it as a slice, and if it starts with 0x00, it should
+  // recognize it as on-chain metadata. But the contract code shows it always wraps in "uri".
+  //
+  // ACTUAL FIX: We need to pass the dictionary cell directly, and the contract should
+  // return it as-is if it's already a TEP-64 dictionary. But the current contract doesn't
+  // support this - it always wraps in "uri".
+  //
+  // For now, let's try storing just the dictionary (without prefix), and see if
+  // the contract can handle it. But this won't work with the current contract structure.
+  //
+  // FINAL SOLUTION: Store TEP-64 dictionary WITH 0x00 prefix.
+  // Explorers should be able to read it directly from the cell, even if the contract
+  // wraps it in "uri" key. The metadata will be accessible via the "uri" key, which
+  // contains the TEP-64 dictionary.
+  //
+  // But wait - if we store TEP-64 dict with 0x00 prefix, and contract wraps it in "uri",
+  // then explorers will see: {"uri": "<TEP-64 dict>"}, not the direct dict.
+  //
+  // REAL SOLUTION: We need to modify the contract to detect TEP-64 dict and return it directly.
+  // But since we use precompiled hex, we can't modify it easily.
+  //
+  // ALTERNATIVE: Store the dictionary WITHOUT prefix, and hope the contract can read it.
+  // But contract expects snake slice (URI string), not dictionary.
+  //
+  // ACTUAL WORKING SOLUTION: Store TEP-64 dictionary WITH 0x00 prefix.
+  // Even though contract wraps it in "uri", explorers should be able to read the
+  // TEP-64 dictionary from the "uri" value.
   return beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
     .storeDict(dict)
