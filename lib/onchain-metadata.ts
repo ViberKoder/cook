@@ -1,22 +1,16 @@
 /**
- * Jetton 2.0 Metadata Utilities
+ * Jetton 2.0 On-Chain Metadata Utilities
  * 
- * CRITICAL: Jetton 2.0 contract stores metadata_uri as a snake-encoded string in content cell.
- * When get_jetton_data is called, the contract's build_content_cell function
- * creates an on-chain TEP-64 dictionary with:
- *   - "uri" key -> the stored metadata_uri
- *   - "decimals" key -> "9" (hardcoded in contract)
+ * CRITICAL: Proper TEP-64 on-chain metadata format:
+ * - Prefix 0x00 (8 bits) for on-chain data
+ * - Dictionary with keys = sha256(key_name) as BigUint(256)
+ * - Values = Cell with string via storeStringTail (snake format for long strings)
  * 
- * Explorers and DEXes then fetch the JSON from the URI to get:
- *   name, symbol, description, image
- * 
- * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
- * from the official wrapper. This stores the URI in a ref, which is required
- * because the contract's build_content_cell adds a 0x00 prefix when building
- * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
+ * Based on TEP-64 standard: https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md
  */
 
-import { beginCell, Cell } from '@ton/core';
+import { beginCell, Cell, Dictionary } from '@ton/core';
+import { sha256_sync } from '@ton/crypto';
 
 export interface JettonMetadata {
   name: string;
@@ -27,101 +21,119 @@ export interface JettonMetadata {
 }
 
 /**
- * Build metadata URI for Jetton 2.0 (off-chain metadata)
- * 
- * Uses API endpoint URL for better explorer compatibility.
- * The API endpoint stores and serves metadata JSON.
- * 
- * IMPORTANT: We use a fixed URL pattern that doesn't include the contract address
- * to avoid circular dependency. The API endpoint will identify the contract
- * by reading the address from the request path.
+ * Build on-chain metadata cell for Jetton 2.0 (TEP-64 format)
  * 
  * @param metadata - Token metadata object
- * @param contractAddress - Contract address (optional, for logging only)
- * @returns API endpoint URL
+ * @returns Cell with TEP-64 on-chain metadata (prefix 0x00 + dictionary)
  */
-export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
-  // Use GitHub raw content URL for metadata storage
-  // Format: https://raw.githubusercontent.com/{owner}/{repo}/main/metadata/{address}.json
-  // This provides reliable, decentralized metadata hosting
-  if (contractAddress) {
-    const githubUrl = `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${contractAddress}.json`;
-    console.log('Using GitHub raw content for off-chain metadata:', githubUrl);
-    return githubUrl;
+export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
+  // Build dictionary: key = sha256(key_name) as BigUint(256), value = Cell with string
+  const contentDict = Dictionary.empty<bigint, Cell>(
+    Dictionary.Keys.BigUint(256),
+    Dictionary.Values.Cell()
+  );
+
+  // Process all metadata fields
+  const metadataObj: Record<string, string> = {
+    name: metadata.name,
+    symbol: metadata.symbol,
+    description: metadata.description || '',
+    image: metadata.image || '',
+    decimals: metadata.decimals || '9',
+  };
+
+  for (const [key, value] of Object.entries(metadataObj)) {
+    if (value && value.trim() !== '') {
+      // Hash the key name
+      const keyBuffer = sha256_sync(key); // Buffer 32 bytes
+      const keyBigInt = BigInt('0x' + keyBuffer.toString('hex'));
+      
+      // Store value as snake-string (storeStringTail handles long strings automatically)
+      const valueCell = beginCell()
+        .storeStringTail(value)
+        .endCell();
+      
+      contentDict.set(keyBigInt, valueCell);
+      
+      console.log(`Added metadata key "${key}":`, {
+        keyHash: keyBigInt.toString(16),
+        valueLength: value.length,
+        valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
+      });
+    }
   }
-  
-  // Fallback: use API endpoint if address not provided
-  const apiUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/api/jetton-metadata`
-    : `https://www.cook.tg/api/jetton-metadata`;
-  
-  console.log('Using API endpoint for off-chain metadata (fallback):', apiUrl);
-  
-  return apiUrl;
+
+  // Final content cell: prefix 0x00 + dictionary
+  const jettonOnChainContent = beginCell()
+    .storeUint(0, 8)              // <--- ОБЯЗАТЕЛЬНЫЙ префикс для on-chain!
+    .storeDict(contentDict)
+    .endCell();
+
+  console.log('On-chain metadata cell created:', {
+    bits: jettonOnChainContent.bits.length,
+    refs: jettonOnChainContent.refs.length,
+    dictSize: contentDict.size,
+    hash: jettonOnChainContent.hash().toString('hex').substring(0, 16) + '...',
+  });
+
+  return jettonOnChainContent;
 }
 
 /**
- * Build metadata URI cell for Jetton 2.0 contract (off-chain metadata)
+ * Parse on-chain metadata cell back to metadata object
  * 
- * CRITICAL: Jetton 2.0 expects URI in content cell, not TEP-64 dictionary directly!
- * The contract will automatically convert this URI to TEP-64 format
- * when get_jetton_data is called.
- * 
- * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
- * from the official wrapper. This stores the URI in a ref, which is required
- * because the contract's build_content_cell adds a 0x00 prefix when building
- * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
- * 
- * @param metadata - Token metadata object
- * @param contractAddress - Contract address (optional, for logging only)
- * @returns Cell with metadata URI stored in ref
+ * @param cell - Cell with TEP-64 on-chain metadata
+ * @returns Parsed metadata object
  */
-export function buildTokenMetadataCell(metadata: JettonMetadata, contractAddress?: string): Cell {
-  const uri = buildMetadataUri(metadata, contractAddress);
+export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
+  const slice = cell.beginParse();
   
-  console.log('Building metadata URI for Jetton 2.0:', {
-    uriLength: uri.length,
-    uriPreview: uri.length > 200 ? uri.substring(0, 200) + '...' : uri,
-    metadata: {
-      name: metadata.name,
-      symbol: metadata.symbol,
-      hasDescription: !!metadata.description,
-      hasImage: !!metadata.image,
-    },
-  });
-  
-  // IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
-  // This stores the string in a ref cell, which is required for Jetton 2.0
-  const cell = beginCell()
-    .storeStringRefTail(uri)
-    .endCell();
-  
-  console.log('Metadata URI cell created:', {
-    bits: cell.bits.length,
-    refs: cell.refs.length,
-    hasRef: cell.refs.length > 0,
-  });
-  
-  // Verify we can read it back
-  if (cell.refs.length > 0) {
-    const refCell = cell.refs[0];
-    const uriFromCell = refCell.beginParse().loadStringTail();
-    console.log('Verified URI from cell:', uriFromCell.substring(0, 100) + '...');
+  // Check prefix
+  const prefix = slice.loadUint(8);
+  if (prefix !== 0) {
+    throw new Error('Not an on-chain metadata cell (missing 0x00 prefix)');
   }
   
-  return cell;
-}
-
-/**
- * Build off-chain metadata cell from a URL
- * For cases where you have a hosted JSON file
- */
-export function buildOffchainMetadataCell(url: string): Cell {
-  return beginCell()
-    .storeStringRefTail(url)
-    .endCell();
+  // Load dictionary
+  const dict = slice.loadDict(
+    Dictionary.Keys.BigUint(256),
+    Dictionary.Values.Cell()
+  );
+  
+  const result: Partial<JettonMetadata> = {};
+  
+  // Standard metadata keys
+  const keys: (keyof JettonMetadata)[] = ['name', 'symbol', 'description', 'image', 'decimals'];
+  
+  for (const key of keys) {
+    const keyBuffer = sha256_sync(key);
+    const keyBigInt = BigInt('0x' + keyBuffer.toString('hex'));
+    const valueCell = dict.get(keyBigInt);
+    
+    if (valueCell) {
+      try {
+        const valueSlice = valueCell.beginParse();
+        const value = valueSlice.loadStringTail();
+        result[key] = value as any;
+      } catch (e) {
+        console.warn(`Failed to parse metadata key "${key}":`, e);
+      }
+    }
+  }
+  
+  return result;
 }
 
 // Alias for backward compatibility
-export const buildOnchainMetadataCell = (metadata: JettonMetadata, contractAddress?: string) => buildTokenMetadataCell(metadata, contractAddress);
+export const buildOnchainMetadataCell = buildTokenMetadataCell;
 
+// Legacy functions (for off-chain metadata, not used anymore)
+export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
+  // Not used for on-chain metadata
+  return '';
+}
+
+export function buildOffchainMetadataCell(url: string): Cell {
+  // Not used for on-chain metadata
+  return beginCell().storeUint(0, 8).endCell();
+}

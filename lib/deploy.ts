@@ -1,6 +1,6 @@
 import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress } from '@ton/core';
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
-import { buildTokenMetadataCell, buildMetadataUri, JettonMetadata } from './onchain-metadata';
+import { buildTokenMetadataCell, JettonMetadata } from './onchain-metadata';
 import toast from 'react-hot-toast';
 
 export interface TokenData {
@@ -133,39 +133,22 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
-    // For off-chain metadata, we need to calculate contract address first
-    // Build temporary content cell with placeholder URL to calculate address
-    const tempUri = 'https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/PLACEHOLDER.json';
-    const tempContentCell = beginCell()
-      .storeStringRefTail(tempUri)
-      .endCell();
-    
-    const tempMinterData = beginCell()
-      .storeCoins(0)
-      .storeAddress(walletAddress)
-      .storeAddress(null)
-      .storeRef(getWalletCode())
-      .storeRef(tempContentCell)
-      .endCell();
-    
-    const tempStateInit = {
-      code: getMinterCode(),
-      data: tempMinterData,
-    };
-    
-    // Calculate contract address
-    const calculatedAddress = contractAddress(0, tempStateInit);
-    
-    // Now build final content cell with correct GitHub URL
-    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
+    // Build on-chain metadata cell (TEP-64 format)
+    // No need to calculate address first - on-chain metadata doesn't depend on address
+    const contentCell = buildTokenMetadataCell(metadata);
     
     // Verify content cell is unique
     const contentCellHash = contentCell.hash().toString('hex');
-    console.log('Content cell created (off-chain metadata via GitHub):', {
+    console.log('Content cell created (on-chain metadata TEP-64):', {
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
-      githubUrl: buildMetadataUri(metadata, calculatedAddress.toString()),
+      metadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        hasDescription: !!metadata.description,
+        hasImage: !!metadata.image,
+      },
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
