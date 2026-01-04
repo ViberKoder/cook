@@ -111,8 +111,13 @@ export async function deployJettonMinter(
     
     const contentCell = buildTokenMetadataCell(metadata);
     
-    // Verify content cell
-    console.log('Content cell created, bits:', contentCell.bits.length, 'refs:', contentCell.refs.length);
+    // Verify content cell is unique
+    const contentCellHash = contentCell.hash().toString('hex');
+    console.log('Content cell created:', {
+      bits: contentCell.bits.length,
+      refs: contentCell.refs.length,
+      hash: contentCellHash.substring(0, 16) + '...',
+    });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
@@ -126,16 +131,37 @@ export async function deployJettonMinter(
       .storeRef(contentCell)
       .endCell();
 
+    // Verify minterData is unique
+    const minterDataHash = minterData.hash().toString('hex');
+    console.log('Minter data created:', {
+      hash: minterDataHash.substring(0, 16) + '...',
+      admin: walletAddress.toString(),
+    });
+
     const stateInit = {
       code: getMinterCode(),
       data: minterData,
     };
 
+    // Calculate address from stateInit - this MUST be unique for each token
     const minterAddress = contractAddress(0, stateInit);
     
-    console.log('Deploying Jetton 2.0 to:', minterAddress.toString());
-    console.log('Token:', tokenData.name, tokenData.symbol);
+    // Verify stateInit is unique
+    const stateInitHash = beginCell()
+      .store(storeStateInit(stateInit))
+      .endCell()
+      .hash()
+      .toString('hex');
+    
+    console.log('=== DEPLOYMENT INFO ===');
+    console.log('Token name:', tokenData.name);
+    console.log('Token symbol:', tokenData.symbol);
     console.log('Wallet address:', walletAddress.toString());
+    console.log('Content cell hash:', contentCellHash.substring(0, 16) + '...');
+    console.log('Minter data hash:', minterDataHash.substring(0, 16) + '...');
+    console.log('StateInit hash:', stateInitHash.substring(0, 16) + '...');
+    console.log('Contract address:', minterAddress.toString());
+    console.log('======================');
 
     const stateInitCell = beginCell()
       .store(storeStateInit(stateInit))
