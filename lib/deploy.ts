@@ -123,11 +123,6 @@ export async function deployJettonMinter(
     const stateInitCell = beginCell()
       .store(storeStateInit(stateInit))
       .endCell();
-    
-    // Verify stateInit serialization
-    const stateInitBoc = stateInitCell.toBoc();
-    console.log('StateInit BOC length:', stateInitBoc.length);
-    console.log('StateInit base64:', stateInitBoc.toString('base64').substring(0, 100) + '...');
 
     // Build mint message
     const internalTransferMsg = beginCell()
