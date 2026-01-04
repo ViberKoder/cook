@@ -36,7 +36,7 @@ function CookpadOffchainContent() {
   const [buyAmount, setBuyAmount] = useState('');
   const [sellAmount, setSellAmount] = useState('');
   const [offchainBalance, setOffchainBalance] = useState<OffchainBalance | null>(null);
-  const [totalLiquidity, setTotalLiquidityState] = useState(0);
+  const [totalLiquidityState, setTotalLiquidityState] = useState(0);
   const [tokenSupply, setTokenSupplyState] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(true);
