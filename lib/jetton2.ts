@@ -85,7 +85,30 @@ export async function deployJetton2(params: JettonDeployParams): Promise<Address
       decimals: params.decimals.toString(),
     };
 
-    const contentCell = buildTokenMetadataCell(metadata);
+    // For off-chain metadata, we need contract address
+    // Calculate it first with placeholder URL
+    const tempUri = 'https://www.cook.tg/api/jetton-metadata/PLACEHOLDER';
+    const tempContentCell = beginCell()
+      .storeStringRefTail(tempUri)
+      .endCell();
+    
+    const tempMinterData = beginCell()
+      .storeCoins(0)
+      .storeAddress(walletAddress)
+      .storeAddress(null)
+      .storeRef(getWalletCode())
+      .storeRef(tempContentCell)
+      .endCell();
+    
+    const tempStateInit = {
+      code: getMinterCode(),
+      data: tempMinterData,
+    };
+    
+    const calculatedAddress = contractAddress(0, tempStateInit);
+    
+    // Now build final content cell with correct API endpoint URL
+    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
 
     // Jetton 2.0 data structure:
     // total_supply, admin_address, next_admin_address, wallet_code, content
