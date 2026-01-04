@@ -41,7 +41,39 @@ export async function GET(
 
     const addressStr = contractAddress.toString();
     
-    // Check if metadata is stored in Vercel KV
+    // First, try to fetch from GitHub raw content
+    const githubRawUrl = `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${addressStr}.json`;
+    try {
+      const githubResponse = await fetch(githubRawUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (githubResponse.ok) {
+        const metadata = await githubResponse.json();
+        console.log('Metadata fetched from GitHub:', githubRawUrl);
+        
+        // Cache in KV for faster future access
+        try {
+          await kv.set(`jetton:${addressStr}`, JSON.stringify(metadata));
+        } catch (kvError) {
+          // KV not available, continue
+        }
+        
+        return NextResponse.json(metadata, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      }
+    } catch (githubError) {
+      console.log('GitHub fetch failed, trying KV:', githubError);
+    }
+    
+    // Check if metadata is stored in Vercel KV (fallback)
     try {
       const metadata = await kv.get<string>(`jetton:${addressStr}`);
       if (metadata) {
