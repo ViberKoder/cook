@@ -4,9 +4,7 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import { Toaster } from 'react-hot-toast';
 
 // TON Connect manifest URL
-const manifestUrl = typeof window !== 'undefined' 
-  ? `${window.location.origin}/tonconnect-manifest.json`
-  : 'https://www.cook.tg/tonconnect-manifest.json';
+const manifestUrl = 'https://www.cook.tg/tonconnect-manifest.json';
 
 export default function TonConnectProvider({ children }: { children: React.ReactNode }) {
   return (
