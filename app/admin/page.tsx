@@ -1,74 +1,614 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
-import { Address } from '@ton/core'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { useTonConnect } from '@/hooks/useTonConnect';
+import { Address } from '@ton/core';
+import { loadJettonInfo, JettonInfo, sendMintTransaction, sendChangeMetadataTransaction, sendChangeAdminTransaction, sendDropAdminTransaction } from '@/lib/admin';
+import toast from 'react-hot-toast';
 
 export default function AdminPage() {
-  const [tonConnectUI] = useTonConnectUI()
-  const wallet = useTonWallet()
-  const [jettonAddress, setJettonAddress] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { connected, wallet, sendTransaction } = useTonConnect();
+  const [contractAddress, setContractAddress] = useState('');
+  const [jettonInfo, setJettonInfo] = useState<JettonInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'mint' | 'metadata' | 'admin'>('info');
+  
+  // Mint fields
+  const [mintAmount, setMintAmount] = useState('');
+  const [mintTo, setMintTo] = useState('');
+  
+  // Metadata fields
+  const [newName, setNewName] = useState('');
+  const [newSymbol, setNewSymbol] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newImage, setNewImage] = useState('');
+  const [newDecimals, setNewDecimals] = useState('9');
+  const [useOffchainUrl, setUseOffchainUrl] = useState(false);
+  const [offchainUrl, setOffchainUrl] = useState('');
+  
+  // Admin fields
+  const [newAdmin, setNewAdmin] = useState('');
+  
+  const loadedAddressRef = useRef<string>('');
+  const isLoadingRef = useRef(false);
+
+  const handleLoadJetton = useCallback(async (showToast = true) => {
+    if (!contractAddress) {
+      if (showToast) toast.error('Please enter a contract address');
+      return;
+    }
+
+    if (isLoadingRef.current) return;
+    if (loadedAddressRef.current === contractAddress && jettonInfo) return;
+
+    isLoadingRef.current = true;
+    setLoading(true);
+    
+    try {
+      const info = await loadJettonInfo(contractAddress);
+      setJettonInfo(info);
+      
+      // Pre-fill metadata fields
+      setNewName(info.name);
+      setNewSymbol(info.symbol);
+      setNewDescription(info.description);
+      setNewImage(info.image);
+      setNewDecimals(info.decimals.toString());
+      
+      loadedAddressRef.current = contractAddress;
+      if (showToast) toast.success('Token info loaded');
+    } catch (error: any) {
+      console.error('Failed to load jetton:', error);
+      if (showToast) toast.error(error.message || 'Failed to load token info');
+      
+      // Set default info if not loaded
+      if (!jettonInfo) {
+        setJettonInfo({
+          totalSupply: '0',
+          adminAddress: wallet?.toString() || null,
+          mintable: true,
+          name: 'Unknown Token',
+          symbol: '???',
+          description: 'Token not yet indexed.',
+          image: '',
+          decimals: 9,
+        });
+        loadedAddressRef.current = contractAddress;
+      }
+    } finally {
+      setLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [contractAddress, wallet, jettonInfo]);
+
+  useEffect(() => {
+    if (contractAddress && !loadedAddressRef.current) {
+      handleLoadJetton(false);
+    }
+  }, [contractAddress, handleLoadJetton]);
 
   const handleMint = async () => {
-    if (!wallet || !jettonAddress) {
-      alert('Please connect wallet and enter jetton address')
-      return
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
     }
 
-    setLoading(true)
-    try {
-      // Mint tokens logic here
-      alert('Mint functionality coming soon')
-    } catch (error: any) {
-      console.error('Mint error:', error)
-      alert(`Mint failed: ${error.message}`)
-    } finally {
-      setLoading(false)
+    if (!mintAmount || !mintTo) {
+      toast.error('Please fill all fields');
+      return;
     }
-  }
+
+    if (!jettonInfo) {
+      toast.error('Please load token info first');
+      return;
+    }
+
+    try {
+      const walletAddress = Address.parse(wallet);
+      await sendMintTransaction(
+        contractAddress,
+        mintTo,
+        mintAmount,
+        jettonInfo.decimals,
+        walletAddress,
+        sendTransaction
+      );
+
+      toast.success('Mint transaction sent!');
+      setMintAmount('');
+      setMintTo('');
+      
+      // Refresh token info after a delay
+      setTimeout(() => {
+        loadedAddressRef.current = '';
+        handleLoadJetton(false);
+      }, 3000);
+    } catch (error: any) {
+      toast.error(error.message || 'Mint error');
+    }
+  };
+
+  const handleChangeMetadata = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!jettonInfo) {
+      toast.error('Please load token info first');
+      return;
+    }
+
+    try {
+      await sendChangeMetadataTransaction(
+        contractAddress,
+        {
+          name: newName,
+          symbol: newSymbol,
+          description: newDescription,
+          image: newImage,
+          decimals: newDecimals,
+        },
+        useOffchainUrl,
+        offchainUrl,
+        sendTransaction
+      );
+
+      toast.success('Metadata change transaction sent!');
+      
+      // Refresh token info after a delay
+      setTimeout(() => {
+        loadedAddressRef.current = '';
+        handleLoadJetton(false);
+      }, 3000);
+    } catch (error: any) {
+      toast.error(error.message || 'Metadata change error');
+    }
+  };
+
+  const handleChangeAdmin = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!newAdmin) {
+      toast.error('Please enter new admin address');
+      return;
+    }
+
+    try {
+      await sendChangeAdminTransaction(
+        contractAddress,
+        newAdmin,
+        sendTransaction
+      );
+
+      toast.success('Admin change request sent!');
+      setNewAdmin('');
+      
+      // Refresh token info after a delay
+      setTimeout(() => {
+        loadedAddressRef.current = '';
+        handleLoadJetton(false);
+      }, 3000);
+    } catch (error: any) {
+      toast.error(error.message || 'Admin change error');
+    }
+  };
+
+  const handleRevokeAdmin = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to revoke admin rights? This is IRREVERSIBLE!')) {
+      return;
+    }
+
+    try {
+      await sendDropAdminTransaction(contractAddress, sendTransaction);
+      toast.success('Admin rights revoked!');
+      
+      // Refresh token info after a delay
+      setTimeout(() => {
+        loadedAddressRef.current = '';
+        handleLoadJetton(false);
+      }, 3000);
+    } catch (error: any) {
+      toast.error(error.message || 'Revoke error');
+    }
+  };
+
+  const isAdmin = jettonInfo?.adminAddress && wallet && 
+    Address.parse(jettonInfo.adminAddress).equals(Address.parse(wallet));
+
+  const formatSupply = (supply: string, decimals: number) => {
+    try {
+      const num = BigInt(supply);
+      const divisor = BigInt(10 ** decimals);
+      const whole = num / divisor;
+      return whole.toLocaleString();
+    } catch {
+      return supply;
+    }
+  };
+
+  const handleRefresh = () => {
+    loadedAddressRef.current = '';
+    setJettonInfo(null);
+    handleLoadJetton(true);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">
-            Jetton Admin Panel
-          </h1>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Jetton Contract Address
-                </label>
-                <input
-                  type="text"
-                  value={jettonAddress}
-                  onChange={(e) => setJettonAddress(e.target.value)}
-                  placeholder="EQD..."
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-ton-blue focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-              </div>
+    <div className="min-h-screen flex flex-col">
+      {/* Background decorations */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/30 to-yellow-500/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-orange-400/25 to-amber-500/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/3 w-[550px] h-[550px] bg-gradient-to-br from-yellow-500/20 to-orange-400/25 rounded-full blur-3xl" />
+      </div>
 
-              <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={handleMint}
-                  disabled={loading || !wallet || !jettonAddress}
-                  className="w-full px-6 py-3 bg-ton-blue text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loading ? 'Processing...' : 'Mint Tokens'}
-                </button>
-              </div>
+      <Header />
+
+      <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl md:text-4xl font-bold text-cook-text mb-2 text-center">
+            Manage <span className="gradient-text-cook">Token</span>
+          </h1>
+          <p className="text-cook-text-secondary text-center mb-8">
+            Jetton 2.0 Admin Panel
+          </p>
+
+          {/* Contract Address Input */}
+          <div className="card mb-8">
+            <label className="block text-sm font-medium text-cook-text mb-2">
+              Contract Address
+            </label>
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={contractAddress}
+                onChange={(e) => {
+                  setContractAddress(e.target.value);
+                  loadedAddressRef.current = '';
+                }}
+                placeholder="EQ... or UQ..."
+                className="input-ton flex-grow"
+              />
+              <button
+                onClick={() => handleLoadJetton(true)}
+                disabled={loading || !contractAddress}
+                className="btn-cook whitespace-nowrap"
+              >
+                {loading ? 'Loading...' : 'Load'}
+              </button>
             </div>
           </div>
+
+          {jettonInfo && (
+            <>
+              {/* Token Preview Card */}
+              <div className="card mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
+                    {jettonInfo.image ? (
+                      <img 
+                        src={jettonInfo.image} 
+                        alt={jettonInfo.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-cook-text-secondary">
+                        {jettonInfo.symbol?.charAt(0) || '?'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-grow">
+                    <h3 className="text-xl font-bold text-cook-text">{jettonInfo.name || 'Unnamed Token'}</h3>
+                    <p className="text-cook-text-secondary">${jettonInfo.symbol || 'UNKNOWN'}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 items-end">
+                    {isAdmin && (
+                      <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-sm font-medium">
+                        You are Admin
+                      </span>
+                    )}
+                    <button
+                      onClick={handleRefresh}
+                      className="text-sm text-cook-orange hover:underline flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex space-x-2 mb-6 p-1 bg-cook-bg-secondary rounded-xl overflow-x-auto">
+                {[
+                  { id: 'info', label: 'Info' },
+                  { id: 'mint', label: 'Mint' },
+                  { id: 'metadata', label: 'Metadata' },
+                  { id: 'admin', label: 'Admin' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-gradient-cook text-white shadow-cook'
+                        : 'text-cook-text-secondary hover:text-cook-text'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="card">
+                {activeTab === 'info' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center py-3 border-b border-cook-border">
+                      <span className="text-cook-text-secondary">Name</span>
+                      <span className="text-cook-text font-medium">{jettonInfo.name || '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-cook-border">
+                      <span className="text-cook-text-secondary">Symbol</span>
+                      <span className="text-cook-text font-medium">{jettonInfo.symbol || '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-cook-border">
+                      <span className="text-cook-text-secondary">Total Supply</span>
+                      <span className="text-cook-text font-medium">
+                        {formatSupply(jettonInfo.totalSupply, jettonInfo.decimals)} {jettonInfo.symbol}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-cook-border">
+                      <span className="text-cook-text-secondary">Decimals</span>
+                      <span className="text-cook-text font-medium">{jettonInfo.decimals}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3">
+                      <span className="text-cook-text-secondary">Admin</span>
+                      {jettonInfo.adminAddress ? (
+                        <code className="text-cook-orange text-sm">
+                          {jettonInfo.adminAddress.slice(0, 8)}...{jettonInfo.adminAddress.slice(-6)}
+                        </code>
+                      ) : (
+                        <span className="text-cook-text-secondary">Decentralized</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'mint' && (
+                  <div className="space-y-6">
+                    {!isAdmin && jettonInfo.adminAddress && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                        <p className="text-red-600 dark:text-red-400 text-sm">You are not the admin of this token.</p>
+                      </div>
+                    )}
+
+                    {!jettonInfo.mintable && (
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                        <p className="text-yellow-600 dark:text-yellow-400 text-sm">This token is not mintable.</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-cook-text mb-2">Amount to Mint</label>
+                      <input
+                        type="text"
+                        value={mintAmount}
+                        onChange={(e) => setMintAmount(e.target.value)}
+                        placeholder="1000000"
+                        className="input-ton"
+                        disabled={!isAdmin || !jettonInfo.mintable}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-cook-text mb-2">Recipient Address</label>
+                      <input
+                        type="text"
+                        value={mintTo}
+                        onChange={(e) => setMintTo(e.target.value)}
+                        placeholder="EQ..."
+                        className="input-ton"
+                        disabled={!isAdmin || !jettonInfo.mintable}
+                      />
+                      {wallet && isAdmin && (
+                        <button 
+                          onClick={() => setMintTo(wallet)} 
+                          className="text-sm text-cook-orange hover:underline mt-1"
+                        >
+                          Use my address
+                        </button>
+                      )}
+                    </div>
+                    <button 
+                      onClick={handleMint} 
+                      disabled={!connected || !mintAmount || !mintTo || !isAdmin || !jettonInfo.mintable} 
+                      className="btn-cook w-full"
+                    >
+                      Mint Tokens
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'metadata' && (
+                  <div className="space-y-6">
+                    {!isAdmin && jettonInfo.adminAddress && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                        <p className="text-red-600 dark:text-red-400 text-sm">You are not the admin of this token.</p>
+                      </div>
+                    )}
+
+                    {!jettonInfo.adminAddress && (
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+                        <p className="text-cook-text-secondary text-sm">This token is decentralized. Metadata cannot be changed.</p>
+                      </div>
+                    )}
+
+                    {isAdmin && (
+                      <>
+                        <div className="p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={useOffchainUrl}
+                              onChange={(e) => setUseOffchainUrl(e.target.checked)}
+                              className="mr-2 accent-cook-orange"
+                            />
+                            <span className="text-sm text-cook-text">Use off-chain metadata URL</span>
+                          </label>
+                        </div>
+
+                        {useOffchainUrl ? (
+                          <div>
+                            <label className="block text-sm font-medium text-cook-text mb-2">Metadata URL</label>
+                            <input
+                              type="url"
+                              value={offchainUrl}
+                              onChange={(e) => setOffchainUrl(e.target.value)}
+                              placeholder="https://example.com/metadata.json"
+                              className="input-ton"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-cook-text mb-2">Name</label>
+                                <input 
+                                  type="text" 
+                                  value={newName} 
+                                  onChange={(e) => setNewName(e.target.value)} 
+                                  className="input-ton" 
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-cook-text mb-2">Symbol</label>
+                                <input 
+                                  type="text" 
+                                  value={newSymbol} 
+                                  onChange={(e) => setNewSymbol(e.target.value)} 
+                                  className="input-ton" 
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-cook-text mb-2">Description</label>
+                              <textarea 
+                                value={newDescription} 
+                                onChange={(e) => setNewDescription(e.target.value)} 
+                                className="input-ton min-h-[80px]" 
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-cook-text mb-2">Image URL</label>
+                                <input 
+                                  type="url" 
+                                  value={newImage} 
+                                  onChange={(e) => setNewImage(e.target.value)} 
+                                  className="input-ton" 
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-cook-text mb-2">Decimals</label>
+                                <input 
+                                  type="number" 
+                                  value={newDecimals} 
+                                  onChange={(e) => setNewDecimals(e.target.value)} 
+                                  min={0} 
+                                  max={18} 
+                                  className="input-ton" 
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        <button 
+                          onClick={handleChangeMetadata} 
+                          disabled={!connected} 
+                          className="btn-cook w-full"
+                        >
+                          Update Metadata
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'admin' && (
+                  <div className="space-y-6">
+                    {!isAdmin && jettonInfo.adminAddress && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                        <p className="text-red-600 dark:text-red-400 text-sm">You are not the admin of this token.</p>
+                      </div>
+                    )}
+
+                    {isAdmin && (
+                      <>
+                        <div className="p-6 bg-cook-bg-secondary rounded-xl border border-cook-border">
+                          <h4 className="font-semibold text-cook-text mb-2">Transfer Admin Rights</h4>
+                          <input
+                            type="text"
+                            value={newAdmin}
+                            onChange={(e) => setNewAdmin(e.target.value)}
+                            placeholder="EQ..."
+                            className="input-ton mb-4"
+                          />
+                          <button 
+                            onClick={handleChangeAdmin} 
+                            disabled={!connected || !newAdmin} 
+                            className="btn-cook w-full"
+                          >
+                            Transfer Rights
+                          </button>
+                        </div>
+
+                        <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                          <h4 className="font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h4>
+                          <p className="text-sm text-cook-text-secondary mb-4">
+                            Revoking admin rights is <strong>IRREVERSIBLE</strong>. The token will become fully decentralized.
+                          </p>
+                          <button 
+                            onClick={handleRevokeAdmin} 
+                            disabled={!connected} 
+                            className="w-full py-3 px-6 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-xl transition-colors border border-red-300 dark:border-red-700"
+                          >
+                            🔒 Revoke Admin Rights
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {!connected && (
+            <div className="card text-center">
+              <svg className="w-16 h-16 mx-auto mb-4 text-cook-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h3 className="text-xl font-semibold text-cook-text mb-2">Connect Wallet</h3>
+              <p className="text-cook-text-secondary">Connect your wallet to manage tokens</p>
+            </div>
+          )}
         </div>
       </main>
+
       <Footer />
     </div>
-  )
+  );
 }
-
