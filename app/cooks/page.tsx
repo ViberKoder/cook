@@ -47,21 +47,15 @@ export default function CooksPage() {
       const tokenPromises = allTokenAddresses.map(async (tokenAddress): Promise<CookToken | null> => {
         try {
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
-          if (!tokenResponse.ok) return null;
+          if (!tokenResponse.ok) {
+            console.warn(`Token ${tokenAddress} not found in API`);
+            return null;
+          }
           
           const tokenData = await tokenResponse.json();
           
-          // Check for liquidity (but don't block if it fails)
-          let hasLiquidity = false;
-          try {
-            const pool = await checkStonfiLiquidity(tokenAddress);
-            hasLiquidity = pool !== null;
-          } catch (e) {
-            // If liquidity check fails, still show the token
-            hasLiquidity = true; // Assume it has liquidity if it's in our list
-          }
-          
-          return {
+          // Return token immediately, check liquidity in background
+          const token: CookToken = {
             address: tokenAddress,
             name: tokenData.metadata?.name || 'Unknown',
             symbol: tokenData.metadata?.symbol || '???',
@@ -69,8 +63,24 @@ export default function CooksPage() {
             description: tokenData.metadata?.description,
             totalSupply: tokenData.total_supply || '0',
             decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity,
+            hasLiquidity: true, // Default to true, will be updated if check fails
           };
+          
+          // Check liquidity in background (non-blocking)
+          checkStonfiLiquidity(tokenAddress)
+            .then(pool => {
+              // Update token liquidity status if needed
+              setTokens(prev => prev.map(t => 
+                t.address === tokenAddress 
+                  ? { ...t, hasLiquidity: pool !== null }
+                  : t
+              ));
+            })
+            .catch(() => {
+              // Keep hasLiquidity as true for known tokens
+            });
+          
+          return token;
         } catch (err) {
           console.error(`Error loading token ${tokenAddress}:`, err);
           return null;
@@ -208,12 +218,14 @@ export default function CooksPage() {
                             {formatSupply(token.totalSupply, token.decimals)} {token.symbol}
                           </span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-cook-text-secondary">Status</span>
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-xs font-medium">
-                            Has Liquidity
-                          </span>
-                        </div>
+                        {token.hasLiquidity && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-cook-text-secondary">Status</span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
+                              Has Liquidity
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-center text-sm text-cook-orange font-medium">
