@@ -93,33 +93,6 @@ export async function deployJettonMinter(
       imageUrl = `data:image/png;base64,${tokenData.imageData}`;
     }
     
-    // Calculate contract address first to use in metadata URL
-    // We'll use a placeholder that will be replaced after deployment
-    const tempMetadata: JettonMetadata = {
-      name: tokenData.name.trim(),
-      symbol: tokenData.symbol.toUpperCase().trim(),
-      description: (tokenData.description || tokenData.name).trim(),
-      image: imageUrl?.trim() || undefined,
-      decimals: tokenData.decimals.toString(),
-    };
-    
-    // Build content cell first to get contract address
-    const tempContentCell = buildTokenMetadataCell(tempMetadata);
-    const tempMinterData = beginCell()
-      .storeCoins(0)
-      .storeAddress(walletAddress)
-      .storeAddress(null)
-      .storeRef(getWalletCode())
-      .storeRef(tempContentCell)
-      .endCell();
-    const tempStateInit = {
-      code: getMinterCode(),
-      data: tempMinterData,
-    };
-    const minterAddress = contractAddress(0, tempStateInit);
-    
-    // Now build final metadata with API URL as fallback
-    // Use data URI for on-chain, but also provide API endpoint for explorers
     const metadata: JettonMetadata = {
       name: tokenData.name.trim(),
       symbol: tokenData.symbol.toUpperCase().trim(),
