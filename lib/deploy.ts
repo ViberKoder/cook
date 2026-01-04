@@ -133,30 +133,10 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
-    // Calculate contract address first to use in metadata URL
-    // We need the address to create API endpoint URL for better explorer compatibility
-    // Build temporary content cell with data URI to calculate address
-    const tempDataUri = buildMetadataUri(metadata);
-    const tempContentCell = beginCell()
-      .storeStringRefTail(tempDataUri)
-      .endCell();
-    const tempMinterData = beginCell()
-      .storeCoins(0)
-      .storeAddress(walletAddress)
-      .storeAddress(null)
-      .storeRef(getWalletCode())
-      .storeRef(tempContentCell)
-      .endCell();
-    const tempStateInit = {
-      code: getMinterCode(),
-      data: tempMinterData,
-    };
-    const calculatedAddress = contractAddress(0, tempStateInit);
-    
-    // Use API endpoint URL for better explorer compatibility
-    // The API will read data URI from contract and return JSON
-    // This provides on-chain storage + explorer compatibility
-    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
+    // Build content cell with data URI (on-chain storage)
+    // The data URI contains all metadata as base64-encoded JSON
+    // Some explorers may not decode data URI directly, but the API endpoint can help
+    const contentCell = buildTokenMetadataCell(metadata);
     
     // Verify content cell is unique
     const contentCellHash = contentCell.hash().toString('hex');
