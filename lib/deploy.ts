@@ -1,6 +1,6 @@
 import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress } from '@ton/core';
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
-import { buildTokenMetadataCell, JettonMetadata } from './onchain-metadata';
+import { buildOnchainMetadataCell } from './onchain-metadata';
 import toast from 'react-hot-toast';
 
 export interface TokenData {

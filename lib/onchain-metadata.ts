@@ -1,36 +1,27 @@
+import { beginCell, Cell, Dictionary } from '@ton/core';
+import { sha256 } from '@noble/hashes/sha256';
+
 /**
- * Jetton 2.0 On-Chain Metadata Utilities
- * Based on: https://github.com/ViberKoder/tolya/commit/60974f08c11f37e7804c9987b491729a0af4a76b
- * 
- * CRITICAL: Proper TEP-64 on-chain metadata format:
- * - Prefix 0x00 (8 bits) for on-chain data
- * - Dictionary with keys = sha256(key_name) as BigUint(256)
- * - Values = Cell with snake format string (prefix 0x00 + data)
+ * TEP-64 On-chain Metadata Builder
+ * Based on https://github.com/ton-blockchain/minter-contract
+ * Format: 0x00 + Dictionary<SHA256(key), Cell(0x00 + snake_data)>
  */
 
-import { beginCell, Cell, Dictionary } from '@ton/core';
-
-// TEP-64 metadata keys
 const ONCHAIN_CONTENT_PREFIX = 0x00;
+const OFFCHAIN_CONTENT_PREFIX = 0x01;
 const SNAKE_PREFIX = 0x00;
 
-// Pre-computed SHA256 hashes for standard metadata keys
-const METADATA_KEYS = {
-  name: BigInt('0x82a3537ff0dbce7eec35d69edc3a189ee6f17d82f353a553f9aa96cb0be3ce89'),
-  description: BigInt('0xc9046f7a37ad0ea7cee73355984fa5428982f8b37c8f7bcec91f7ac71a7cd104'),
-  image: BigInt('0x6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d'),
-  symbol: BigInt('0xb76a7ca153c24671658335bbd08946350ffc621fa1c516e7123095d4ffd5c581'),
-  decimals: BigInt('0xee80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e'),
-  image_data: BigInt('0xd9a88ccec79eef59c84b671136a20ece4cd00caaad5bc47e2c208829154ee9e4'),
-};
+export type JettonMetaDataKeys = 'name' | 'description' | 'image' | 'symbol' | 'decimals';
 
-function makeSnakeCellSimple(data: string): Cell {
-  const bytes = new TextEncoder().encode(data);
-  return beginCell()
-    .storeUint(SNAKE_PREFIX, 8)
-    .storeBuffer(Buffer.from(bytes))
-    .endCell();
-}
+const jettonOnChainMetadataSpec: {
+  [key in JettonMetaDataKeys]: 'utf8' | 'ascii';
+} = {
+  name: 'utf8',
+  description: 'utf8',
+  image: 'ascii',
+  symbol: 'utf8',
+  decimals: 'utf8',
+};
 
 export interface JettonMetadata {
   name: string;
@@ -40,53 +31,68 @@ export interface JettonMetadata {
   decimals: string; // обязательно string, например '9'
 }
 
-export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  const dict = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
-  
-  // Name
-  if (metadata.name) {
-    dict.set(METADATA_KEYS.name, makeSnakeCellSimple(metadata.name));
-  }
-  
-  // Symbol
-  if (metadata.symbol) {
-    dict.set(METADATA_KEYS.symbol, makeSnakeCellSimple(metadata.symbol));
-  }
-  
-  // Description
-  if (metadata.description) {
-    dict.set(METADATA_KEYS.description, makeSnakeCellSimple(metadata.description));
-  }
-  
-  // Image
-  if (metadata.image) {
-    dict.set(METADATA_KEYS.image, makeSnakeCellSimple(metadata.image));
-  }
-  
-  // Decimals
-  dict.set(METADATA_KEYS.decimals, makeSnakeCellSimple(metadata.decimals));
-  
-  // CRITICAL: The contract's build_content_cell() always wraps metadata_uri in "uri" key.
-  // For on-chain metadata, we need to store the TEP-64 dictionary directly.
-  //
-  // SOLUTION: Store the dictionary WITHOUT the 0x00 prefix.
-  // The contract will call build_content_cell(metadata_uri.begin_parse()), which will
-  // try to read it as a slice. If we pass just the dictionary (without prefix),
-  // the contract will try to parse it as a URI string, which will fail.
-  //
-  // ACTUAL FIX: Store the TEP-64 dictionary WITH 0x00 prefix in a ref cell.
-  // When the contract calls metadata_uri.begin_parse(), it will get a slice.
-  // The slice will start with 0x00, then the dictionary. The contract will try to
-  // read it as a URI string, but if it starts with 0x00, it should recognize it as
-  // on-chain metadata and return it directly (if we modify the contract).
-  //
-  // But since we use precompiled hex, we can't modify the contract easily.
-  //
-  // WORKING SOLUTION: Store the dictionary cell directly (with 0x00 prefix).
-  // Even though the contract wraps it in "uri", explorers should be able to read
-  // the TEP-64 dictionary from the cell directly, bypassing the contract's get_jetton_data().
-  //
-  // The metadata cell structure: 0x00 (prefix) + dict (TEP-64 dictionary)
+/**
+ * Build TEP-64 on-chain metadata cell
+ * Matches minter-contract format exactly
+ */
+export function buildOnchainMetadataCell(data: { [s: string]: string | undefined }): Cell {
+  const dict = Dictionary.empty(Dictionary.Keys.Buffer(32), Dictionary.Values.Cell());
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined || value === '') return;
+    
+    const encoding = jettonOnChainMetadataSpec[key as JettonMetaDataKeys];
+    if (!encoding) return;
+
+    // SHA256 hash of the key
+    const keyHash = Buffer.from(sha256(key));
+    
+    // Encode value
+    const valueBuffer = Buffer.from(value, encoding);
+    
+    // Build value cell with snake format (0x00 prefix + data)
+    const CELL_MAX_SIZE_BYTES = 127;
+    
+    if (valueBuffer.length <= CELL_MAX_SIZE_BYTES - 1) {
+      // Single cell
+      const cell = beginCell()
+        .storeUint(SNAKE_PREFIX, 8)
+        .storeBuffer(valueBuffer)
+        .endCell();
+      dict.set(keyHash, cell);
+    } else {
+      // Multi-cell snake format
+      let remaining = valueBuffer;
+      let rootBuilder = beginCell().storeUint(SNAKE_PREFIX, 8);
+      
+      const firstChunkSize = CELL_MAX_SIZE_BYTES - 1;
+      rootBuilder.storeBuffer(remaining.slice(0, firstChunkSize));
+      remaining = remaining.slice(firstChunkSize);
+      
+      let tailCell: Cell | null = null;
+      const chunks: Buffer[] = [];
+      while (remaining.length > 0) {
+        chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES));
+        remaining = remaining.slice(CELL_MAX_SIZE_BYTES);
+      }
+      
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        const builder = beginCell().storeBuffer(chunks[i]);
+        if (tailCell) {
+          builder.storeRef(tailCell);
+        }
+        tailCell = builder.endCell();
+      }
+      
+      if (tailCell) {
+        rootBuilder.storeRef(tailCell);
+      }
+      
+      dict.set(keyHash, rootBuilder.endCell());
+    }
+  });
+
+  // Final cell: 0x00 prefix + dictionary
   return beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
     .storeDict(dict)
@@ -94,77 +100,19 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
 }
 
 /**
- * Parse on-chain metadata cell back to metadata object
+ * Build off-chain metadata cell (URL)
  */
-export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
-  const slice = cell.beginParse();
-  
-  // Check prefix
-  const prefix = slice.loadUint(8);
-  if (prefix !== ONCHAIN_CONTENT_PREFIX) {
-    throw new Error('Not an on-chain metadata cell (missing 0x00 prefix)');
-  }
-  
-  // Load dictionary
-  const dict = slice.loadDict(
-    Dictionary.Keys.BigUint(256),
-    Dictionary.Values.Cell()
-  );
-  
-  const result: Partial<JettonMetadata> = {};
-  
-  // Parse standard keys
-  if (dict.get(METADATA_KEYS.name)) {
-    const nameCell = dict.get(METADATA_KEYS.name)!;
-    const nameSlice = nameCell.beginParse();
-    nameSlice.loadUint(8); // Skip snake prefix
-    const nameBytes = nameSlice.loadBuffer(nameSlice.remainingBits / 8);
-    result.name = new TextDecoder().decode(nameBytes);
-  }
-  
-  if (dict.get(METADATA_KEYS.symbol)) {
-    const symbolCell = dict.get(METADATA_KEYS.symbol)!;
-    const symbolSlice = symbolCell.beginParse();
-    symbolSlice.loadUint(8); // Skip snake prefix
-    const symbolBytes = symbolSlice.loadBuffer(symbolSlice.remainingBits / 8);
-    result.symbol = new TextDecoder().decode(symbolBytes);
-  }
-  
-  if (dict.get(METADATA_KEYS.description)) {
-    const descCell = dict.get(METADATA_KEYS.description)!;
-    const descSlice = descCell.beginParse();
-    descSlice.loadUint(8); // Skip snake prefix
-    const descBytes = descSlice.loadBuffer(descSlice.remainingBits / 8);
-    result.description = new TextDecoder().decode(descBytes);
-  }
-  
-  if (dict.get(METADATA_KEYS.image)) {
-    const imageCell = dict.get(METADATA_KEYS.image)!;
-    const imageSlice = imageCell.beginParse();
-    imageSlice.loadUint(8); // Skip snake prefix
-    const imageBytes = imageSlice.loadBuffer(imageSlice.remainingBits / 8);
-    result.image = new TextDecoder().decode(imageBytes);
-  }
-  
-  if (dict.get(METADATA_KEYS.decimals)) {
-    const decimalsCell = dict.get(METADATA_KEYS.decimals)!;
-    const decimalsSlice = decimalsCell.beginParse();
-    decimalsSlice.loadUint(8); // Skip snake prefix
-    const decimalsBytes = decimalsSlice.loadBuffer(decimalsSlice.remainingBits / 8);
-    result.decimals = new TextDecoder().decode(decimalsBytes);
-  }
-  
-  return result;
+export function buildOffchainMetadataCell(uri: string): Cell {
+  return beginCell()
+    .storeUint(OFFCHAIN_CONTENT_PREFIX, 8)
+    .storeStringTail(uri)
+    .endCell();
 }
 
 // Alias for backward compatibility
-export const buildOnchainMetadataCell = buildTokenMetadataCell;
+export const buildTokenMetadataCell = buildOnchainMetadataCell;
 
 // Legacy functions (not used)
 export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
   return '';
-}
-
-export function buildOffchainMetadataCell(url: string): Cell {
-  return beginCell().storeUint(0, 8).endCell();
 }
