@@ -2,20 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Address } from '@ton/core';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 import { TonClient } from '@ton/ton';
+import { kv } from '@vercel/kv';
 
 /**
  * API endpoint to serve Jetton metadata JSON (off-chain metadata)
  * 
- * This endpoint stores metadata in memory (in production, use a database).
+ * Uses Vercel KV (Redis) for persistent storage.
  * When a contract is deployed, metadata is stored here.
  * 
  * Usage: 
  *   GET /api/jetton-metadata/{contract_address} - Get metadata
  *   POST /api/jetton-metadata/{contract_address} - Store metadata
+ * 
+ * Setup Vercel KV:
+ *   1. Go to Vercel Dashboard -> Your Project -> Storage
+ *   2. Create a KV database
+ *   3. The @vercel/kv package will automatically connect
  */
-
-// In-memory storage (in production, use a database)
-const metadataStore = new Map<string, any>();
 
 export async function GET(
   request: NextRequest,
@@ -38,16 +41,22 @@ export async function GET(
 
     const addressStr = contractAddress.toString();
     
-    // Check if metadata is stored in our database
-    if (metadataStore.has(addressStr)) {
-      const metadata = metadataStore.get(addressStr);
-      return NextResponse.json(metadata, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
+    // Check if metadata is stored in Vercel KV
+    try {
+      const metadata = await kv.get<string>(`jetton:${addressStr}`);
+      if (metadata) {
+        const parsedMetadata = JSON.parse(metadata);
+        return NextResponse.json(parsedMetadata, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      }
+    } catch (kvError) {
+      // If KV is not configured, fall back to contract reading
+      console.log('Vercel KV not available, falling back to contract:', kvError);
     }
 
     // If not found, try to read from contract (fallback)
@@ -142,14 +151,27 @@ export async function POST(
     const body = await request.json();
     const addressStr = contractAddress.toString();
     
-    // Store metadata
-    metadataStore.set(addressStr, body);
-    
-    return NextResponse.json({ success: true, address: addressStr }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    // Store metadata in Vercel KV
+    try {
+      await kv.set(`jetton:${addressStr}`, JSON.stringify(body));
+      return NextResponse.json({ success: true, address: addressStr }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    } catch (kvError) {
+      // If KV is not configured, still return success (metadata will be read from contract)
+      console.error('Failed to store in Vercel KV:', kvError);
+      return NextResponse.json({ 
+        success: true, 
+        address: addressStr,
+        warning: 'Metadata stored in memory only (Vercel KV not configured)'
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
   } catch (error: any) {
     console.error('Error storing metadata:', error);
     return NextResponse.json(
