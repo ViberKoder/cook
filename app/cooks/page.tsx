@@ -54,11 +54,25 @@ export default function CooksPage() {
     setError(null);
     
     try {
-      // Get tokens from localStorage and combine with hardcoded list
+      // Get ALL tokens deployed on cook.tg from localStorage
+      // These are tokens that were created via cook.tg, regardless of liquidity status
       const storedTokens = getCookTokens();
-      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
+      const storedAddresses = storedTokens.map(t => t.address);
+      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedAddresses])];
       
-      console.log('Loading tokens - hardcoded:', HARDCODED_TOKENS.length, 'stored:', storedTokens.length, 'total:', allTokenAddresses.length);
+      console.log('Loading tokens deployed on cook.tg:', {
+        hardcoded: HARDCODED_TOKENS.length,
+        fromStorage: storedTokens.length,
+        total: allTokenAddresses.length,
+        addresses: allTokenAddresses
+      });
+      
+      if (allTokenAddresses.length === 0) {
+        console.log('No tokens found in localStorage. Tokens will appear here after deployment on cook.tg.');
+        setTokens([]);
+        setLoading(false);
+        return;
+      }
       
       // First, load all token metadata quickly (parallel)
       const tokenMetadataPromises = allTokenAddresses.map(async (tokenAddress) => {
@@ -180,12 +194,8 @@ export default function CooksPage() {
             totalSupply: item.data.total_supply || '0',
             decimals: parseInt(item.data.metadata?.decimals || '9'),
             hasLiquidity: liquidityData?.hasLiquidity || false,
-            poolInfo: liquidityData?.pool ? {
-              address: liquidityData.pool.address,
-              reserve0: liquidityData.pool.reserve0,
-              reserve1: liquidityData.pool.reserve1,
-              totalLiquidity: liquidityData.totalLiquidity,
-            } : undefined,
+            poolInfo: liquidityData?.pool || undefined,
+            totalLiquidity: liquidityData?.totalLiquidity || 0,
             deployedAt,
           };
         });
