@@ -175,27 +175,6 @@ export async function deployJettonMinter(
     // Calculate final address from stateInit - this MUST be unique for each token
     const minterAddress = contractAddress(0, stateInit);
     
-    // Verify address matches (should be very close, might differ slightly due to URL)
-    if (minterAddress.toString() !== calculatedAddress.toString()) {
-      console.warn('Address mismatch! Calculated:', calculatedAddress.toString(), 'Final:', minterAddress.toString());
-      // Rebuild with correct address
-      const finalContentCell = buildTokenMetadataCell(metadata, minterAddress.toString());
-      const finalMinterData = beginCell()
-        .storeCoins(0)
-        .storeAddress(walletAddress)
-        .storeAddress(null)
-        .storeRef(getWalletCode())
-        .storeRef(finalContentCell)
-        .endCell();
-      const finalStateInit = {
-        code: getMinterCode(),
-        data: finalMinterData,
-      };
-      const finalAddress = contractAddress(0, finalStateInit);
-      // Use final address and content cell
-      // Note: This might require iteration, but in practice the URL length is similar
-    }
-    
     // Verify stateInit is unique
     const stateInitHash = beginCell()
       .store(storeStateInit(stateInit))
