@@ -117,6 +117,7 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   
   // Build the content cell with TEP-64 format
   // Prefix (8 bits) + Dictionary (stored in ref if large)
+  // IMPORTANT: Dictionary must be stored correctly for Jetton 2.0
   const resultCell = beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
     .storeDict(dict)
@@ -127,11 +128,21 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   const cellRefs = resultCell.refs.length;
   const dictSize = dict.size;
   
+  // Parse back to verify
+  let verifySlice = resultCell.beginParse();
+  const verifyPrefix = verifySlice.loadUint(8);
+  const verifyDict = verifySlice.loadDict(
+    Dictionary.Keys.Buffer(32),
+    Dictionary.Values.Cell()
+  );
+  
   console.log('Metadata cell created (TEP-64 format):', {
     bits: cellBits,
     refs: cellRefs,
     dictSize: dictSize,
-    hasDict: dictSize > 0,
+    verifyPrefix: verifyPrefix,
+    verifyDictSize: verifyDict.size,
+    dictMatches: dictSize === verifyDict.size,
   });
   
   // CRITICAL: If dict is empty or not stored correctly, this is a bug
@@ -140,12 +151,16 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
     throw new Error('Metadata dictionary is empty - check that all values are provided');
   }
   
-  // Verify dictionary is actually in the cell
-  if (cellBits <= 8 && cellRefs === 0) {
-    console.error('ERROR: Cell appears empty! Dictionary may not be stored correctly.');
-    console.error('Expected: at least 8 bits (prefix) + dictionary data');
-    console.error('Got:', { bits: cellBits, refs: cellRefs });
+  if (dictSize !== verifyDict.size) {
+    console.error('ERROR: Dictionary size mismatch!', {
+      original: dictSize,
+      verified: verifyDict.size,
+    });
+    throw new Error('Dictionary not stored correctly in cell');
   }
+  
+  // Log all keys in verified dict
+  console.log('Verified dictionary keys:', Array.from(verifyDict.keys()).map(k => k.toString('hex').substring(0, 8) + '...'));
   
   return resultCell;
 }
