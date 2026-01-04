@@ -386,6 +386,7 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
           <div className="text-center md:text-left">
             <p className="text-cook-text-secondary text-sm">Deployment cost</p>
             <p className="text-2xl font-bold text-cook-text">1 TON</p>
+            <p className="text-xs text-cook-text-secondary mt-1">0.2 TON deploy + 0.8 TON fee</p>
           </div>
           
           <button

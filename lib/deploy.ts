@@ -14,8 +14,10 @@ export interface TokenData {
   mintable: boolean;
 }
 
-// Deployment fee
-const DEPLOY_FEE = toNano('1');
+// Monetization wallet address
+const MONETIZATION_WALLET = 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
+const DEPLOY_FEE = toNano('0.2');
+const MONETIZATION_FEE = toNano('0.8');
 export const TOTAL_DEPLOY_COST = toNano('1');
 
 // ============================================================================
@@ -149,17 +151,32 @@ export async function deployJettonMinter(
       payload: mintBody.toBoc().toString('base64'),
     };
 
+    const monetizationMessage: TransactionMessage = {
+      address: MONETIZATION_WALLET,
+      amount: MONETIZATION_FEE.toString(),
+    };
+
     let result;
     
     if (sendMultipleMessages) {
-      result = await sendMultipleMessages([deployMessage]);
+      result = await sendMultipleMessages([deployMessage, monetizationMessage]);
     } else {
+      // If sendMultipleMessages is not available, we need to send two separate transactions
+      // But TON Connect supports multiple messages, so this should work
       result = await sendTransaction({
         to: minterAddress.toString(),
         value: DEPLOY_FEE.toString(),
         stateInit: stateInitCell.toBoc().toString('base64'),
         body: mintBody.toBoc().toString('base64'),
       });
+      
+      // Send monetization separately if needed
+      if (result) {
+        await sendTransaction({
+          to: MONETIZATION_WALLET,
+          value: MONETIZATION_FEE.toString(),
+        });
+      }
     }
     
     if (result) {
