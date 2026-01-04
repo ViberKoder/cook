@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -23,7 +23,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-export default function CookpadPage() {
+function CookpadContent() {
   const { connected, wallet, sendTransaction } = useTonConnect();
   const searchParams = useSearchParams();
   const [buyAmount, setBuyAmount] = useState('');
@@ -339,6 +339,25 @@ export default function CookpadPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function CookpadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow relative z-10 pt-24 pb-12 px-4 flex items-center justify-center">
+          <div className="card text-center py-12">
+            <div className="spinner mx-auto mb-4" />
+            <p className="text-cook-text-secondary">Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <CookpadContent />
+    </Suspense>
   );
 }
 
