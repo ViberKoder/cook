@@ -24,6 +24,42 @@ export function addCookToken(tokenAddress: string): void {
 }
 
 /**
+ * Get token deployment timestamp
+ */
+export function getTokenDeployedAt(tokenAddress: string): number | undefined {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `cook_token_${tokenAddress}_deployed_at`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        return parseInt(stored);
+      }
+      // If not found, set current timestamp for existing tokens
+      const timestamp = Date.now();
+      localStorage.setItem(key, timestamp.toString());
+      return timestamp;
+    }
+  } catch (error) {
+    console.error('Failed to get token deployed at:', error);
+  }
+  return undefined;
+}
+
+/**
+ * Set token deployment timestamp
+ */
+export function setTokenDeployedAt(tokenAddress: string, timestamp?: number): void {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `cook_token_${tokenAddress}_deployed_at`;
+      localStorage.setItem(key, (timestamp || Date.now()).toString());
+    }
+  } catch (error) {
+    console.error('Failed to set token deployed at:', error);
+  }
+}
+
+/**
  * Get list of token addresses created on cook.tg
  */
 export function getCookTokens(): string[] {

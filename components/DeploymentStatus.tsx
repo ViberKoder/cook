@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { addCookToken } from '@/lib/cookTokens';
+import { addCookToken, setTokenDeployedAt } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
@@ -27,6 +27,7 @@ function TokenAutoAdd({ address }: { address: string }) {
   useEffect(() => {
     if (address) {
       addCookToken(address);
+      setTokenDeployedAt(address);
       console.log('Token added to cook.tg list:', address);
     }
   }, [address]);

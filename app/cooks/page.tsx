@@ -19,6 +19,13 @@ interface CookToken {
   totalSupply: string;
   decimals: number;
   hasLiquidity: boolean;
+  poolInfo?: {
+    address: string;
+    reserve0: string;
+    reserve1: string;
+    totalLiquidity: number; // Calculated liquidity value
+  };
+  deployedAt?: number; // Timestamp when token was added to localStorage
 }
 
 // Hardcoded known tokens (for tokens deployed before localStorage implementation)
@@ -222,7 +229,7 @@ export default function CooksPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {tokens.map((token) => (
+                  {filteredAndSortedTokens.map((token) => (
                     <Link
                       key={token.address}
                       href={`/cooks/${token.address}`}
