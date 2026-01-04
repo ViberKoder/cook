@@ -133,31 +133,11 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
-    // For off-chain metadata, we need to calculate contract address first
-    // Build temporary content cell with placeholder URL to calculate address
-    const tempUri = 'https://www.cook.tg/api/jetton-metadata/PLACEHOLDER';
-    const tempContentCell = beginCell()
-      .storeStringRefTail(tempUri)
-      .endCell();
-    
-    const tempMinterData = beginCell()
-      .storeCoins(0)
-      .storeAddress(walletAddress)
-      .storeAddress(null)
-      .storeRef(getWalletCode())
-      .storeRef(tempContentCell)
-      .endCell();
-    
-    const tempStateInit = {
-      code: getMinterCode(),
-      data: tempMinterData,
-    };
-    
-    // Calculate contract address
-    const calculatedAddress = contractAddress(0, tempStateInit);
-    
-    // Now build final content cell with correct API endpoint URL
-    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
+    // For off-chain metadata, use fixed API endpoint URL
+    // This avoids circular dependency: contract address depends on content cell,
+    // but if content cell contains contract address in URL, we get a cycle
+    // Solution: use fixed URL, API endpoint will identify contract from request path
+    const contentCell = buildTokenMetadataCell(metadata);
     
     // Verify content cell is unique
     const contentCellHash = contentCell.hash().toString('hex');
@@ -165,7 +145,7 @@ export async function deployJettonMinter(
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
-      apiUrl: buildMetadataUri(metadata, calculatedAddress.toString()),
+      apiUrl: buildMetadataUri(metadata),
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);

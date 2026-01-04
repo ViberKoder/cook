@@ -115,11 +115,20 @@ export async function GET(
         });
       } else if (uri.startsWith('http://') || uri.startsWith('https://')) {
         // It's a regular URL (API endpoint)
-        // If it's our own API endpoint, we have a circular reference
-        // In this case, we should return 404 or try to fetch from the URL
+        // If it's our own API endpoint (without address), metadata should be in KV
+        if (uri.includes('/api/jetton-metadata') && !uri.includes('/api/jetton-metadata/')) {
+          // This is the fixed API endpoint URL - metadata should be in KV
+          // We already checked KV above, so return 404
+          return NextResponse.json({ 
+            error: 'Metadata not found. Please ensure metadata was stored after deployment.',
+            hint: 'The contract points to the API endpoint. Metadata should be stored in KV or will be read from contract on first request.'
+          }, { status: 404 });
+        }
+        
+        // If it's our API endpoint with address, it's a circular reference
         if (uri.includes('/api/jetton-metadata/')) {
           // Circular reference - metadata should be stored in KV
-          // Return 404 with helpful message
+          // We already checked KV above, so return 404
           return NextResponse.json({ 
             error: 'Metadata not found. Please ensure metadata was stored after deployment.',
             hint: 'The contract points to this API endpoint, but metadata is not stored yet.'

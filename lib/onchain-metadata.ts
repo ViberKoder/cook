@@ -32,18 +32,24 @@ export interface JettonMetadata {
  * Uses API endpoint URL for better explorer compatibility.
  * The API endpoint stores and serves metadata JSON.
  * 
+ * IMPORTANT: We use a fixed URL pattern that doesn't include the contract address
+ * to avoid circular dependency. The API endpoint will identify the contract
+ * by reading the address from the request path.
+ * 
  * @param metadata - Token metadata object
- * @param contractAddress - Contract address (required for off-chain metadata)
+ * @param contractAddress - Contract address (optional, for logging only)
  * @returns API endpoint URL
  */
-export function buildMetadataUri(metadata: JettonMetadata, contractAddress: string): string {
-  // Use API endpoint that will serve metadata
-  // The API will store metadata when contract is deployed
+export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
+  // Use fixed API endpoint URL that doesn't depend on contract address
+  // This avoids circular dependency: contract address depends on content cell,
+  // but content cell contains URL with contract address
+  // The API endpoint will identify the contract from the request path
   const apiUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/api/jetton-metadata/${contractAddress}`
-    : `https://www.cook.tg/api/jetton-metadata/${contractAddress}`;
+    ? `${window.location.origin}/api/jetton-metadata`
+    : `https://www.cook.tg/api/jetton-metadata`;
   
-  console.log('Using API endpoint for off-chain metadata:', apiUrl);
+  console.log('Using API endpoint for off-chain metadata:', apiUrl, contractAddress ? `(contract: ${contractAddress})` : '');
   
   return apiUrl;
 }
