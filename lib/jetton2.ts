@@ -1,4 +1,4 @@
-import { Address, beginCell, Cell, contractAddress, Dictionary, internal, toNano } from '@ton/core'
+import { Address, beginCell, Cell, contractAddress, Dictionary, toNano, storeStateInit } from '@ton/core'
 import { TonConnectUI } from '@tonconnect/ui-react'
 import { sha256 } from '@ton/crypto'
 
@@ -124,35 +124,47 @@ export async function getJettonMinterAddress(owner: Address, workchain: number =
 // Deploy Jetton 2.0
 export async function deployJetton2(params: JettonDeployParams): Promise<Address> {
   const minterData = await createMinterData(params)
-  const minterAddress = contractAddress(0, {
+  
+  const stateInit = {
     code: JETTON_MINTER_CODE,
     data: minterData,
-  })
+  }
   
-  // Create deployment message
-  const deployMessage = beginCell()
-    .storeUint(0, 32) // op::mint
-    .storeUint(0, 64) // query_id
-    .storeCoins(params.totalSupply) // amount
-    .storeAddress(params.owner) // destination
-    .storeAddress(null) // response_destination
-    .storeCoins(toNano('0.1')) // forward_ton_amount
-    .storeRef(beginCell().endCell()) // forward_payload
+  const minterAddress = contractAddress(0, stateInit)
+  
+  // Create state init cell
+  const stateInitCell = beginCell()
+    .store(storeStateInit(stateInit))
     .endCell()
   
-  // Send deployment transaction
+  // Create deployment message (mint operation)
+  const deployMessage = beginCell()
+    .storeUint(0x642b7d07, 32) // op::mint (Jetton 2.0)
+    .storeUint(0, 64) // query_id
+    .storeAddress(params.owner) // destination
+    .storeCoins(toNano('0.1')) // forward_ton_amount
+    .storeRef(beginCell()
+      .storeUint(0x178d4519, 32) // internal_transfer
+      .storeUint(0, 64) // query_id
+      .storeCoins(params.totalSupply) // amount
+      .storeAddress(null) // from
+      .storeAddress(params.owner) // to
+      .storeCoins(toNano('0.01')) // forward_ton_amount
+      .storeMaybeRef(null) // forward_payload
+      .endCell()
+    )
+    .endCell()
+  
+  // Send deployment transaction in TON Connect format
   const transaction = {
     validUntil: Math.floor(Date.now() / 1000) + 360,
     messages: [
-      internal({
-        to: minterAddress.toString(),
-        value: toNano('1'), // 1 TON for deployment
-        body: deployMessage,
-        init: {
-          code: JETTON_MINTER_CODE,
-          data: minterData,
-        },
-      }),
+      {
+        address: minterAddress.toString(),
+        amount: toNano('1').toString(), // 1 TON for deployment
+        stateInit: stateInitCell.toBoc().toString('base64'),
+        payload: deployMessage.toBoc().toString('base64'),
+      },
     ],
   }
   
