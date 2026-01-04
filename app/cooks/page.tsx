@@ -56,15 +56,14 @@ export default function CooksPage() {
     try {
       // Get ALL tokens deployed on cook.tg from localStorage
       // These are tokens that were created via cook.tg, regardless of liquidity status
-      const storedTokens = getCookTokens();
-      const storedAddresses = storedTokens.map(t => t.address);
-      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedAddresses])];
+      const storedTokens = getCookTokens(); // Returns string[]
+      const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
       console.log('Loading tokens deployed on cook.tg:', {
         hardcoded: HARDCODED_TOKENS.length,
         fromStorage: storedTokens.length,
         total: allTokenAddresses.length,
-        addresses: allTokenAddresses
+        addresses: allTokenAddresses.slice(0, 10) // Log first 10 to avoid spam
       });
       
       if (allTokenAddresses.length === 0) {
