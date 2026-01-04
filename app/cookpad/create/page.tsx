@@ -7,9 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { deployCookpad } from '@/lib/deployCookpad';
-import { buildOnchainMetadataCell } from '@/lib/deploy';
-// Import jetton wallet code - will be loaded from deploy.ts
-// For now, we'll need to get it from the compiled contract
+import { buildOnchainMetadataCell, getJettonWalletCode } from '@/lib/deploy';
 import { Address, toNano } from '@ton/core';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
