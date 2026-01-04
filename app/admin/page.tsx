@@ -33,6 +33,9 @@ export default function AdminPage() {
   // Admin fields
   const [newAdmin, setNewAdmin] = useState('');
   
+  // Add to Cooks
+  const [addingToCooks, setAddingToCooks] = useState(false);
+  
   const loadedAddressRef = useRef<string>('');
   const isLoadingRef = useRef(false);
 
@@ -245,6 +248,30 @@ export default function AdminPage() {
     loadedAddressRef.current = '';
     setJettonInfo(null);
     handleLoadJetton(true);
+  };
+
+  const handleAddToCooks = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!contractAddress) {
+      toast.error('Please enter a contract address');
+      return;
+    }
+
+    setAddingToCooks(true);
+    try {
+      await sendAddToCooksTransaction(sendTransaction);
+      addCookToken(contractAddress);
+      setTokenDeployedAt(contractAddress);
+      toast.success('Token added to Cooks! Payment of 0.2 TON processed.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add token to Cooks');
+    } finally {
+      setAddingToCooks(false);
+    }
   };
 
   return (
