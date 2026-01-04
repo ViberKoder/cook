@@ -82,10 +82,10 @@ export default function CooksPage() {
       // Then check liquidity for all tokens in parallel (with timeout)
       const liquidityCheckPromises = validMetadata.map(async (item) => {
         try {
-          // Set timeout for liquidity check (4 seconds max per token)
+          // Set timeout for liquidity check (6 seconds max per token - increased for DYOR.io)
           const pool = await Promise.race([
             checkStonfiLiquidity(item.address),
-            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 4000)),
+            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 6000)),
           ]);
           const hasLiquidity = pool !== null;
           
@@ -101,6 +101,7 @@ export default function CooksPage() {
                 totalLiquidity = reserve0TON * 2;
               } else {
                 // If no reserves but pool exists, try to get liquidity from DYOR.io
+                // This happens when DYOR.io found liquidity but STON.fi didn't provide reserves
                 try {
                   const normalizedEQ = item.address.replace(/^UQ/, 'EQ');
                   const dyorResponse = await fetch(`https://dyor.io/token/${normalizedEQ}`, {
@@ -108,16 +109,27 @@ export default function CooksPage() {
                   });
                   if (dyorResponse.ok) {
                     const html = await dyorResponse.text();
-                    // Try to extract liquidity value from page
-                    const liquidityMatch = html.match(/Liquidity[^>]*\$[\s]*([\d,]+\.?\d*)/i) || 
-                                         html.match(/\$[\s]*([\d,]+\.?\d*)[^<]*Liquidity/i);
-                    if (liquidityMatch && liquidityMatch[1]) {
-                      totalLiquidity = parseFloat(liquidityMatch[1].replace(/,/g, ''));
-                      console.log(`Extracted liquidity from DYOR.io for ${item.address}: $${totalLiquidity}`);
+                    // Try multiple patterns to extract liquidity value
+                    const patterns = [
+                      /Liquidity[^>]*\$[\s]*([\d,]+\.?\d*)/i,
+                      /\$[\s]*([\d,]+\.?\d*)[^<]*Liquidity/i,
+                      /liquidity[^>]*>[\s]*\$[\s]*([\d,]+\.?\d*)/i,
+                    ];
+                    
+                    for (const pattern of patterns) {
+                      const match = html.match(pattern);
+                      if (match && match[1]) {
+                        totalLiquidity = parseFloat(match[1].replace(/[^0-9.]/g, ''));
+                        if (totalLiquidity > 0) {
+                          console.log(`Extracted liquidity from DYOR.io for ${item.address}: $${totalLiquidity}`);
+                          break;
+                        }
+                      }
                     }
                   }
                 } catch (e) {
-                  // If DYOR fetch fails, set minimal value to indicate liquidity exists
+                  console.log(`DYOR.io fetch failed for ${item.address}:`, e);
+                  // If DYOR fetch fails but pool exists, set minimal value
                   totalLiquidity = 0.01;
                 }
               }
