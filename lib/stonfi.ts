@@ -13,51 +13,97 @@ export interface StonfiPool {
 }
 
 /**
- * Check liquidity via DYOR.io API
+ * Check liquidity via DYOR.io
+ * Returns liquidity value in USD and optional pool address
  */
-async function checkDyorLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
+async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: number; poolAddress?: string } | null> {
   try {
     // Normalize address format
     const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
     
-    // Try DYOR.io API
-    const response = await fetch(`https://dyor.io/api/token/${normalizedEQ}`, {
-      signal: AbortSignal.timeout(5000),
-    });
+    // Try multiple API endpoints
+    const apiEndpoints = [
+      `https://dyor.io/api/v1/token/${normalizedEQ}`,
+      `https://dyor.io/api/token/${normalizedEQ}`,
+      `https://api.dyor.io/v1/token/${normalizedEQ}`,
+      `https://api.dyor.io/token/${normalizedEQ}`,
+    ];
     
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Check if token has liquidity data
-      if (data.liquidity && parseFloat(data.liquidity) > 0) {
-        console.log(`DYOR.io found liquidity for ${tokenAddress}: $${data.liquidity}`);
+    for (const endpoint of apiEndpoints) {
+      try {
+        const response = await fetch(endpoint, {
+          signal: AbortSignal.timeout(5000),
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
         
-        // Try to get pool address from data
-        // If DYOR has pool info, use it
-        if (data.pool_address || data.poolAddress) {
-          return {
-            address: data.pool_address || data.poolAddress || '',
-            token0: normalizedEQ,
-            token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c', // TON address
-            reserve0: '0', // DYOR doesn't provide reserves directly
-            reserve1: '0',
-            lp_total_supply: '0',
-          };
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check various possible liquidity fields
+          const liquidityValue = data.liquidity || data.liquidity_usd || data.total_liquidity || 
+                               data.liquidityUSD || data.liquidityUsd || data.liquidity_value ||
+                               data.liquidityValue;
+          
+          if (liquidityValue) {
+            const liquidityNum = typeof liquidityValue === 'string' 
+              ? parseFloat(liquidityValue.replace(/[^0-9.]/g, '')) 
+              : parseFloat(liquidityValue);
+            
+            if (liquidityNum > 0) {
+              console.log(`DYOR.io API (${endpoint}) found liquidity for ${tokenAddress}: $${liquidityNum}`);
+              return {
+                liquidity: liquidityNum,
+                poolAddress: data.pool_address || data.poolAddress || data.pool || data.pool_id,
+              };
+            }
+          }
         }
-        
-        // Even if no pool address, return a pool object to indicate liquidity exists
-        return {
-          address: '',
-          token0: normalizedEQ,
-          token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
-          reserve0: '0',
-          reserve1: '0',
-          lp_total_supply: '0',
-        };
+      } catch (apiError) {
+        // Try next endpoint
+        continue;
       }
     }
+    
+    // Fallback: try to fetch the page and parse HTML
+    try {
+      const pageResponse = await fetch(`https://dyor.io/token/${normalizedEQ}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      
+      if (pageResponse.ok) {
+        const html = await pageResponse.text();
+        
+        // Try multiple patterns to find liquidity value
+        const patterns = [
+          /Liquidity[^>]*\$[\s]*([\d,]+\.?\d*)/i,
+          /\$[\s]*([\d,]+\.?\d*)[^<]*Liquidity/i,
+          /liquidity[^>]*>[\s]*\$[\s]*([\d,]+\.?\d*)/i,
+          /"liquidity"[^:]*:\s*"([^"]+)"/i,
+          /liquidity["\s:]+([\d,]+\.?\d*)/i,
+          /Liquidity[\s:]*\$?[\s]*([\d,]+\.?\d*)/i,
+        ];
+        
+        for (const pattern of patterns) {
+          const match = html.match(pattern);
+          if (match && match[1]) {
+            const liquidityNum = parseFloat(match[1].replace(/[^0-9.]/g, ''));
+            if (liquidityNum > 0) {
+              console.log(`DYOR.io page found liquidity for ${tokenAddress}: $${liquidityNum}`);
+              return {
+                liquidity: liquidityNum,
+              };
+            }
+          }
+        }
+      }
+    } catch (pageError) {
+      console.log('DYOR.io page fetch failed:', pageError);
+    }
+    
   } catch (e) {
-    console.log('DYOR.io API check failed:', e);
+    console.log('DYOR.io check failed:', e);
   }
   
   return null;
