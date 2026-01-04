@@ -31,6 +31,12 @@ export default function Header() {
               Jetton 2.0
             </Link>
             <Link 
+              href="/cooks"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Cooks
+            </Link>
+            <Link 
               href="/admin"
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
             >

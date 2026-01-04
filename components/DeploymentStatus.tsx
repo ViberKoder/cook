@@ -2,6 +2,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
+import { sendDropAdminTransaction } from '@/lib/admin';
+import { useTonConnect } from '@/hooks/useTonConnect';
+import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
 
@@ -21,6 +24,29 @@ const steps = [
 export default function DeploymentStatus({ step, deployedAddress, onReset }: DeploymentStatusProps) {
   const currentStepIndex = steps.findIndex(s => s.id === step);
   const [showStonfi, setShowStonfi] = useState(false);
+  const [revokingAdmin, setRevokingAdmin] = useState(false);
+  const { connected, wallet, sendTransaction } = useTonConnect();
+
+  const handleRevokeAdmin = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to revoke admin rights? This will make your token fully decentralized and IRREVERSIBLE!')) {
+      return;
+    }
+
+    setRevokingAdmin(true);
+    try {
+      await sendDropAdminTransaction(deployedAddress, sendTransaction);
+      toast.success('Admin rights revoked! Your token is now fully decentralized.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to revoke admin rights');
+    } finally {
+      setRevokingAdmin(false);
+    }
+  };
 
   if (step === 'completed') {
     const stonfiUrl = getStonfiPoolUrl(deployedAddress);
@@ -55,57 +81,100 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
           </div>
         </div>
 
-        {/* STON.fi Liquidity Pool Creation */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
+        {/* Decentralize Token Option */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-2xl">🌊</span>
-            <h3 className="font-bold text-cook-text">Create Liquidity Pool</h3>
+            <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <h3 className="font-bold text-cook-text">Make Token Decentralized</h3>
           </div>
           <p className="text-sm text-cook-text-secondary mb-4">
-            Add liquidity for your token on STON.fi DEX to enable trading
+            Revoke admin rights to make your token fully decentralized. This action is <strong>IRREVERSIBLE</strong>.
           </p>
-          
-          {!showStonfi ? (
-            <button
-              onClick={() => setShowStonfi(true)}
-              className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Create Pool on STON.fi
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <div className="bg-white rounded-xl border border-blue-200 overflow-hidden">
-                <iframe
-                  src={stonfiUrl}
-                  className="w-full h-[500px]"
-                  title="STON.fi Pool Creation"
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                />
-              </div>
-              <div className="flex gap-2">
-                <a
-                  href={stonfiUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Open in New Tab
-                </a>
-                <button
-                  onClick={() => setShowStonfi(false)}
-                  className="py-2 px-4 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
+          <button
+            onClick={handleRevokeAdmin}
+            disabled={!connected || revokingAdmin}
+            className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {revokingAdmin ? (
+              <>
+                <div className="spinner" />
+                Revoking...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Revoke Admin Rights
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* STON.fi Liquidity Pool Creation */}
+        <div className="mb-6 p-4 rounded-xl border border-blue-400 shadow-lg relative overflow-hidden animate-gradient" style={{
+          background: 'linear-gradient(-45deg, #3b82f6, #06b6d4, #2563eb, #0891b2)',
+        }}>
+          <div className="relative z-10">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <Image 
+                src="https://ston.fi/images/tild3236-3266-4139-a562-376139323438__ston_logo_light.svg"
+                alt="STON.fi"
+                width={120}
+                height={25}
+                className="brightness-0 invert"
+                unoptimized
+              />
+              <h3 className="font-bold text-white text-lg">Create Liquidity Pool</h3>
             </div>
-          )}
+            <p className="text-sm text-blue-50 mb-4">
+              Add liquidity for your token on STON.fi DEX to enable trading
+            </p>
+            
+            {!showStonfi ? (
+              <button
+                onClick={() => setShowStonfi(true)}
+                className="w-full py-3 px-4 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/30 transition-all flex items-center justify-center gap-2 border border-white/30"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Create Pool on STON.fi
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden">
+                  <iframe
+                    src={stonfiUrl}
+                    className="w-full h-[500px]"
+                    title="STON.fi Pool Creation"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={stonfiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2 px-4 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors flex items-center justify-center gap-2 border border-white/30"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open in New Tab
+                  </a>
+                  <button
+                    onClick={() => setShowStonfi(false)}
+                    className="py-2 px-4 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors border border-white/30"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Actions */}
@@ -143,7 +212,7 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
         </div>
 
         {/* Additional Info */}
-        <div className="mt-8 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+        <div className="mt-8 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl">
           <div className="flex items-start gap-3 text-left">
             <svg className="w-5 h-5 text-cook-orange flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
