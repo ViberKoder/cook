@@ -44,6 +44,8 @@ export default function CooksPage() {
       const storedTokens = getCookTokens();
       const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
+      console.log('Loading tokens - hardcoded:', HARDCODED_TOKENS.length, 'stored:', storedTokens.length, 'total:', allTokenAddresses.length);
+      
       // First, load all token metadata quickly (parallel)
       const tokenMetadataPromises = allTokenAddresses.map(async (tokenAddress) => {
         try {
