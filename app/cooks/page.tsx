@@ -89,14 +89,30 @@ export default function CooksPage() {
           ]);
           const hasLiquidity = pool !== null;
           
-          // Calculate total liquidity value (reserve0 in TON + reserve1 in token value)
+          // Calculate total liquidity value
           let totalLiquidity = 0;
           if (pool) {
             try {
-              const reserve0TON = Number(pool.reserve0) / 1e9; // TON reserve
-              const reserve1Token = Number(pool.reserve1) / (10 ** parseInt(item.data.metadata?.decimals || '9'));
-              // Simple calculation: TON value * 2 (approximate)
-              totalLiquidity = reserve0TON * 2;
+              // If pool has reserves, calculate from them
+              if (pool.reserve0 && pool.reserve1 && pool.reserve0 !== '0' && pool.reserve1 !== '0') {
+                const reserve0TON = Number(pool.reserve0) / 1e9; // TON reserve
+                const reserve1Token = Number(pool.reserve1) / (10 ** parseInt(item.data.metadata?.decimals || '9'));
+                // Simple calculation: TON value * 2 (approximate)
+                totalLiquidity = reserve0TON * 2;
+              } else {
+                // If no reserves but pool exists, try to get liquidity from DYOR.io
+                try {
+                  const dyorResponse = await fetch(`https://dyor.io/api/token/${item.address.replace(/^UQ/, 'EQ')}`);
+                  if (dyorResponse.ok) {
+                    const dyorData = await dyorResponse.json();
+                    if (dyorData.liquidity) {
+                      totalLiquidity = parseFloat(dyorData.liquidity.replace(/[^0-9.]/g, '')) || 0;
+                    }
+                  }
+                } catch (e) {
+                  // Ignore DYOR errors
+                }
+              }
             } catch (e) {
               console.error('Error calculating liquidity:', e);
             }

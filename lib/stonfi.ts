@@ -13,6 +13,57 @@ export interface StonfiPool {
 }
 
 /**
+ * Check liquidity via DYOR.io API
+ */
+async function checkDyorLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
+  try {
+    // Normalize address format
+    const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
+    
+    // Try DYOR.io API
+    const response = await fetch(`https://dyor.io/api/token/${normalizedEQ}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Check if token has liquidity data
+      if (data.liquidity && parseFloat(data.liquidity) > 0) {
+        console.log(`DYOR.io found liquidity for ${tokenAddress}: $${data.liquidity}`);
+        
+        // Try to get pool address from data
+        // If DYOR has pool info, use it
+        if (data.pool_address || data.poolAddress) {
+          return {
+            address: data.pool_address || data.poolAddress || '',
+            token0: normalizedEQ,
+            token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c', // TON address
+            reserve0: '0', // DYOR doesn't provide reserves directly
+            reserve1: '0',
+            lp_total_supply: '0',
+          };
+        }
+        
+        // Even if no pool address, return a pool object to indicate liquidity exists
+        return {
+          address: '',
+          token0: normalizedEQ,
+          token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+          reserve0: '0',
+          reserve1: '0',
+          lp_total_supply: '0',
+        };
+      }
+    }
+  } catch (e) {
+    console.log('DYOR.io API check failed:', e);
+  }
+  
+  return null;
+}
+
+/**
  * Check if a token has liquidity on STON.fi
  */
 export async function checkStonfiLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
@@ -149,10 +200,30 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
       }
     }
     
-    console.log(`No liquidity found for token: ${tokenAddress}`);
+    console.log(`No liquidity found via STON.fi for token: ${tokenAddress}`);
+    
+    // Try DYOR.io as fallback
+    console.log(`Trying DYOR.io for ${tokenAddress}...`);
+    const dyorResult = await checkDyorLiquidity(tokenAddress);
+    if (dyorResult) {
+      console.log(`DYOR.io found liquidity for ${tokenAddress}`);
+      return dyorResult;
+    }
+    
     return null;
   } catch (error) {
     console.error('Error checking STON.fi liquidity:', error);
+    
+    // Try DYOR.io as fallback even on error
+    try {
+      const dyorResult = await checkDyorLiquidity(tokenAddress);
+      if (dyorResult) {
+        return dyorResult;
+      }
+    } catch (e) {
+      console.error('DYOR.io fallback also failed:', e);
+    }
+    
     return null;
   }
 }
