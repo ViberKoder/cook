@@ -140,6 +140,16 @@ export default function CooksPage() {
 
       <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
+          <div className="flex justify-center mb-4">
+            <Image 
+              src="https://em-content.zobj.net/source/telegram/386/cooking_1f373.webp" 
+              alt="Cooking" 
+              width={120}
+              height={120}
+              className="drop-shadow-lg"
+              unoptimized
+            />
+          </div>
           <h1 className="text-5xl md:text-6xl font-bold text-cook-text mb-2 text-center">
             <span className="gradient-text-cook">Cooks</span>
           </h1>
