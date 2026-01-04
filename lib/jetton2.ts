@@ -1,5 +1,5 @@
 import { Address, beginCell, Cell, contractAddress, Dictionary, internal, toNano } from '@ton/core'
-import { TonConnectUI } from '@ton/connect-react'
+import { TonConnectUI } from '@tonconnect/ui-react'
 import { sha256 } from '@ton/crypto'
 
 // Jetton 2.0 Minter Contract Code

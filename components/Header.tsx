@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useTonConnectUI, useTonWallet } from '@ton/connect-react'
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 
 export default function Header() {
   const [tonConnectUI] = useTonConnectUI()
