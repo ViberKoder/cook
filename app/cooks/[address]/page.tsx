@@ -253,11 +253,7 @@ export default function TokenPage() {
                       Has Liquidity
                     </span>
                   )}
-                  {tokenInfo.adminAddress ? (
-                    <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full text-sm font-medium">
-                      Has Admin
-                    </span>
-                  ) : (
+                  {!tokenInfo.adminAddress && (
                     <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
                       Decentralized
                     </span>
@@ -287,8 +283,14 @@ export default function TokenPage() {
                 <p className="text-lg font-bold text-cook-text">{holders.length}</p>
               </div>
               <div>
-                <p className="text-sm text-cook-text-secondary mb-1">Mintable</p>
-                <p className="text-lg font-bold text-cook-text">{tokenInfo.mintable ? 'Yes' : 'No'}</p>
+                <p className="text-sm text-cook-text-secondary mb-1">Admin Status</p>
+                <p className="text-lg font-bold text-cook-text">
+                  {tokenInfo.adminAddress ? (
+                    <span className="text-orange-600 dark:text-orange-400">Has Admin</span>
+                  ) : (
+                    <span className="text-purple-600 dark:text-purple-400">Decentralized</span>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -470,6 +472,16 @@ export default function TokenPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
               Trade on STON.fi
+            </Link>
+            <Link
+              href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
+              target="_blank"
+              className="btn-secondary flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Trade on DTrade
             </Link>
             {tokenInfo.adminAddress && (
               <Link

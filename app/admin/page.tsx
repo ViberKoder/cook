@@ -581,15 +581,15 @@ export default function AdminPage() {
                           </button>
                         </div>
 
-                        <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                          <h4 className="font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h4>
-                          <p className="text-sm text-cook-text-secondary mb-4">
+                        <div className="p-6 bg-red-100 dark:bg-red-900/40 border-2 border-red-400 dark:border-red-700 rounded-xl">
+                          <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2">Danger Zone</h4>
+                          <p className="text-sm text-red-600 dark:text-red-400 mb-4">
                             Revoking admin rights is <strong>IRREVERSIBLE</strong>. The token will become fully decentralized.
                           </p>
                           <button 
                             onClick={handleRevokeAdmin} 
                             disabled={!connected} 
-                            className="w-full py-3 px-6 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-xl transition-colors border border-red-300 dark:border-red-700"
+                            className="w-full py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             🔒 Revoke Admin Rights
                           </button>
