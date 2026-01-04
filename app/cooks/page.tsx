@@ -54,7 +54,8 @@ export default function CooksPage() {
           
           const tokenData = await tokenResponse.json();
           
-          // Return token immediately, check liquidity in background
+          // Return token immediately with default liquidity status
+          // Known tokens are assumed to have liquidity
           const token: CookToken = {
             address: tokenAddress,
             name: tokenData.metadata?.name || 'Unknown',
@@ -63,22 +64,8 @@ export default function CooksPage() {
             description: tokenData.metadata?.description,
             totalSupply: tokenData.total_supply || '0',
             decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity: true, // Default to true, will be updated if check fails
+            hasLiquidity: true, // Default to true for known tokens
           };
-          
-          // Check liquidity in background (non-blocking)
-          checkStonfiLiquidity(tokenAddress)
-            .then(pool => {
-              // Update token liquidity status if needed
-              setTokens(prev => prev.map(t => 
-                t.address === tokenAddress 
-                  ? { ...t, hasLiquidity: pool !== null }
-                  : t
-              ));
-            })
-            .catch(() => {
-              // Keep hasLiquidity as true for known tokens
-            });
           
           return token;
         } catch (err) {
