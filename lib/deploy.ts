@@ -153,14 +153,15 @@ export async function deployJettonMinter(
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
-    // Jetton 2.0 data structure (based on tolya commit):
-    // For this implementation: total_supply, admin_address, content, jetton_wallet_code
-    // NOTE: This is a simplified structure - check if your contract uses next_admin_address
+    // Jetton 2.0 data structure (from jetton-minter.fc):
+    // total_supply:Coins admin_address:MsgAddress next_admin_address:MsgAddress jetton_wallet_code:^Cell metadata_uri:^Cell
+    // CRITICAL: Order must match load_data() in contract!
     const minterData = beginCell()
       .storeCoins(0)                    // total_supply (0 for new token)
       .storeAddress(walletAddress)      // admin_address
-      .storeRef(contentCell)            // content (on-chain TEP-64 metadata with 0x00 prefix)
+      .storeAddress(null)               // next_admin_address (null initially)
       .storeRef(getWalletCode())        // jetton_wallet_code
+      .storeRef(contentCell)            // metadata_uri (on-chain TEP-64 metadata with 0x00 prefix)
       .endCell();
 
     // Verify minterData is unique
