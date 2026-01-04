@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import { getCookTokens } from '@/lib/cookTokens';
 import { checkStonfiLiquidity } from '@/lib/stonfi';
 
+// Cooks page - displays tokens created on cook.tg with liquidity
+
 interface CookToken {
   address: string;
   name: string;
