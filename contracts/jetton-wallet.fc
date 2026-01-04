@@ -226,3 +226,4 @@
     (int balance, slice owner_address, slice jetton_master_address) = load_data();
     return (balance, owner_address, jetton_master_address, my_code());
 }
+

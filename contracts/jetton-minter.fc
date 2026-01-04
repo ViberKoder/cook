@@ -227,3 +227,4 @@ slice get_next_admin_address() method_id {
     (int total_supply, slice admin_address, slice next_admin_address, cell jetton_wallet_code, cell metadata_uri) = load_data();
     return next_admin_address;
 }
+

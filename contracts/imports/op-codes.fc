@@ -9,3 +9,4 @@ int op::burn_notification() asm "0x7bdd97de";
 int op::change_admin() asm "0x03";
 int op::change_content() asm "0x04";
 
+
