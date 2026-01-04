@@ -10,6 +10,7 @@ export interface StonfiPool {
   reserve0: string;
   reserve1: string;
   lp_total_supply: string;
+  totalLiquidityUsd?: number; // Added for DYOR.io liquidity
 }
 
 /**
