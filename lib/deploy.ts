@@ -162,9 +162,6 @@ export function buildOffchainMetadataCell(uri: string): Cell {
     .endCell();
 }
 
-// Export for admin panel
-export { buildOnchainMetadataCell, buildOffchainMetadataCell };
-
 export async function deployJettonMinter(
   tokenData: TokenData,
   walletAddress: Address,
