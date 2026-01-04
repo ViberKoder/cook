@@ -1,10 +1,11 @@
 import { Address, beginCell, Cell, toNano, contractAddress, storeStateInit } from '@ton/core';
 import { SendTransactionParams } from '@/hooks/useTonConnect';
+import { COOKPAD_FEE_WALLET, COOKPAD_MAX_LIQUIDITY_TON, COOKPAD_FEE_PERCENT } from './cookpadConfig';
 
-// Cookpad contract constants
-const FEE_WALLET = 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
-const MAX_LIQUIDITY_TON = 300;
-const FEE_PERCENT = 1;
+// Export constants for backward compatibility
+export const FEE_WALLET = COOKPAD_FEE_WALLET;
+export const MAX_LIQUIDITY_TON = COOKPAD_MAX_LIQUIDITY_TON;
+export const FEE_PERCENT = COOKPAD_FEE_PERCENT;
 
 // Operation codes - these are string hashes from the contract
 // "op::buy"c hash = sha256("op::buy")

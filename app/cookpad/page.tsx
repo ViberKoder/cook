@@ -11,11 +11,14 @@ import {
   sendSellTokensTransaction,
   calculateBuyPrice,
   calculateSellPrice,
-  FEE_WALLET,
-  MAX_LIQUIDITY_TON,
-  FEE_PERCENT,
   type CookpadState
 } from '@/lib/cookpad';
+import { 
+  COOKPAD_CONTRACT_ADDRESS,
+  COOKPAD_FEE_WALLET,
+  COOKPAD_MAX_LIQUIDITY_TON,
+  COOKPAD_FEE_PERCENT
+} from '@/lib/cookpadConfig';
 import toast from 'react-hot-toast';
 
 export default function CookpadPage() {
@@ -26,8 +29,8 @@ export default function CookpadPage() {
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(true);
   
-  // Contract address - will be set after deployment
-  const COOKPAD_CONTRACT = ''; // TODO: Set after contract deployment
+  // Contract address from config
+  const COOKPAD_CONTRACT = COOKPAD_CONTRACT_ADDRESS;
 
   useEffect(() => {
     if (COOKPAD_CONTRACT) {
@@ -55,6 +58,11 @@ export default function CookpadPage() {
   const totalLiquidity = cookpadState ? parseFloat(cookpadState.totalLiquidity) / 1e9 : 0;
   const tokenSupply = cookpadState ? parseFloat(cookpadState.totalSupply) / 1e9 : 0;
   const currentPrice = cookpadState?.currentPrice || 0;
+  
+  // Use constants from config
+  const MAX_LIQUIDITY_TON = COOKPAD_MAX_LIQUIDITY_TON;
+  const FEE_PERCENT = COOKPAD_FEE_PERCENT;
+  const FEE_WALLET = COOKPAD_FEE_WALLET;
 
   const handleBuy = async () => {
     if (!connected || !wallet) {
@@ -73,8 +81,8 @@ export default function CookpadPage() {
       return;
     }
 
-    if (totalLiquidity + amount > MAX_LIQUIDITY_TON) {
-      toast.error(`Maximum liquidity of ${MAX_LIQUIDITY_TON} TON reached. Token will be listed on DEX.`);
+    if (totalLiquidity + amount > COOKPAD_MAX_LIQUIDITY_TON) {
+      toast.error(`Maximum liquidity of ${COOKPAD_MAX_LIQUIDITY_TON} TON reached. Token will be listed on DEX.`);
       return;
     }
 
@@ -130,7 +138,7 @@ export default function CookpadPage() {
   // Calculate prices for display
   const buyPrice = buyAmount ? calculateBuyPrice(tokenSupply, parseFloat(buyAmount)) : 0;
   const sellPrice = sellAmount ? calculateSellPrice(tokenSupply, parseFloat(sellAmount)) : 0;
-  const buyFee = buyPrice * (FEE_PERCENT / 100);
+  const buyFee = buyPrice * (COOKPAD_FEE_PERCENT / 100);
   const totalBuyCost = parseFloat(buyAmount) + buyFee;
 
   return (
@@ -169,12 +177,12 @@ export default function CookpadPage() {
             <div className="card text-center">
               <p className="text-sm text-cook-text-secondary mb-1">Total Liquidity</p>
               <p className="text-2xl font-bold text-cook-text">
-                {totalLiquidity.toFixed(2)} / {MAX_LIQUIDITY_TON} TON
+                {totalLiquidity.toFixed(2)} / {COOKPAD_MAX_LIQUIDITY_TON} TON
               </p>
               <div className="mt-2 w-full bg-cook-bg-secondary rounded-full h-2">
                 <div 
                   className="bg-gradient-to-r from-orange-500 to-yellow-600 h-2 rounded-full transition-all"
-                  style={{ width: `${Math.min((totalLiquidity / MAX_LIQUIDITY_TON) * 100, 100)}%` }}
+                  style={{ width: `${Math.min((totalLiquidity / COOKPAD_MAX_LIQUIDITY_TON) * 100, 100)}%` }}
                 />
               </div>
             </div>
@@ -218,7 +226,7 @@ export default function CookpadPage() {
                       <span className="text-cook-text font-medium">{buyPrice.toFixed(6)} TON</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-cook-text-secondary">Fee ({FEE_PERCENT}%)</span>
+                      <span className="text-cook-text-secondary">Fee ({COOKPAD_FEE_PERCENT}%)</span>
                       <span className="text-cook-text font-medium">{buyFee.toFixed(6)} TON</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-cook-border">
@@ -229,10 +237,10 @@ export default function CookpadPage() {
                 )}
                 <button
                   onClick={handleBuy}
-                  disabled={!connected || !buyAmount || loading || totalLiquidity >= MAX_LIQUIDITY_TON || !COOKPAD_CONTRACT}
+                  disabled={!connected || !buyAmount || loading || totalLiquidity >= COOKPAD_MAX_LIQUIDITY_TON || !COOKPAD_CONTRACT}
                   className="btn-cook w-full"
                 >
-                  {loading ? 'Processing...' : totalLiquidity >= MAX_LIQUIDITY_TON ? 'Max Liquidity Reached' : 'Buy Tokens'}
+                  {loading ? 'Processing...' : totalLiquidity >= COOKPAD_MAX_LIQUIDITY_TON ? 'Max Liquidity Reached' : 'Buy Tokens'}
                 </button>
               </div>
             </div>
@@ -261,12 +269,12 @@ export default function CookpadPage() {
                       <span className="text-cook-text font-medium">{sellPrice.toFixed(6)} TON</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-cook-text-secondary">Fee ({FEE_PERCENT}%)</span>
-                      <span className="text-cook-text font-medium">{(sellPrice * FEE_PERCENT / 100).toFixed(6)} TON</span>
+                      <span className="text-cook-text-secondary">Fee ({COOKPAD_FEE_PERCENT}%)</span>
+                      <span className="text-cook-text font-medium">{(sellPrice * COOKPAD_FEE_PERCENT / 100).toFixed(6)} TON</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-cook-border">
                       <span className="text-cook-text">Total</span>
-                      <span className="text-cook-orange">{(sellPrice * (1 - FEE_PERCENT / 100)).toFixed(6)} TON</span>
+                      <span className="text-cook-orange">{(sellPrice * (1 - COOKPAD_FEE_PERCENT / 100)).toFixed(6)} TON</span>
                     </div>
                   </div>
                 )}
@@ -290,10 +298,10 @@ export default function CookpadPage() {
                 The bonding curve creates virtual liquidity until 300 TON is reached.
               </p>
               <p>
-                <strong className="text-cook-text">Fees:</strong> {FEE_PERCENT}% of each transaction goes to the fee wallet ({FEE_WALLET.slice(0, 8)}...{FEE_WALLET.slice(-6)}).
+                <strong className="text-cook-text">Fees:</strong> {COOKPAD_FEE_PERCENT}% of each transaction goes to the fee wallet ({COOKPAD_FEE_WALLET.slice(0, 8)}...{COOKPAD_FEE_WALLET.slice(-6)}).
               </p>
               <p>
-                <strong className="text-cook-text">DEX Listing:</strong> Once {MAX_LIQUIDITY_TON} TON liquidity is reached, 
+                <strong className="text-cook-text">DEX Listing:</strong> Once {COOKPAD_MAX_LIQUIDITY_TON} TON liquidity is reached, 
                 the token will be automatically listed on STON.fi DEX for trading.
               </p>
               {!COOKPAD_CONTRACT && (
