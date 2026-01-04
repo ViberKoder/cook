@@ -144,7 +144,6 @@ export async function deployJettonMinter(
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
-      calculatedAddress: calculatedAddress.toString(),
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
