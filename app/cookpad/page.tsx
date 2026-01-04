@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
@@ -35,15 +36,7 @@ export default function CookpadPage() {
   const contractFromUrl = searchParams.get('contract');
   const COOKPAD_CONTRACT = contractFromUrl || COOKPAD_CONTRACT_ADDRESS;
 
-  useEffect(() => {
-    if (COOKPAD_CONTRACT) {
-      loadState();
-    } else {
-      setLoadingState(false);
-    }
-  }, [COOKPAD_CONTRACT]);
-
-  const loadState = async () => {
+  const loadState = useCallback(async () => {
     if (!COOKPAD_CONTRACT) return;
     
     setLoadingState(true);
@@ -56,7 +49,15 @@ export default function CookpadPage() {
     } finally {
       setLoadingState(false);
     }
-  };
+  }, [COOKPAD_CONTRACT]);
+
+  useEffect(() => {
+    if (COOKPAD_CONTRACT) {
+      loadState();
+    } else {
+      setLoadingState(false);
+    }
+  }, [COOKPAD_CONTRACT, loadState]);
 
   const totalLiquidity = cookpadState ? parseFloat(cookpadState.totalLiquidity) / 1e9 : 0;
   const tokenSupply = cookpadState ? parseFloat(cookpadState.totalSupply) / 1e9 : 0;
