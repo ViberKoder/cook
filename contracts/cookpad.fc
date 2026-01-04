@@ -1,0 +1,175 @@
+;; Cookpad - Memepad with bonding curve
+;; Bonding curve ends at 300 TON
+;; 1% fee goes to UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz
+;; After 300 TON, token goes to DEX app.ston.fi
+
+#include "imports/stdlib.fc";
+
+;; Constants
+(int) MAX_LIQUIDITY = 300 * 1000000000; ;; 300 TON in nanotons
+(int) FEE_PERCENT = 1; ;; 1% fee
+(slice) FEE_WALLET = "UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz";
+
+;; Storage structure
+;; total_liquidity: int - total TON collected
+;; total_supply: int - total tokens minted
+;; jetton_master: slice - jetton master address
+;; jetton_wallet_code: cell - jetton wallet code
+;; metadata: cell - token metadata
+
+(slice, int, int, int, cell, cell) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_msg_addr(), ;; jetton_master
+        ds~load_coins(), ;; total_liquidity
+        ds~load_coins(), ;; total_supply
+        ds~load_coins(), ;; reserve (for bonding curve calculation)
+        ds~load_ref(), ;; jetton_wallet_code
+        ds~load_ref()  ;; metadata
+    );
+}
+
+() save_data(slice jetton_master, int total_liquidity, int total_supply, int reserve, cell jetton_wallet_code, cell metadata) impure {
+    set_data(
+        begin_cell()
+            .store_slice(jetton_master)
+            .store_coins(total_liquidity)
+            .store_coins(total_supply)
+            .store_coins(reserve)
+            .store_ref(jetton_wallet_code)
+            .store_ref(metadata)
+        .end_cell()
+    );
+}
+
+;; Bonding curve formula: price = k * supply^2
+;; For 300 TON max liquidity: k = 300 / (max_supply^2)
+(int) calculate_buy_price(int supply, int amount) inline {
+    ;; Simple linear bonding curve: price increases with supply
+    ;; price = base_price + (supply * price_increase_per_token)
+    int base_price = 1000000; ;; 0.001 TON base price
+    int price_increase = 100; ;; 0.0000001 TON per token
+    int avg_supply = supply + (amount / 2);
+    return base_price * amount + (avg_supply * price_increase * amount);
+}
+
+(int) calculate_sell_price(int supply, int amount) inline {
+    ;; Slightly lower than buy price (spread)
+    int buy_price = calculate_buy_price(supply - amount, amount);
+    return buy_price * 95 / 100; ;; 5% spread
+}
+
+() recv_internal(int my_balance, int in_msg_full, int in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+
+    var (jetton_master, total_liquidity, total_supply, reserve, jetton_wallet_code, metadata) = load_data();
+
+    int op = in_msg_body~load_uint(32);
+    
+    if (op == 0x2593855d) { ;; buy_tokens
+        int query_id = in_msg_body~load_uint(64);
+        int min_tokens = in_msg_body~load_coins();
+        
+        int ton_amount = my_balance - 100000000; ;; reserve 0.1 TON for fees
+        
+        if (total_liquidity + ton_amount > MAX_LIQUIDITY) {
+            ;; Max liquidity reached - should trigger DEX listing
+            ;; For now, reject the transaction
+            return ();
+        }
+        
+        ;; Calculate tokens to mint
+        int tokens_to_mint = calculate_buy_price(total_supply, ton_amount) / 1000000000; ;; approximate
+        if (tokens_to_mint < min_tokens) {
+            return (); ;; revert
+        }
+        
+        ;; Calculate fee (1%)
+        int fee = ton_amount * FEE_PERCENT / 100;
+        int net_amount = ton_amount - fee;
+        
+        ;; Update state
+        total_liquidity = total_liquidity + net_amount;
+        total_supply = total_supply + tokens_to_mint;
+        reserve = reserve + net_amount;
+        
+        save_data(jetton_master, total_liquidity, total_supply, reserve, jetton_wallet_code, metadata);
+        
+        ;; Send fee to fee wallet
+        send_raw_message(
+            begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(FEE_WALLET)
+                .store_coins(fee)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .end_cell(),
+            1
+        );
+        
+        ;; Mint tokens to sender
+        ;; TODO: Implement jetton minting
+        
+    } elseif (op == 0xc4c5e33b) { ;; sell_tokens
+        int query_id = in_msg_body~load_uint(64);
+        int tokens_amount = in_msg_body~load_coins();
+        int min_ton = in_msg_body~load_coins();
+        
+        ;; Calculate TON to return
+        int ton_to_return = calculate_sell_price(total_supply, tokens_amount);
+        if (ton_to_return < min_ton) {
+            return (); ;; revert
+        }
+        
+        ;; Calculate fee (1%)
+        int fee = ton_to_return * FEE_PERCENT / 100;
+        int net_return = ton_to_return - fee;
+        
+        ;; Update state
+        total_supply = total_supply - tokens_amount;
+        reserve = reserve - ton_to_return;
+        
+        save_data(jetton_master, total_liquidity, total_supply, reserve, jetton_wallet_code, metadata);
+        
+        ;; Send fee to fee wallet
+        send_raw_message(
+            begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(FEE_WALLET)
+                .store_coins(fee)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .end_cell(),
+            1
+        );
+        
+        ;; Return TON to sender
+        send_raw_message(
+            begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(sender_address)
+                .store_coins(net_return)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .end_cell(),
+            1
+        );
+        
+        ;; TODO: Burn tokens from sender
+    }
+}
+
+() recv_external(slice in_msg) impure {
+    throw(0x80); ;; not implemented
+}
+
+int main() {
+    return 0;
+}
+

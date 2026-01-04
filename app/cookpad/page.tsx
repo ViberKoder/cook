@@ -5,83 +5,90 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { Address, beginCell, toNano } from '@ton/core';
-
-// Cookpad - memepad with bonding curve
-// Bonding curve ends at 300 TON
-// 1% fee goes to UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz
-// After 300 TON, token goes to DEX app.ston.fi
-
-const FEE_WALLET = 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
-const MAX_TON_LIQUIDITY = 300; // Bonding curve ends at 300 TON
-const FEE_PERCENT = 1; // 1% fee
+import { 
+  loadCookpadState, 
+  sendBuyTokensTransaction, 
+  sendSellTokensTransaction,
+  calculateBuyPrice,
+  calculateSellPrice,
+  FEE_WALLET,
+  MAX_LIQUIDITY_TON,
+  FEE_PERCENT,
+  type CookpadState
+} from '@/lib/cookpad';
+import toast from 'react-hot-toast';
 
 export default function CookpadPage() {
   const { connected, wallet, sendTransaction } = useTonConnect();
   const [buyAmount, setBuyAmount] = useState('');
   const [sellAmount, setSellAmount] = useState('');
-  const [totalLiquidity, setTotalLiquidity] = useState(0);
-  const [tokenSupply, setTokenSupply] = useState(0);
-  const [currentPrice, setCurrentPrice] = useState(0);
+  const [cookpadState, setCookpadState] = useState<CookpadState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState(true);
+  
+  // Contract address - will be set after deployment
+  const COOKPAD_CONTRACT = ''; // TODO: Set after contract deployment
 
   useEffect(() => {
-    // Load cookpad state from contract
-    loadCookpadState();
-  }, []);
+    if (COOKPAD_CONTRACT) {
+      loadState();
+    } else {
+      setLoadingState(false);
+    }
+  }, [COOKPAD_CONTRACT]);
 
-  const loadCookpadState = async () => {
-    // TODO: Load from contract
-    // For now, placeholder values
-    setTotalLiquidity(0);
-    setTokenSupply(0);
-    setCurrentPrice(0);
+  const loadState = async () => {
+    if (!COOKPAD_CONTRACT) return;
+    
+    setLoadingState(true);
+    try {
+      const state = await loadCookpadState(COOKPAD_CONTRACT);
+      setCookpadState(state);
+    } catch (error: any) {
+      console.error('Failed to load cookpad state:', error);
+      toast.error('Failed to load cookpad state');
+    } finally {
+      setLoadingState(false);
+    }
   };
 
-  // Bonding curve formula: price = k * supply^2
-  // For 300 TON max liquidity, k = 300 / (max_supply^2)
-  const calculateBuyPrice = (amount: number) => {
-    // Simple linear bonding curve for now
-    // Price increases with supply
-    const basePrice = 0.0001; // Base price per token
-    const priceIncrease = tokenSupply * 0.000001;
-    return (basePrice + priceIncrease) * amount;
-  };
-
-  const calculateSellPrice = (amount: number) => {
-    // Slightly lower than buy price (spread)
-    const buyPrice = calculateBuyPrice(amount);
-    return buyPrice * 0.95; // 5% spread
-  };
+  const totalLiquidity = cookpadState ? parseFloat(cookpadState.totalLiquidity) / 1e9 : 0;
+  const tokenSupply = cookpadState ? parseFloat(cookpadState.totalSupply) / 1e9 : 0;
+  const currentPrice = cookpadState?.currentPrice || 0;
 
   const handleBuy = async () => {
     if (!connected || !wallet) {
-      alert('Please connect your wallet');
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!COOKPAD_CONTRACT) {
+      toast.error('Cookpad contract not deployed yet');
       return;
     }
 
     const amount = parseFloat(buyAmount);
     if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+      toast.error('Please enter a valid amount');
       return;
     }
 
-    const tonAmount = toNano(amount.toString());
-    const fee = tonAmount * BigInt(FEE_PERCENT) / BigInt(100);
-    const totalAmount = tonAmount + fee;
-
-    if (totalLiquidity + amount > MAX_TON_LIQUIDITY) {
-      alert(`Maximum liquidity of ${MAX_TON_LIQUIDITY} TON reached. Token will be listed on DEX.`);
+    if (totalLiquidity + amount > MAX_LIQUIDITY_TON) {
+      toast.error(`Maximum liquidity of ${MAX_LIQUIDITY_TON} TON reached. Token will be listed on DEX.`);
       return;
     }
+
+    // Calculate tokens to receive
+    const tokensToReceive = calculateBuyPrice(tokenSupply, amount);
+    const minTokens = tokensToReceive * 0.95; // 5% slippage tolerance
 
     setLoading(true);
     try {
-      // TODO: Send buy transaction to cookpad contract
-      // For now, just show success
-      alert('Buy transaction will be implemented with contract');
+      await sendBuyTokensTransaction(COOKPAD_CONTRACT, buyAmount, minTokens.toString(), sendTransaction);
+      toast.success('Buy transaction sent!');
+      setTimeout(() => loadState(), 3000); // Reload state after 3 seconds
     } catch (error: any) {
-      alert(error.message || 'Buy failed');
+      toast.error(error.message || 'Buy failed');
     } finally {
       setLoading(false);
     }
@@ -89,31 +96,42 @@ export default function CookpadPage() {
 
   const handleSell = async () => {
     if (!connected || !wallet) {
-      alert('Please connect your wallet');
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!COOKPAD_CONTRACT) {
+      toast.error('Cookpad contract not deployed yet');
       return;
     }
 
     const amount = parseFloat(sellAmount);
     if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+      toast.error('Please enter a valid amount');
       return;
     }
 
+    // Calculate TON to receive
+    const tonToReceive = calculateSellPrice(tokenSupply, amount);
+    const minTon = tonToReceive * 0.95; // 5% slippage tolerance
+
     setLoading(true);
     try {
-      // TODO: Send sell transaction to cookpad contract
-      alert('Sell transaction will be implemented with contract');
+      await sendSellTokensTransaction(COOKPAD_CONTRACT, sellAmount, minTon.toString(), sendTransaction);
+      toast.success('Sell transaction sent!');
+      setTimeout(() => loadState(), 3000); // Reload state after 3 seconds
     } catch (error: any) {
-      alert(error.message || 'Sell failed');
+      toast.error(error.message || 'Sell failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const buyPrice = buyAmount ? calculateBuyPrice(parseFloat(buyAmount)) : 0;
-  const sellPrice = sellAmount ? calculateSellPrice(parseFloat(sellAmount)) : 0;
+  // Calculate prices for display
+  const buyPrice = buyAmount ? calculateBuyPrice(tokenSupply, parseFloat(buyAmount)) : 0;
+  const sellPrice = sellAmount ? calculateSellPrice(tokenSupply, parseFloat(sellAmount)) : 0;
   const buyFee = buyPrice * (FEE_PERCENT / 100);
-  const totalBuyCost = buyPrice + buyFee;
+  const totalBuyCost = parseFloat(buyAmount) + buyFee;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -151,12 +169,12 @@ export default function CookpadPage() {
             <div className="card text-center">
               <p className="text-sm text-cook-text-secondary mb-1">Total Liquidity</p>
               <p className="text-2xl font-bold text-cook-text">
-                {totalLiquidity.toFixed(2)} / {MAX_TON_LIQUIDITY} TON
+                {totalLiquidity.toFixed(2)} / {MAX_LIQUIDITY_TON} TON
               </p>
               <div className="mt-2 w-full bg-cook-bg-secondary rounded-full h-2">
                 <div 
                   className="bg-gradient-to-r from-orange-500 to-yellow-600 h-2 rounded-full transition-all"
-                  style={{ width: `${(totalLiquidity / MAX_TON_LIQUIDITY) * 100}%` }}
+                  style={{ width: `${Math.min((totalLiquidity / MAX_LIQUIDITY_TON) * 100, 100)}%` }}
                 />
               </div>
             </div>
@@ -211,10 +229,10 @@ export default function CookpadPage() {
                 )}
                 <button
                   onClick={handleBuy}
-                  disabled={!connected || !buyAmount || loading || totalLiquidity >= MAX_TON_LIQUIDITY}
+                  disabled={!connected || !buyAmount || loading || totalLiquidity >= MAX_LIQUIDITY_TON || !COOKPAD_CONTRACT}
                   className="btn-cook w-full"
                 >
-                  {loading ? 'Processing...' : 'Buy Tokens'}
+                  {loading ? 'Processing...' : totalLiquidity >= MAX_LIQUIDITY_TON ? 'Max Liquidity Reached' : 'Buy Tokens'}
                 </button>
               </div>
             </div>
@@ -272,12 +290,19 @@ export default function CookpadPage() {
                 The bonding curve creates virtual liquidity until 300 TON is reached.
               </p>
               <p>
-                <strong className="text-cook-text">Fees:</strong> {FEE_PERCENT}% of each transaction goes to the fee wallet.
+                <strong className="text-cook-text">Fees:</strong> {FEE_PERCENT}% of each transaction goes to the fee wallet ({FEE_WALLET.slice(0, 8)}...{FEE_WALLET.slice(-6)}).
               </p>
               <p>
-                <strong className="text-cook-text">DEX Listing:</strong> Once 300 TON liquidity is reached, 
+                <strong className="text-cook-text">DEX Listing:</strong> Once {MAX_LIQUIDITY_TON} TON liquidity is reached, 
                 the token will be automatically listed on STON.fi DEX for trading.
               </p>
+              {!COOKPAD_CONTRACT && (
+                <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                  <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                    <strong>Note:</strong> Cookpad contract is not deployed yet. This is a preview interface.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
