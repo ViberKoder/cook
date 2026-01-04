@@ -47,8 +47,7 @@ export default function CooksPage() {
       const storedTokens = getCookTokens(); // Returns string[]
       const allTokenAddresses = storedTokens; // Only tokens added via "Add on Cooks"
       
-      console.log('Loading tokens from Cooks:', {
-        hardcoded: HARDCODED_TOKENS.length,
+      console.log('Loading tokens from Cooks (only paid tokens):', {
         fromStorage: storedTokens.length,
         total: allTokenAddresses.length,
       });
