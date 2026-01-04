@@ -10,7 +10,7 @@
  */
 
 import { beginCell, Cell, Dictionary } from '@ton/core';
-import { sha256_sync } from '@ton/crypto';
+import { Sha256 } from '@aws-crypto/sha256-js';
 
 export interface JettonMetadata {
   name: string;
@@ -26,10 +26,53 @@ export interface JettonMetadata {
  * @param metadata - Token metadata object
  * @returns Cell with TEP-64 on-chain metadata (prefix 0x00 + dictionary)
  */
+// SHA256 hash function (matching minter-frontend implementation)
+function sha256(str: string): Buffer {
+  const hash = new Sha256();
+  hash.update(str);
+  return Buffer.from(hash.digestSync());
+}
+
+// Convert string to snake format cell (matching minter-frontend implementation)
+function makeSnakeCell(data: Buffer): Cell {
+  const CELL_MAX_SIZE_BYTES = 127;
+  
+  const chunks: Buffer[] = [];
+  let remaining = data;
+  
+  while (remaining.length > 0) {
+    chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES));
+    remaining = remaining.slice(CELL_MAX_SIZE_BYTES);
+  }
+  
+  // Build from the end
+  let currentCell: Cell | null = null;
+  
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const builder = beginCell();
+    
+    if (i === 0) {
+      // First chunk - add snake prefix
+      builder.storeUint(0, 8);
+    }
+    
+    builder.storeBuffer(chunks[i]);
+    
+    if (currentCell) {
+      builder.storeRef(currentCell);
+    }
+    
+    currentCell = builder.endCell();
+  }
+  
+  return currentCell || beginCell().storeUint(0, 8).endCell();
+}
+
 export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  // Build dictionary: key = sha256(key_name) as BigUint(256), value = Cell with string
-  const dict = Dictionary.empty<bigint, Cell>(
-    Dictionary.Keys.BigUint(256),
+  // Build dictionary: key = sha256(key_name) as Buffer(32), value = Cell with snake string
+  // Using Buffer(32) keys like in minter-frontend for better compatibility
+  const dict = Dictionary.empty<Buffer, Cell>(
+    Dictionary.Keys.Buffer(32),
     Dictionary.Values.Cell()
   );
 
@@ -39,18 +82,17 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   for (const key of keys) {
     const value = metadata[key];
     if (value && value.trim() !== '') {
-      // Hash the key name to get BigUint(256)
-      const keyHash = BigInt('0x' + sha256_sync(key).toString('hex'));
+      // Hash the key name to get Buffer(32)
+      const keyHash = sha256(key);
       
-      // Store value as snake-string (storeStringTail handles long strings automatically)
-      const valueCell = beginCell()
-        .storeStringTail(value)
-        .endCell();
+      // Store value as snake-string using makeSnakeCell (matching minter-frontend)
+      const valueBuffer = Buffer.from(value, 'utf-8');
+      const valueCell = makeSnakeCell(valueBuffer);
       
       dict.set(keyHash, valueCell);
       
       console.log(`Added metadata key "${key}":`, {
-        keyHash: keyHash.toString(16),
+        keyHash: keyHash.toString('hex'),
         valueLength: value.length,
         valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
       });
@@ -92,7 +134,7 @@ export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
   
   // Load dictionary
   const dict = slice.loadDict(
-    Dictionary.Keys.BigUint(256),
+    Dictionary.Keys.Buffer(32),
     Dictionary.Values.Cell()
   );
   
@@ -102,15 +144,34 @@ export function parseTokenMetadataCell(cell: Cell): Partial<JettonMetadata> {
   const keys: (keyof JettonMetadata)[] = ['name', 'symbol', 'description', 'image', 'decimals'];
   
   for (const key of keys) {
-    const keyBuffer = sha256_sync(key);
-    const keyBigInt = BigInt('0x' + keyBuffer.toString('hex'));
-    const valueCell = dict.get(keyBigInt);
+    const keyHash = sha256(key);
+    const valueCell = dict.get(keyHash);
     
     if (valueCell) {
       try {
-        const valueSlice = valueCell.beginParse();
-        const value = valueSlice.loadStringTail();
-        result[key] = value as any;
+        // Parse snake cell
+        let valueSlice = valueCell.beginParse();
+        const chunks: Buffer[] = [];
+        
+        // Skip snake prefix if present
+        if (valueSlice.remainingBits >= 8) {
+          const prefix = valueSlice.loadUint(8);
+          if (prefix === 0) {
+            // Snake format - read chunks
+            while (true) {
+              const bits = valueSlice.remainingBits;
+              if (bits > 0) {
+                chunks.push(valueSlice.loadBuffer(Math.floor(bits / 8)));
+              }
+              if (valueSlice.remainingRefs === 0) {
+                break;
+              }
+              valueSlice = valueSlice.loadRef().beginParse();
+            }
+            const value = Buffer.concat(chunks).toString('utf-8');
+            result[key] = value as any;
+          }
+        }
       } catch (e) {
         console.warn(`Failed to parse metadata key "${key}":`, e);
       }
