@@ -150,7 +150,7 @@ export default function CooksPage() {
           {loading && (
             <div className="card text-center py-12">
               <div className="spinner mx-auto mb-4" />
-              <p className="text-cook-text-secondary">Loading tokens from DYOR.io...</p>
+              <p className="text-cook-text-secondary">Loading cooks</p>
             </div>
           )}
 
@@ -168,7 +168,7 @@ export default function CooksPage() {
               {/* Add Token Button */}
               <div className="flex justify-center mb-8">
                 <Link
-                  href="/"
+                  href="/cooks/add"
                   className="btn-cook flex items-center justify-center gap-2 text-lg px-8 py-4"
                 >
                   <Image 

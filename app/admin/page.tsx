@@ -344,8 +344,8 @@ export default function AdminPage() {
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     {isAdmin && (
-                      <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-sm font-medium">
-                        You are Admin
+                      <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'rgba(220, 252, 231, 0.15)' }}>
+                        <span className="font-bold" style={{ color: '#10b981' }}>You are Admin</span>
                       </span>
                     )}
                     <button
@@ -635,18 +635,23 @@ export default function AdminPage() {
                           </button>
                         </div>
 
-                        <div className="p-6 bg-red-100 dark:bg-red-900/40 border-2 border-red-400 dark:border-red-700 rounded-xl">
-                          <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2">Danger Zone</h4>
-                          <p className="text-sm text-red-600 dark:text-red-400 mb-4">
-                            Revoking admin rights is <strong>IRREVERSIBLE</strong>. The token will become fully decentralized.
-                          </p>
-                          <button 
-                            onClick={handleRevokeAdmin} 
-                            disabled={!connected} 
-                            className="w-full py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            🔒 Revoke Admin Rights
-                          </button>
+                        <div className="p-6 rounded-xl border-2 border-red-400 dark:border-red-700 shadow-lg relative overflow-hidden animate-gradient" style={{
+                          background: 'linear-gradient(-45deg, #ef4444, #dc2626, #b91c1c, #991b1b, #dc2626, #ef4444)',
+                          backgroundSize: '200% 200%',
+                        }}>
+                          <div className="relative z-10">
+                            <h4 className="font-semibold text-white mb-2">Danger Zone</h4>
+                            <p className="text-sm text-white mb-4">
+                              Revoking admin rights is <strong className="text-white">IRREVERSIBLE</strong>. The token will become fully decentralized.
+                            </p>
+                            <button 
+                              onClick={handleRevokeAdmin} 
+                              disabled={!connected} 
+                              className="w-full py-3 px-6 bg-white/20 backdrop-blur-sm text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-white/30 hover:bg-white/30"
+                            >
+                              🔒 Revoke Admin Rights
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
