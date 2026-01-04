@@ -27,59 +27,29 @@ export interface JettonMetadata {
 }
 
 /**
- * Build metadata URI for Jetton 2.0
+ * Build metadata URI for Jetton 2.0 (off-chain metadata)
  * 
- * Strategy: Use API endpoint URL for better explorer compatibility.
- * The API endpoint will read the data URI from contract and return JSON.
- * This provides the best of both worlds: on-chain storage + explorer compatibility.
+ * Uses API endpoint URL for better explorer compatibility.
+ * The API endpoint stores and serves metadata JSON.
  * 
- * Fallback: If contractAddress is not provided, use data URI directly.
+ * @param metadata - Token metadata object
+ * @param contractAddress - Contract address (required for off-chain metadata)
+ * @returns API endpoint URL
  */
-export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
-  // If we have contract address, use API endpoint for better explorer support
-  // The API will read data URI from contract and return JSON
-  if (contractAddress) {
-    // Use API endpoint that will serve metadata from contract
-    const apiUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/jetton-metadata/${contractAddress}`
-      : `https://www.cook.tg/api/jetton-metadata/${contractAddress}`;
-    
-    console.log('Using API endpoint for metadata:', apiUrl);
-    return apiUrl;
-  }
+export function buildMetadataUri(metadata: JettonMetadata, contractAddress: string): string {
+  // Use API endpoint that will serve metadata
+  // The API will store metadata when contract is deployed
+  const apiUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/api/jetton-metadata/${contractAddress}`
+    : `https://www.cook.tg/api/jetton-metadata/${contractAddress}`;
   
-  // Use data URI with URL encoding (like minter-frontend reference)
-  // This format: data:application/json,<url_encoded_json>
-  // May be more compatible with some explorers than base64
-  const jsonMetadata: any = {
-    name: metadata.name,
-    symbol: metadata.symbol,
-    description: metadata.description || metadata.name,
-    decimals: metadata.decimals || '9',
-  };
+  console.log('Using API endpoint for off-chain metadata:', apiUrl);
   
-  // Add image if provided
-  if (metadata.image && metadata.image.trim()) {
-    jsonMetadata.image = metadata.image.trim();
-  }
-  
-  const jsonString = JSON.stringify(jsonMetadata);
-  
-  // Use URL encoding (like the reference minter-frontend)
-  // Format: data:application/json,<url_encoded_json>
-  const dataUri = `data:application/json,${encodeURIComponent(jsonString)}`;
-  
-  console.log('Built metadata data URI (URL encoded):', {
-    jsonLength: jsonString.length,
-    uriLength: dataUri.length,
-    jsonPreview: jsonString.substring(0, 100) + '...',
-  });
-  
-  return dataUri;
+  return apiUrl;
 }
 
 /**
- * Build metadata URI cell for Jetton 2.0 contract
+ * Build metadata URI cell for Jetton 2.0 contract (off-chain metadata)
  * 
  * CRITICAL: Jetton 2.0 expects URI in content cell, not TEP-64 dictionary directly!
  * The contract will automatically convert this URI to TEP-64 format
@@ -91,10 +61,11 @@ export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: str
  * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  * 
  * @param metadata - Token metadata object
+ * @param contractAddress - Contract address (required for off-chain metadata)
  * @returns Cell with metadata URI stored in ref
  */
-export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  const uri = buildMetadataUri(metadata);
+export function buildTokenMetadataCell(metadata: JettonMetadata, contractAddress: string): Cell {
+  const uri = buildMetadataUri(metadata, contractAddress);
   
   console.log('Building metadata URI for Jetton 2.0:', {
     uriLength: uri.length,

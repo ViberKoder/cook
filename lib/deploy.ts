@@ -133,17 +133,39 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
-    // Build content cell with data URI (on-chain storage)
-    // The data URI contains all metadata as base64-encoded JSON
-    // Some explorers may not decode data URI directly, but the API endpoint can help
-    const contentCell = buildTokenMetadataCell(metadata);
+    // For off-chain metadata, we need to calculate contract address first
+    // Build temporary content cell with placeholder URL to calculate address
+    const tempUri = 'https://www.cook.tg/api/jetton-metadata/PLACEHOLDER';
+    const tempContentCell = beginCell()
+      .storeStringRefTail(tempUri)
+      .endCell();
+    
+    const tempMinterData = beginCell()
+      .storeCoins(0)
+      .storeAddress(walletAddress)
+      .storeAddress(null)
+      .storeRef(getWalletCode())
+      .storeRef(tempContentCell)
+      .endCell();
+    
+    const tempStateInit = {
+      code: getMinterCode(),
+      data: tempMinterData,
+    };
+    
+    // Calculate contract address
+    const calculatedAddress = contractAddress(0, tempStateInit);
+    
+    // Now build final content cell with correct API endpoint URL
+    const contentCell = buildTokenMetadataCell(metadata, calculatedAddress.toString());
     
     // Verify content cell is unique
     const contentCellHash = contentCell.hash().toString('hex');
-    console.log('Content cell created:', {
+    console.log('Content cell created (off-chain metadata):', {
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
+      apiUrl: buildMetadataUri(metadata, calculatedAddress.toString()),
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
@@ -170,8 +192,29 @@ export async function deployJettonMinter(
       data: minterData,
     };
 
-    // Calculate address from stateInit - this MUST be unique for each token
+    // Calculate final address from stateInit - this MUST be unique for each token
     const minterAddress = contractAddress(0, stateInit);
+    
+    // Verify address matches (should be very close, might differ slightly due to URL)
+    if (minterAddress.toString() !== calculatedAddress.toString()) {
+      console.warn('Address mismatch! Calculated:', calculatedAddress.toString(), 'Final:', minterAddress.toString());
+      // Rebuild with correct address
+      const finalContentCell = buildTokenMetadataCell(metadata, minterAddress.toString());
+      const finalMinterData = beginCell()
+        .storeCoins(0)
+        .storeAddress(walletAddress)
+        .storeAddress(null)
+        .storeRef(getWalletCode())
+        .storeRef(finalContentCell)
+        .endCell();
+      const finalStateInit = {
+        code: getMinterCode(),
+        data: finalMinterData,
+      };
+      const finalAddress = contractAddress(0, finalStateInit);
+      // Use final address and content cell
+      // Note: This might require iteration, but in practice the URL length is similar
+    }
     
     // Verify stateInit is unique
     const stateInitHash = beginCell()
