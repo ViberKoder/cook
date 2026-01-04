@@ -95,12 +95,17 @@ export default function CooksPage() {
           let totalLiquidity = 0;
           if (pool) {
             try {
-              // If pool has reserves, calculate from them
-              if (pool.reserve0 && pool.reserve1 && pool.reserve0 !== '0' && pool.reserve1 !== '0') {
+              // First, check if pool has totalLiquidityUsd from DYOR.io
+              if (pool.totalLiquidityUsd && pool.totalLiquidityUsd > 0) {
+                totalLiquidity = pool.totalLiquidityUsd;
+                console.log(`Using totalLiquidityUsd from pool for ${item.address}: $${totalLiquidity}`);
+              } else if (pool.reserve0 && pool.reserve1 && pool.reserve0 !== '0' && pool.reserve1 !== '0') {
+                // If pool has reserves, calculate from them
                 const reserve0TON = Number(pool.reserve0) / 1e9; // TON reserve
                 const reserve1Token = Number(pool.reserve1) / (10 ** parseInt(item.data.metadata?.decimals || '9'));
                 // Simple calculation: TON value * 2 (approximate)
                 totalLiquidity = reserve0TON * 2;
+                console.log(`Calculated liquidity from reserves for ${item.address}: $${totalLiquidity}`);
               } else {
                 // If no reserves but pool exists, try to get liquidity from DYOR.io liquidity API
                 // This happens when DYOR.io found liquidity but STON.fi didn't provide reserves
