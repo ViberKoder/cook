@@ -252,11 +252,13 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
               <div className="w-20 h-20 rounded-xl bg-cook-bg-secondary border border-cook-border overflow-hidden flex items-center justify-center flex-shrink-0 relative">
                 {imagePreview ? (
                   <>
-                    <img 
+                    <Image 
                       src={imagePreview} 
                       alt="Token preview" 
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
                       onError={() => setImagePreview('')}
+                      unoptimized
                     />
                     <button
                       type="button"

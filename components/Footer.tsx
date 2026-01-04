@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -8,10 +9,12 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <img 
+              <Image 
                 src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                 alt="Cook" 
-                className="w-10 h-10"
+                width={40}
+                height={40}
+                unoptimized
               />
               <span className="text-xl font-bold gradient-text-cook">Cook</span>
             </div>

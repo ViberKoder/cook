@@ -130,10 +130,12 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
             View on Explorer
           </Link>
           <button onClick={onReset} className="btn-secondary flex items-center justify-center gap-2">
-            <img 
+            <Image 
               src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
               alt="" 
-              className="w-5 h-5"
+              width={20}
+              height={20}
+              unoptimized
             />
             Cook Another
           </button>

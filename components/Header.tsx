@@ -2,6 +2,7 @@
 
 import { TonConnectButton } from '@tonconnect/ui-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Header() {
   return (
@@ -10,10 +11,13 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
-            <img 
+            <Image 
               src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
               alt="Cook" 
-              className="w-10 h-10 group-hover:scale-110 transition-transform"
+              width={40}
+              height={40}
+              className="group-hover:scale-110 transition-transform"
+              unoptimized
             />
             <span className="text-xl font-bold gradient-text-cook">Cook</span>
           </Link>

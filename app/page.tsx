@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TokenForm, { TokenData } from '@/components/TokenForm';
@@ -71,10 +72,13 @@ export default function Home() {
             <div className="max-w-4xl mx-auto text-center">
               {/* Large Logo - 2.5x size */}
               <div className="mb-8">
-                <img 
+                <Image 
                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                   alt="Cook" 
-                  className="w-60 h-60 mx-auto drop-shadow-2xl"
+                  width={240}
+                  height={240}
+                  className="mx-auto drop-shadow-2xl"
+                  unoptimized
                 />
               </div>
               
