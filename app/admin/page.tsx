@@ -67,7 +67,7 @@ export default function AdminPage() {
       if (!jettonInfo) {
         setJettonInfo({
           totalSupply: '0',
-          adminAddress: wallet?.toString() || null,
+          adminAddress: wallet ? wallet.toString() : null,
           mintable: true,
           name: 'Unknown Token',
           symbol: '???',
@@ -106,13 +106,15 @@ export default function AdminPage() {
     }
 
     try {
-      const walletAddress = Address.parse(wallet);
+      if (!wallet) {
+        throw new Error('Wallet not connected');
+      }
       await sendMintTransaction(
         contractAddress,
         mintTo,
         mintAmount,
         jettonInfo.decimals,
-        walletAddress,
+        wallet,
         sendTransaction
       );
 
