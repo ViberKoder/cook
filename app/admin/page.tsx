@@ -582,6 +582,36 @@ export default function AdminPage() {
                           </button>
                         </div>
 
+                        <div className="p-6 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300 dark:border-orange-700 rounded-xl mb-4">
+                          <h4 className="font-semibold text-cook-text mb-2">Add Token to Cooks</h4>
+                          <p className="text-sm text-cook-text-secondary mb-4">
+                            Pay 0.2 TON to add your token to the Cooks section. Your token will appear immediately without any filters.
+                          </p>
+                          <button 
+                            onClick={handleAddToCooks} 
+                            disabled={!connected || addingToCooks || !contractAddress} 
+                            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {addingToCooks ? (
+                              <>
+                                <div className="spinner" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Image 
+                                  src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                                  alt="" 
+                                  width={20}
+                                  height={20}
+                                  unoptimized
+                                />
+                                Add on Cooks (0.2 TON)
+                              </>
+                            )}
+                          </button>
+                        </div>
+
                         <div className="p-6 bg-red-100 dark:bg-red-900/40 border-2 border-red-400 dark:border-red-700 rounded-xl">
                           <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2">Danger Zone</h4>
                           <p className="text-sm text-red-600 dark:text-red-400 mb-4">
