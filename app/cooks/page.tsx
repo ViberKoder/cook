@@ -121,7 +121,7 @@ export default function CooksPage() {
           const tokenData = await tokenResponse.json();
           const deployedAt = getTokenDeployedAt(tokenAddress);
           
-          return {
+          const token: CookToken = {
             address: tokenAddress,
             name: tokenData.metadata?.name || 'Unknown',
             symbol: tokenData.metadata?.symbol || '???',
@@ -133,6 +133,8 @@ export default function CooksPage() {
             totalLiquidity,
             deployedAt,
           };
+          
+          return token;
         } catch (err) {
           console.error(`Error checking token ${tokenAddress} on DYOR.io:`, err);
           return null;
@@ -140,7 +142,7 @@ export default function CooksPage() {
       });
       
       const tokenResults = await Promise.all(tokenCheckPromises);
-      const validTokens = tokenResults.filter((t): t is CookToken => t !== null);
+      const validTokens = tokenResults.filter((t): t is CookToken => t !== null && t !== undefined);
       
       console.log(`Found ${validTokens.length} tokens on DYOR.io with liquidity out of ${allTokenAddresses.length} deployed on cook.tg`);
       
