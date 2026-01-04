@@ -158,7 +158,7 @@ function CookpadOffchainContent() {
       setOffchainBalance(newBalance);
       
       // Update total liquidity
-      const newLiquidity = totalLiquidity + amount;
+      const newLiquidity = totalLiquidityState + amount;
       setTotalLiquidity(newLiquidity);
       setTotalLiquidityState(newLiquidity);
       
@@ -215,7 +215,7 @@ function CookpadOffchainContent() {
       setOffchainBalance(newBalance);
       
       // Update total liquidity
-      const newLiquidity = totalLiquidity - tonToReceive;
+      const newLiquidity = totalLiquidityState - tonToReceive;
       setTotalLiquidity(newLiquidity);
       setTotalLiquidityState(newLiquidity);
       
@@ -259,7 +259,6 @@ function CookpadOffchainContent() {
 
   const buyPrice = buyAmount ? calculateBuyPrice(tokenSupply, parseFloat(buyAmount)) : 0;
   const sellPrice = sellAmount ? calculateSellPrice(tokenSupply, parseFloat(sellAmount)) : 0;
-  const totalLiquidity = totalLiquidityState;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -378,7 +377,7 @@ function CookpadOffchainContent() {
                         disabled={!buyAmount || loading || totalLiquidity >= 300}
                         className="btn-cook w-full"
                       >
-                        {loading ? 'Processing...' : totalLiquidity >= 300 ? 'Max Liquidity Reached' : 'Buy Offchain'}
+                        {loading ? 'Processing...' : totalLiquidityState >= 300 ? 'Max Liquidity Reached' : 'Buy Offchain'}
                       </button>
                     </div>
                   </div>
