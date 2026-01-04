@@ -17,25 +17,33 @@ export interface StonfiPool {
  */
 export async function checkStonfiLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
   try {
+    // Normalize address format
+    const normalizedAddress = tokenAddress.replace(/^UQ/, 'EQ');
+    
     // Try multiple STON.fi API endpoints
     // Method 1: Try router pools endpoint
     try {
-      const routerResponse = await fetch(`https://api.ston.fi/v1/router/pools?token_addresses=${tokenAddress}`);
+      const routerResponse = await fetch(`https://api.ston.fi/v1/router/pools?token_addresses=${normalizedAddress}`, {
+        signal: AbortSignal.timeout(3000), // 3 second timeout
+      });
       if (routerResponse.ok) {
         const routerData = await routerResponse.json();
-        const pools = routerData.pools || routerData || [];
+        const pools = Array.isArray(routerData) ? routerData : (routerData.pools || []);
         
         for (const pool of pools) {
-          if ((pool.token0_address === tokenAddress || pool.token1_address === tokenAddress) &&
+          const token0 = pool.token0_address || pool.token0;
+          const token1 = pool.token1_address || pool.token1;
+          
+          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
               pool.reserve0 && pool.reserve1) {
             const reserve0 = BigInt(pool.reserve0 || '0');
             const reserve1 = BigInt(pool.reserve1 || '0');
             
             if (reserve0 > 0n && reserve1 > 0n) {
               return {
-                address: pool.address || pool.pool_address,
-                token0: pool.token0_address,
-                token1: pool.token1_address,
+                address: pool.address || pool.pool_address || '',
+                token0: token0,
+                token1: token1,
                 reserve0: pool.reserve0,
                 reserve1: pool.reserve1,
                 lp_total_supply: pool.lp_total_supply || '0',
@@ -45,27 +53,32 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
         }
       }
     } catch (e) {
-      console.log('Router API failed, trying alternative');
+      console.log('Router API failed, trying alternative:', e);
     }
     
     // Method 2: Try pools endpoint
     try {
-      const poolsResponse = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${tokenAddress}`);
+      const poolsResponse = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${normalizedAddress}`, {
+        signal: AbortSignal.timeout(3000), // 3 second timeout
+      });
       if (poolsResponse.ok) {
         const poolsData = await poolsResponse.json();
-        const pools = poolsData.pools || poolsData || [];
+        const pools = Array.isArray(poolsData) ? poolsData : (poolsData.pools || []);
         
         for (const pool of pools) {
-          if ((pool.token0_address === tokenAddress || pool.token1_address === tokenAddress) &&
+          const token0 = pool.token0_address || pool.token0;
+          const token1 = pool.token1_address || pool.token1;
+          
+          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
               pool.reserve0 && pool.reserve1) {
             const reserve0 = BigInt(pool.reserve0 || '0');
             const reserve1 = BigInt(pool.reserve1 || '0');
             
             if (reserve0 > 0n && reserve1 > 0n) {
               return {
-                address: pool.address || pool.pool_address,
-                token0: pool.token0_address,
-                token1: pool.token1_address,
+                address: pool.address || pool.pool_address || '',
+                token0: token0,
+                token1: token1,
                 reserve0: pool.reserve0,
                 reserve1: pool.reserve1,
                 lp_total_supply: pool.lp_total_supply || '0',
@@ -75,14 +88,48 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
         }
       }
     } catch (e) {
-      console.log('Pools API failed, trying alternative');
+      console.log('Pools API failed, trying alternative:', e);
     }
     
-    // Method 3: Check via TonAPI jetton info (might have pool data)
-    return await checkStonfiLiquidityAlternative(tokenAddress);
+    // Method 3: Try to check via router v2
+    try {
+      const routerV2Response = await fetch(`https://api.ston.fi/v2/pools?token_addresses=${normalizedAddress}`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (routerV2Response.ok) {
+        const routerV2Data = await routerV2Response.json();
+        const pools = Array.isArray(routerV2Data) ? routerV2Data : (routerV2Data.pools || []);
+        
+        for (const pool of pools) {
+          const token0 = pool.token0_address || pool.token0;
+          const token1 = pool.token1_address || pool.token1;
+          
+          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
+              pool.reserve0 && pool.reserve1) {
+            const reserve0 = BigInt(pool.reserve0 || '0');
+            const reserve1 = BigInt(pool.reserve1 || '0');
+            
+            if (reserve0 > 0n && reserve1 > 0n) {
+              return {
+                address: pool.address || pool.pool_address || '',
+                token0: token0,
+                token1: token1,
+                reserve0: pool.reserve0,
+                reserve1: pool.reserve1,
+                lp_total_supply: pool.lp_total_supply || '0',
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Router V2 API failed:', e);
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error checking STON.fi liquidity:', error);
-    return await checkStonfiLiquidityAlternative(tokenAddress);
+    return null;
   }
 }
 

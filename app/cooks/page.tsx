@@ -65,29 +65,42 @@ export default function CooksPage() {
       // Then check liquidity for all tokens in parallel (with timeout)
       const liquidityCheckPromises = validMetadata.map(async (item) => {
         try {
-          // Set timeout for liquidity check (5 seconds max per token)
+          // Set timeout for liquidity check (4 seconds max per token)
           const pool = await Promise.race([
             checkStonfiLiquidity(item.address),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
           ]);
+          const hasLiquidity = pool !== null;
+          console.log(`Token ${item.address}: liquidity check = ${hasLiquidity}`);
           return {
             address: item.address,
-            hasLiquidity: pool !== null,
+            hasLiquidity,
+            pool,
           };
         } catch (e) {
+          console.error(`Liquidity check error for ${item.address}:`, e);
           return {
             address: item.address,
             hasLiquidity: false,
+            pool: null,
           };
         }
       });
       
       const liquidityResults = await Promise.all(liquidityCheckPromises);
+      console.log('Liquidity check results:', liquidityResults);
+      
       const liquidityMap = new Map(liquidityResults.map(r => [r.address, r.hasLiquidity]));
       
       // Filter and build final token list (only with liquidity)
       const tokensWithLiquidity: CookToken[] = validMetadata
-        .filter(item => liquidityMap.get(item.address) === true)
+        .filter(item => {
+          const hasLiquidity = liquidityMap.get(item.address) === true;
+          if (!hasLiquidity) {
+            console.log(`Filtering out token ${item.address} - no liquidity`);
+          }
+          return hasLiquidity;
+        })
         .map(item => ({
           address: item.address,
           name: item.data.metadata?.name || 'Unknown',
@@ -99,6 +112,7 @@ export default function CooksPage() {
           hasLiquidity: true,
         }));
       
+      console.log(`Found ${tokensWithLiquidity.length} tokens with liquidity out of ${validMetadata.length} total`);
       setTokens(tokensWithLiquidity);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
