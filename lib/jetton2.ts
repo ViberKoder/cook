@@ -94,7 +94,7 @@ export async function deployJetton2(params: JettonDeployParams): Promise<Address
     
     const tempMinterData = beginCell()
       .storeCoins(0)
-      .storeAddress(walletAddress)
+      .storeAddress(params.owner)
       .storeAddress(null)
       .storeRef(getWalletCode())
       .storeRef(tempContentCell)
