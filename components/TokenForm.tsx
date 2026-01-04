@@ -405,10 +405,12 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
               </>
             ) : (
               <>
-                <img 
+                <Image 
                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                   alt="" 
-                  className="w-6 h-6"
+                  width={24}
+                  height={24}
+                  unoptimized
                 />
                 Cook Jetton
               </>
