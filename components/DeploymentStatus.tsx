@@ -34,10 +34,6 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
       return;
     }
 
-    if (!confirm('Are you sure you want to revoke admin rights? This will make your token fully decentralized and IRREVERSIBLE!')) {
-      return;
-    }
-
     setRevokingAdmin(true);
     try {
       await sendDropAdminTransaction(deployedAddress, sendTransaction);
