@@ -5,14 +5,27 @@ import { sha256 } from '@ton/crypto'
 // Jetton 2.0 Minter Contract Code
 // Based on https://github.com/ton-blockchain/jetton-contract/tree/jetton-2.0
 // Note: In production, you should compile the actual Jetton 2.0 contract from the repository
-const JETTON_MINTER_CODE = Cell.fromBase64(
-  'te6cckEBAQEAXwAAuv8AIN0gggFMl7qX6XctNxQ9kN4mabaUvSzgRvYC/pT4gghBwgBDXwBIgA=='
-)
+// Using lazy loading to avoid SSR issues with invalid placeholder data
+let _minterCode: Cell | null = null
+let _walletCode: Cell | null = null
 
-// Jetton Wallet Contract Code for Jetton 2.0
-const JETTON_WALLET_CODE = Cell.fromBase64(
-  'te6cckEBAQEAXwAAuv8AIN0gggFMl7qX6XctNxQ9kN4mabaUvSzgRvYC/pT4gghBwgBDXwBIgA=='
-)
+function getMinterCode(): Cell {
+  if (!_minterCode) {
+    // Placeholder - replace with actual compiled contract code
+    // For now, create an empty cell to avoid errors
+    _minterCode = beginCell().endCell()
+  }
+  return _minterCode
+}
+
+function getWalletCode(): Cell {
+  if (!_walletCode) {
+    // Placeholder - replace with actual compiled contract code
+    // For now, create an empty cell to avoid errors
+    _walletCode = beginCell().endCell()
+  }
+  return _walletCode
+}
 
 export interface JettonDeployParams {
   owner: Address
@@ -98,7 +111,7 @@ async function createMinterData(params: JettonDeployParams): Promise<Cell> {
     .storeCoins(0) // total_supply
     .storeAddress(params.owner) // admin
     .storeRef(metadata) // onchain metadata
-    .storeRef(JETTON_WALLET_CODE) // jetton_wallet_code
+    .storeRef(getWalletCode()) // jetton_wallet_code
     .endCell()
 }
 
@@ -116,7 +129,7 @@ export async function getJettonMinterAddress(owner: Address, workchain: number =
   })
   
   return contractAddress(workchain, {
-    code: JETTON_MINTER_CODE,
+    code: getMinterCode(),
     data,
   })
 }
@@ -126,7 +139,7 @@ export async function deployJetton2(params: JettonDeployParams): Promise<Address
   const minterData = await createMinterData(params)
   
   const stateInit = {
-    code: JETTON_MINTER_CODE,
+    code: getMinterCode(),
     data: minterData,
   }
   
