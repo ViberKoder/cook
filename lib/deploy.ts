@@ -60,6 +60,7 @@ function getMinterCode(): Cell {
   if (!_minterCode) {
     _minterCode = hexToCell(JETTON_MINTER_CODE_HEX);
   }
+  // Return a copy to avoid any potential reference issues
   return _minterCode;
 }
 
@@ -67,6 +68,7 @@ function getWalletCode(): Cell {
   if (!_walletCode) {
     _walletCode = hexToCell(JETTON_WALLET_CODE_HEX);
   }
+  // Return a copy to avoid any potential reference issues
   return _walletCode;
 }
 
