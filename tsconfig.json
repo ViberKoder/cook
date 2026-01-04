@@ -29,6 +29,7 @@
     "components/**/*.ts",
     "components/**/*.tsx",
     "lib/**/*.ts",
+    "hooks/**/*.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [

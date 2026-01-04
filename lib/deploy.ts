@@ -1,6 +1,7 @@
 import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress } from '@ton/core';
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
 import { buildTokenMetadataCell, JettonMetadata } from './onchain-metadata';
+import toast from 'react-hot-toast';
 
 export interface TokenData {
   name: string;
@@ -12,12 +13,9 @@ export interface TokenData {
   totalSupply: string;
   mintable: boolean;
 }
-import toast from 'react-hot-toast';
 
-// Monetization wallet address
-const MONETIZATION_WALLET = 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
-const DEPLOY_FEE = toNano('0.2');
-const MONETIZATION_FEE = toNano('0.8');
+// Deployment fee
+const DEPLOY_FEE = toNano('1');
 export const TOTAL_DEPLOY_COST = toNano('1');
 
 // ============================================================================
