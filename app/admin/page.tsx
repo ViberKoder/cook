@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useTonConnectUI, useTonWallet } from '@ton/connect-ui-react'
+import { useTonConnectUI, useTonWallet } from '@ton/connect-react'
 import { Address } from '@ton/core'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'

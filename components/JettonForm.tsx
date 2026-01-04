@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useTonConnectUI, useTonWallet } from '@ton/connect-ui-react'
+import { useTonConnectUI, useTonWallet } from '@ton/connect-react'
 import { deployJetton2 } from '@/lib/jetton2'
 import { Address } from '@ton/core'
 

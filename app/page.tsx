@@ -4,7 +4,7 @@ import Header from '@/components/Header'
 import JettonForm from '@/components/JettonForm'
 import Features from '@/components/Features'
 import Footer from '@/components/Footer'
-import { TonConnectUIProvider } from '@ton/connect-ui-react'
+import { TonConnectUIProvider } from '@ton/connect-react'
 
 export default function Home() {
   return (
