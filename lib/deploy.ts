@@ -133,6 +133,27 @@ export async function deployJettonMinter(
     console.log('metadata.decimals:', metadata.decimals);
     console.log('===========================');
     
+    // Calculate contract address first to use in metadata URL (for off-chain fallback)
+    // Build temporary content cell to get address
+    const tempContentCell = buildTokenMetadataCell(metadata);
+    const tempMinterData = beginCell()
+      .storeCoins(0)
+      .storeAddress(walletAddress)
+      .storeAddress(null)
+      .storeRef(getWalletCode())
+      .storeRef(tempContentCell)
+      .endCell();
+    const tempStateInit = {
+      code: getMinterCode(),
+      data: tempMinterData,
+    };
+    const calculatedAddress = contractAddress(0, tempStateInit);
+    
+    // Option 1: Use data URI (on-chain, but some explorers may not support it)
+    // Option 2: Use API endpoint URL (off-chain, but better explorer support)
+    // For now, use data URI as it's more decentralized
+    // If explorers don't support it, we can switch to API URL
+    
     const contentCell = buildTokenMetadataCell(metadata);
     
     // Verify content cell is unique
@@ -141,6 +162,7 @@ export async function deployJettonMinter(
       bits: contentCell.bits.length,
       refs: contentCell.refs.length,
       hash: contentCellHash.substring(0, 16) + '...',
+      calculatedAddress: calculatedAddress.toString(),
     });
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);

@@ -32,8 +32,11 @@ export interface JettonMetadata {
  * This avoids the need for external hosting and works as on-chain metadata.
  * 
  * IMPORTANT: Using base64 encoding for better explorer compatibility.
+ * 
+ * NOTE: Some explorers may not support data URI decoding from contracts.
+ * In that case, consider using off-chain metadata via API endpoint.
  */
-export function buildMetadataUri(metadata: JettonMetadata): string {
+export function buildMetadataUri(metadata: JettonMetadata, contractAddress?: string): string {
   // Build JSON object with all required fields
   const jsonMetadata: any = {
     name: metadata.name,
@@ -47,7 +50,7 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
     jsonMetadata.image = metadata.image.trim();
   }
   
-  // Stringify JSON
+  // Stringify JSON - use compact format (no spaces) to minimize size
   const jsonString = JSON.stringify(jsonMetadata);
   
   // Use base64 encoding for better compatibility
@@ -55,7 +58,16 @@ export function buildMetadataUri(metadata: JettonMetadata): string {
   
   // Return data URI with base64 encoding
   // Format: data:application/json;base64,<base64_json>
-  return `data:application/json;base64,${base64Encoded}`;
+  const dataUri = `data:application/json;base64,${base64Encoded}`;
+  
+  console.log('Built metadata URI:', {
+    jsonLength: jsonString.length,
+    base64Length: base64Encoded.length,
+    uriLength: dataUri.length,
+    jsonPreview: jsonString.substring(0, 100) + '...',
+  });
+  
+  return dataUri;
 }
 
 /**
