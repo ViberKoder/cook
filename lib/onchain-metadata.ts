@@ -93,20 +93,27 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   ];
   
   for (const [key, value] of entries) {
-    if (value === undefined || value === '') continue;
+    // Skip only if truly undefined or empty string
+    if (value === undefined || value === null || value === '') {
+      console.log(`Skipping metadata key "${key}": value is`, value === undefined ? 'undefined' : value === null ? 'null' : 'empty string');
+      continue;
+    }
     
     const keyHash = sha256(key);
     const valueBuffer = Buffer.from(value, 'utf-8');
     const valueCell = makeSnakeCell(valueBuffer);
     
-    console.log(`Adding metadata key "${key}":`, {
+    console.log(`✓ Adding metadata key "${key}":`, {
       hash: keyHash.toString('hex').substring(0, 16) + '...',
       valueLength: value.length,
       valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
+      valueType: typeof value,
     });
     
     dict.set(keyHash, valueCell);
   }
+  
+  console.log('Final dictionary size:', dict.size, 'keys added');
   
   const resultCell = beginCell()
     .storeUint(ONCHAIN_CONTENT_PREFIX, 8)

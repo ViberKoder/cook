@@ -87,6 +87,17 @@ export async function deployJettonMinter(
   try {
     toast.loading('Preparing Jetton 2.0 contract...', { id: 'deploy' });
 
+    // DEBUG: Log raw tokenData to see what we receive
+    console.log('=== RAW TOKEN DATA RECEIVED ===');
+    console.log('tokenData:', JSON.stringify(tokenData, null, 2));
+    console.log('tokenData.name:', tokenData.name, 'type:', typeof tokenData.name);
+    console.log('tokenData.symbol:', tokenData.symbol, 'type:', typeof tokenData.symbol);
+    console.log('tokenData.description:', tokenData.description, 'type:', typeof tokenData.description);
+    console.log('tokenData.image:', tokenData.image, 'type:', typeof tokenData.image);
+    console.log('tokenData.imageData:', tokenData.imageData ? 'present' : 'missing', 'length:', tokenData.imageData?.length);
+    console.log('tokenData.decimals:', tokenData.decimals, 'type:', typeof tokenData.decimals);
+    console.log('================================');
+
     // Build on-chain metadata (TEP-64)
     // If imageData (base64) is provided, use data URI format
     let imageUrl = tokenData.image;
@@ -95,21 +106,32 @@ export async function deployJettonMinter(
       imageUrl = `data:image/png;base64,${tokenData.imageData}`;
     }
     
+    // Ensure all required fields are present and not empty
+    const name = (tokenData.name || '').trim();
+    const symbol = (tokenData.symbol || '').trim().toUpperCase();
+    const description = (tokenData.description || tokenData.name || '').trim();
+    const image = imageUrl?.trim() || undefined;
+    const decimals = tokenData.decimals?.toString() || '9';
+    
+    if (!name || !symbol) {
+      throw new Error('Token name and symbol are required');
+    }
+    
     const metadata: JettonMetadata = {
-      name: tokenData.name.trim(),
-      symbol: tokenData.symbol.toUpperCase().trim(),
-      description: (tokenData.description || tokenData.name).trim(),
-      image: imageUrl?.trim() || undefined,
-      decimals: tokenData.decimals.toString(),
+      name: name,
+      symbol: symbol,
+      description: description || name,
+      image: image,
+      decimals: decimals,
     };
 
-    console.log('Building on-chain metadata:', {
-      name: metadata.name,
-      symbol: metadata.symbol,
-      description: metadata.description?.substring(0, 50),
-      image: metadata.image ? (metadata.image.length > 100 ? metadata.image.substring(0, 100) + '...' : metadata.image) : 'none',
-      decimals: metadata.decimals,
-    });
+    console.log('=== PROCESSED METADATA ===');
+    console.log('metadata.name:', metadata.name, 'length:', metadata.name.length);
+    console.log('metadata.symbol:', metadata.symbol, 'length:', metadata.symbol.length);
+    console.log('metadata.description:', metadata.description, 'length:', metadata.description?.length || 0);
+    console.log('metadata.image:', metadata.image ? (metadata.image.substring(0, 100) + '...') : 'none', 'length:', metadata.image?.length || 0);
+    console.log('metadata.decimals:', metadata.decimals);
+    console.log('===========================');
     
     const contentCell = buildTokenMetadataCell(metadata);
     
