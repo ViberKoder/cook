@@ -174,7 +174,7 @@ export default function CooksPage() {
             <span className="gradient-text-cook">Cooks</span> with Liquidity
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Tokens added to Cooks section via "Add on Cooks" button
+            Tokens added to Cooks section via &quot;Add on Cooks&quot; button
           </p>
 
           {loading && (
@@ -223,7 +223,7 @@ export default function CooksPage() {
                   />
                   <p className="text-cook-text-secondary mb-4">No tokens found yet.</p>
                   <p className="text-sm text-cook-text-secondary mb-4">
-                    Use the "Add on Cooks" button after deploying your token to add it here.
+                    Use the &quot;Add on Cooks&quot; button after deploying your token to add it here.
                   </p>
                   <Link href="/" className="btn-cook inline-flex items-center gap-2">
                     <Image 
