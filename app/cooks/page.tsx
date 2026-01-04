@@ -155,7 +155,7 @@ export default function CooksPage() {
           return 0;
       }
     });
-  }, [tokens, showOnlyWithLiquidity, sortBy]);
+  }, [tokens, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col">
