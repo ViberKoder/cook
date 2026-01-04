@@ -1,6 +1,7 @@
 import { Address, beginCell, Cell, toNano, contractAddress, storeStateInit } from '@ton/core';
 import { SendTransactionParams } from '@/hooks/useTonConnect';
 import { COOKPAD_FEE_WALLET, COOKPAD_MAX_LIQUIDITY_TON, COOKPAD_FEE_PERCENT } from './cookpadConfig';
+import { getJettonWalletCode } from './deploy';
 
 // Export constants for backward compatibility
 export const FEE_WALLET = COOKPAD_FEE_WALLET;
@@ -71,8 +72,30 @@ export function calculateSellPrice(supply: number, tokenAmount: number): number 
 }
 
 /**
+ * Calculate jetton wallet address for a user
+ */
+async function getCookpadJettonWalletAddress(
+  ownerAddress: Address,
+  minterAddress: Address
+): Promise<Address> {
+  const walletCode = await getJettonWalletCode();
+  
+  const walletData = beginCell()
+    .storeCoins(0)
+    .storeAddress(ownerAddress)
+    .storeAddress(minterAddress)
+    .endCell();
+
+  return contractAddress(0, {
+    code: walletCode,
+    data: walletData,
+  });
+}
+
+/**
  * Send buy tokens transaction
  * Message format: op (32), query_id (64), min_receive (coins), destination (msg_addr), custom_payload (maybe_ref)
+ * For memepad contracts, destination should be the user's jetton wallet address
  */
 export async function sendBuyTokensTransaction(
   contractAddress: string,
@@ -84,14 +107,23 @@ export async function sendBuyTokensTransaction(
   const amount = toNano(tonAmount);
   const minTokensBN = toNano(minTokens);
   
-  // If no destination, use address_none (will default to sender)
-  const destAddress = destination ? Address.parse(destination) : Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
+  let destAddress: Address;
+  
+  if (destination) {
+    // Calculate jetton wallet address for the destination
+    const ownerAddr = Address.parse(destination);
+    const minterAddr = Address.parse(contractAddress);
+    destAddress = await getCookpadJettonWalletAddress(ownerAddr, minterAddr);
+  } else {
+    // If no destination provided, use address_none (contract will use sender)
+    destAddress = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
+  }
 
   const buyBody = beginCell()
     .storeUint(Op.buy, 32)
     .storeUint(0, 64) // query_id
     .storeCoins(minTokensBN) // min_receive
-    .storeAddress(destAddress) // destination (address_none = 0 means use sender)
+    .storeAddress(destAddress) // destination (jetton wallet address)
     .storeMaybeRef(null) // custom_payload
     .endCell();
 
