@@ -6,6 +6,24 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
+import { 
+  connectToPaymentsNetwork, 
+  openVirtualChannel, 
+  sendOffchainPayment,
+  type PaymentNodeConfig,
+  type VirtualChannel
+} from '@/lib/tonPaymentsNetwork';
+import { 
+  calculateBuyPrice, 
+  calculateSellPrice,
+  getTotalLiquidity,
+  setTotalLiquidity,
+  getTokenSupply,
+  setTokenSupply,
+  getOffchainBalance,
+  storeOffchainBalance,
+  type OffchainBalance
+} from '@/lib/cookpadOffchain';
 import toast from 'react-hot-toast';
 
 interface OffchainBalance {
@@ -18,36 +36,62 @@ function CookpadOffchainContent() {
   const [buyAmount, setBuyAmount] = useState('');
   const [sellAmount, setSellAmount] = useState('');
   const [offchainBalance, setOffchainBalance] = useState<OffchainBalance | null>(null);
-  const [totalLiquidity, setTotalLiquidity] = useState(0);
-  const [tokenSupply, setTokenSupply] = useState(0);
+  const [totalLiquidity, setTotalLiquidityState] = useState(0);
+  const [tokenSupply, setTokenSupplyState] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState(true);
+  const [paymentNode, setPaymentNode] = useState<PaymentNodeConfig | null>(null);
+  const [virtualChannel, setVirtualChannel] = useState<VirtualChannel | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   const loadOffchainState = useCallback(async () => {
     if (!wallet) return;
     
     setLoadingState(true);
     try {
-      // Load offchain balance from backend/localStorage
-      const stored = localStorage.getItem(`cookpad_offchain_${wallet.toString()}`);
-      if (stored) {
-        setOffchainBalance(JSON.parse(stored));
-      } else {
-        setOffchainBalance({ tokens: 0, tonDeposited: 0 });
-      }
+      // Load offchain balance
+      const balance = getOffchainBalance(wallet.toString());
+      setOffchainBalance(balance || { tokens: 0, tonDeposited: 0, lastUpdated: Date.now() });
 
-      // Load total liquidity from contract or backend
-      // For now, use localStorage as fallback
-      const liquidity = localStorage.getItem('cookpad_total_liquidity');
-      setTotalLiquidity(liquidity ? parseFloat(liquidity) : 0);
+      // Load total liquidity and token supply
+      const liquidity = getTotalLiquidity();
+      setTotalLiquidityState(liquidity);
 
-      const supply = localStorage.getItem('cookpad_token_supply');
-      setTokenSupply(supply ? parseFloat(supply) : 0);
+      const supply = getTokenSupply();
+      setTokenSupplyState(supply);
     } catch (error: any) {
       console.error('Failed to load offchain state:', error);
       toast.error('Failed to load state');
     } finally {
       setLoadingState(false);
+    }
+  }, [wallet]);
+
+  const connectToPaymentsNetworkNode = useCallback(async () => {
+    if (!wallet) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      // TODO: Replace with actual Payments Network node URL
+      // For now, using a placeholder - in production this should be configured
+      const nodeUrl = process.env.NEXT_PUBLIC_PAYMENTS_NETWORK_NODE_URL || 'http://localhost:8080';
+      const nodeKey = wallet.toString(); // Using wallet address as node key for now
+      
+      const nodeConfig = await connectToPaymentsNetwork(nodeUrl, nodeKey);
+      setPaymentNode(nodeConfig);
+      
+      // Open virtual channel for trading
+      // TODO: Get actual onchain channel address and counterparty key
+      // For now, this is a placeholder
+      toast.success('Connected to Payments Network!', { id: 'connect' });
+    } catch (error: any) {
+      console.error('Failed to connect to Payments Network:', error);
+      toast.error(`Failed to connect: ${error.message}`, { id: 'connect' });
+    } finally {
+      setConnecting(false);
     }
   }, [wallet]);
 
@@ -59,23 +103,6 @@ function CookpadOffchainContent() {
     }
   }, [connected, wallet, loadOffchainState]);
 
-  const calculateBuyPrice = (supply: number, tonAmount: number): number => {
-    // Quadratic bonding curve
-    const basePrice = 0.0001;
-    const multiplier = 0.00001;
-    const currentPrice = basePrice * Math.pow(1 + supply * multiplier, 2);
-    return tonAmount / currentPrice;
-  };
-
-  const calculateSellPrice = (supply: number, tokenAmount: number): number => {
-    const basePrice = 0.0001;
-    const multiplier = 0.00001;
-    const currentPrice = basePrice * Math.pow(1 + supply * multiplier, 2);
-    const newSupply = supply - tokenAmount;
-    const newPrice = basePrice * Math.pow(1 + newSupply * multiplier, 2);
-    const avgPrice = (currentPrice + newPrice) / 2;
-    return tokenAmount * avgPrice * 0.95; // 5% spread
-  };
 
   const handleBuy = async () => {
     if (!connected || !wallet) {
@@ -94,39 +121,58 @@ function CookpadOffchainContent() {
       return;
     }
 
+    if (!paymentNode) {
+      toast.error('Please connect to Payments Network first');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate offchain payment through TON Payments Network
-      // In production, this would use actual Payments Network API
-      
       // Calculate tokens to receive
       const tokensToReceive = calculateBuyPrice(tokenSupply, amount);
+      
+      // Send offchain payment through TON Payments Network
+      if (virtualChannel) {
+        // Use existing virtual channel
+        await sendOffchainPayment(
+          paymentNode,
+          virtualChannel.channelKey,
+          amount,
+          paymentNode.walletAddress // For now, sending to self (in production, this would be the token contract)
+        );
+      } else {
+        // TODO: Open virtual channel first if not exists
+        toast.error('Virtual channel not open. Please wait for connection.');
+        return;
+      }
       
       // Update offchain balance
       const newBalance = {
         tokens: (offchainBalance?.tokens || 0) + tokensToReceive,
         tonDeposited: (offchainBalance?.tonDeposited || 0) + amount,
+        lastUpdated: Date.now(),
       };
       
-      localStorage.setItem(`cookpad_offchain_${wallet.toString()}`, JSON.stringify(newBalance));
+      storeOffchainBalance(wallet.toString(), newBalance);
+      setOffchainBalance(newBalance);
       setOffchainBalance(newBalance);
       
       // Update total liquidity
       const newLiquidity = totalLiquidity + amount;
-      localStorage.setItem('cookpad_total_liquidity', newLiquidity.toString());
       setTotalLiquidity(newLiquidity);
+      setTotalLiquidityState(newLiquidity);
       
       // Update token supply
       const newSupply = tokenSupply + tokensToReceive;
-      localStorage.setItem('cookpad_token_supply', newSupply.toString());
       setTokenSupply(newSupply);
+      setTokenSupplyState(newSupply);
 
-      toast.success(`Bought ${tokensToReceive.toFixed(2)} tokens offchain!`);
+      toast.success(`Bought ${tokensToReceive.toFixed(2)} tokens offchain via Payments Network!`);
       setBuyAmount('');
 
       // Check if we reached 300 TON - trigger onchain withdrawal
       if (newLiquidity >= 300) {
-        toast.loading('Reached 300 TON! Withdrawing tokens onchain...', { id: 'withdraw' });
+        toast.loading('Reached 300 TON! Withdrawing tokens onchain and creating STON.fi pool...', { id: 'withdraw' });
         await withdrawOnchain();
       }
     } catch (error: any) {
@@ -170,13 +216,13 @@ function CookpadOffchainContent() {
       
       // Update total liquidity
       const newLiquidity = totalLiquidity - tonToReceive;
-      localStorage.setItem('cookpad_total_liquidity', newLiquidity.toString());
       setTotalLiquidity(newLiquidity);
+      setTotalLiquidityState(newLiquidity);
       
       // Update token supply
       const newSupply = tokenSupply - amount;
-      localStorage.setItem('cookpad_token_supply', newSupply.toString());
       setTokenSupply(newSupply);
+      setTokenSupplyState(newSupply);
 
       toast.success(`Sold ${amount.toFixed(2)} tokens for ${tonToReceive.toFixed(6)} TON offchain!`);
       setSellAmount('');
@@ -213,6 +259,7 @@ function CookpadOffchainContent() {
 
   const buyPrice = buyAmount ? calculateBuyPrice(tokenSupply, parseFloat(buyAmount)) : 0;
   const sellPrice = sellAmount ? calculateSellPrice(tokenSupply, parseFloat(sellAmount)) : 0;
+  const totalLiquidity = totalLiquidityState;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -244,6 +291,19 @@ function CookpadOffchainContent() {
           <p className="text-cook-text-secondary text-center mb-8">
             Fast offchain trading via TON Payments Network. Tokens withdraw onchain at 300 TON.
           </p>
+
+          {!paymentNode && connected && (
+            <div className="card text-center mb-6">
+              <p className="text-cook-text-secondary mb-4">Connect to TON Payments Network to start trading</p>
+              <button
+                onClick={connectToPaymentsNetworkNode}
+                disabled={connecting}
+                className="btn-cook"
+              >
+                {connecting ? 'Connecting...' : 'Connect to Payments Network'}
+              </button>
+            </div>
+          )}
 
           {loadingState ? (
             <div className="card text-center py-12">
