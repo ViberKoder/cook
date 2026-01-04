@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getCookTokens, getTokenDeployedAt } from '@/lib/cookTokens';
-import { checkStonfiLiquidity, StonfiPool } from '@/lib/stonfi';
 
-// Cooks page - displays tokens created on cook.tg with liquidity
+// Cooks page - displays tokens created on cook.tg that have liquidity on DYOR.io
 
 interface CookToken {
   address: string;
@@ -19,7 +18,6 @@ interface CookToken {
   totalSupply: string;
   decimals: number;
   hasLiquidity: boolean;
-  poolInfo?: StonfiPool; // Full pool info if available (from STON.fi or DYOR.io)
   totalLiquidity: number; // Calculated liquidity value in USD
   deployedAt?: number; // Timestamp when token was added to localStorage
 }
@@ -43,173 +41,110 @@ export default function CooksPage() {
 
   useEffect(() => {
     loadCookTokens();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCookTokens = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Get ALL tokens deployed on cook.tg from localStorage
-      // These are tokens that were created via cook.tg, regardless of liquidity status
+      // Get tokens deployed on cook.tg from localStorage
+      // We will check each one via DYOR.io API to see if they have liquidity
       const storedTokens = getCookTokens(); // Returns string[]
       const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
-      console.log('Loading tokens deployed on cook.tg:', {
+      console.log('Checking cook.tg deployed tokens on DYOR.io:', {
         hardcoded: HARDCODED_TOKENS.length,
         fromStorage: storedTokens.length,
         total: allTokenAddresses.length,
-        addresses: allTokenAddresses.slice(0, 10) // Log first 10 to avoid spam
       });
       
       if (allTokenAddresses.length === 0) {
-        console.log('No tokens found in localStorage. Tokens will appear here after deployment on cook.tg.');
+        console.log('No tokens found. Tokens will appear here after deployment on cook.tg and when they get liquidity on DYOR.io.');
         setTokens([]);
         setLoading(false);
         return;
       }
       
-      // First, load all token metadata quickly (parallel)
-      const tokenMetadataPromises = allTokenAddresses.map(async (tokenAddress) => {
+      // Check each token via DYOR.io API - only show tokens that appear on DYOR.io with liquidity
+      const tokenCheckPromises = allTokenAddresses.map(async (tokenAddress) => {
         try {
-          const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
-          if (!tokenResponse.ok) return null;
+          const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
+          
+          // Step 1: Check if token exists on DYOR.io and has liquidity
+          const dyorLiquidityResponse = await fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`, {
+            signal: AbortSignal.timeout(5000),
+          });
+          
+          if (!dyorLiquidityResponse.ok) {
+            console.log(`Token ${tokenAddress} not found on DYOR.io or no liquidity`);
+            return null; // Token not on DYOR.io or no liquidity
+          }
+          
+          const dyorLiquidityData = await dyorLiquidityResponse.json();
+          
+          // Extract liquidity value
+          let totalLiquidity = 0;
+          if (dyorLiquidityData.usd && dyorLiquidityData.usd.value !== undefined && dyorLiquidityData.usd.value !== null) {
+            const liquidityValue = dyorLiquidityData.usd.value;
+            const liquidityDecimals = dyorLiquidityData.usd.decimals !== undefined ? dyorLiquidityData.usd.decimals : 9;
+            totalLiquidity = typeof liquidityValue === 'string'
+              ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
+              : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
+          } else if (dyorLiquidityData.ton && dyorLiquidityData.ton.value !== undefined && dyorLiquidityData.ton.value !== null) {
+            // Fallback to TON liquidity (convert to USD estimate)
+            const tonValue = dyorLiquidityData.ton.value;
+            const tonDecimals = dyorLiquidityData.ton.decimals !== undefined ? dyorLiquidityData.ton.decimals : 9;
+            const tonNum = typeof tonValue === 'string'
+              ? parseFloat(tonValue) / (10 ** tonDecimals)
+              : parseFloat(tonValue) / (10 ** tonDecimals);
+            totalLiquidity = tonNum * 2; // Rough estimate: 1 TON ≈ $2
+          }
+          
+          if (totalLiquidity <= 0.000001) {
+            console.log(`Token ${tokenAddress} on DYOR.io but liquidity is 0 or too low`);
+            return null; // No meaningful liquidity
+          }
+          
+          console.log(`✅ Token ${tokenAddress} found on DYOR.io with liquidity: $${totalLiquidity}`);
+          
+          // Step 2: Get token metadata from TonAPI
+          const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${normalizedEQ}`, {
+            signal: AbortSignal.timeout(5000),
+          });
+          
+          if (!tokenResponse.ok) {
+            console.warn(`Could not fetch metadata for ${tokenAddress}`);
+            return null;
+          }
+          
           const tokenData = await tokenResponse.json();
+          const deployedAt = getTokenDeployedAt(tokenAddress);
+          
           return {
             address: tokenAddress,
-            data: tokenData,
+            name: tokenData.metadata?.name || 'Unknown',
+            symbol: tokenData.metadata?.symbol || '???',
+            image: tokenData.metadata?.image,
+            description: tokenData.metadata?.description,
+            totalSupply: tokenData.total_supply || '0',
+            decimals: parseInt(tokenData.metadata?.decimals || '9'),
+            hasLiquidity: true, // We already confirmed it has liquidity
+            totalLiquidity,
+            deployedAt,
           };
         } catch (err) {
-          console.error(`Error loading token ${tokenAddress}:`, err);
+          console.error(`Error checking token ${tokenAddress} on DYOR.io:`, err);
           return null;
         }
       });
       
-      const tokenMetadataResults = await Promise.all(tokenMetadataPromises);
-      const validMetadata = tokenMetadataResults.filter((r): r is { address: string; data: any } => r !== null);
+      const tokenResults = await Promise.all(tokenCheckPromises);
+      const validTokens = tokenResults.filter((t): t is CookToken => t !== null);
       
-      // Then check liquidity for all tokens in parallel (with timeout)
-      const liquidityCheckPromises = validMetadata.map(async (item) => {
-        try {
-          console.log(`Starting liquidity check for token: ${item.address}`);
-          // Set timeout for liquidity check (8 seconds max per token - increased for DYOR.io)
-          const pool = await Promise.race([
-            checkStonfiLiquidity(item.address),
-            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 8000)),
-          ]);
-          const hasLiquidity = pool !== null;
-          console.log(`Liquidity check result for ${item.address}: hasLiquidity=${hasLiquidity}`);
-          
-          // Calculate total liquidity value
-          let totalLiquidity = 0;
-          if (pool) {
-            try {
-              // First, check if pool has totalLiquidityUsd from DYOR.io
-              if (pool.totalLiquidityUsd && pool.totalLiquidityUsd > 0) {
-                totalLiquidity = pool.totalLiquidityUsd;
-                console.log(`Using totalLiquidityUsd from pool for ${item.address}: $${totalLiquidity}`);
-              } else if (pool.reserve0 && pool.reserve1 && pool.reserve0 !== '0' && pool.reserve1 !== '0') {
-                // If pool has reserves, calculate from them
-                const reserve0TON = Number(pool.reserve0) / 1e9; // TON reserve
-                const reserve1Token = Number(pool.reserve1) / (10 ** parseInt(item.data.metadata?.decimals || '9'));
-                // Simple calculation: TON value * 2 (approximate)
-                totalLiquidity = reserve0TON * 2;
-                console.log(`Calculated liquidity from reserves for ${item.address}: $${totalLiquidity}`);
-              } else {
-                // If no reserves but pool exists, try to get liquidity from DYOR.io liquidity API
-                // This happens when DYOR.io found liquidity but STON.fi didn't provide reserves
-                try {
-                  const normalizedEQ = item.address.replace(/^UQ/, 'EQ');
-                  const dyorResponse = await fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`, {
-                    signal: AbortSignal.timeout(3000),
-                  });
-                  if (dyorResponse.ok) {
-                    const dyorData = await dyorResponse.json();
-                    if (dyorData.usd) {
-                      const liquidityValue = dyorData.usd.value;
-                      const liquidityDecimals = dyorData.usd.decimals || 9;
-                      totalLiquidity = typeof liquidityValue === 'string'
-                        ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
-                        : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
-                      console.log(`Extracted liquidity from DYOR.io liquidity API for ${item.address}: $${totalLiquidity}`);
-                    } else if (dyorData.value) {
-                      // Fallback to value field
-                      const liquidityValue = dyorData.value.value;
-                      const liquidityDecimals = dyorData.value.decimals || 9;
-                      totalLiquidity = typeof liquidityValue === 'string'
-                        ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
-                        : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
-                      console.log(`Extracted liquidity from DYOR.io (value field) for ${item.address}: $${totalLiquidity}`);
-                    }
-                  }
-                } catch (e) {
-                  console.log(`DYOR.io liquidity API fetch failed for ${item.address}:`, e);
-                  // If DYOR fetch fails but pool exists, set minimal value
-                  totalLiquidity = 0.01;
-                }
-              }
-            } catch (e) {
-              console.error('Error calculating liquidity:', e);
-            }
-          }
-          
-          console.log(`Token ${item.address}: liquidity check = ${hasLiquidity}, liquidity = ${totalLiquidity}`);
-          return {
-            address: item.address,
-            hasLiquidity,
-            pool,
-            totalLiquidity,
-          };
-        } catch (e) {
-          console.error(`Liquidity check error for ${item.address}:`, e);
-          return {
-            address: item.address,
-            hasLiquidity: false,
-            pool: null,
-            totalLiquidity: 0,
-          };
-        }
-      });
+      console.log(`Found ${validTokens.length} tokens on DYOR.io with liquidity out of ${allTokenAddresses.length} deployed on cook.tg`);
       
-      const liquidityResults = await Promise.all(liquidityCheckPromises);
-      console.log('Liquidity check results:', liquidityResults);
-      
-      // Build final token list
-      // All tokens here were deployed on cook.tg (from localStorage)
-      // We check their liquidity status via API - if they have liquidity, they appear on /cooks
-      const allTokens: CookToken[] = validMetadata
-        .map(item => {
-          const liquidityData = liquidityResults.find(r => r.address === item.address);
-          const deployedAt = getTokenDeployedAt(item.address);
-          
-          const token: CookToken = {
-            address: item.address,
-            name: item.data.metadata?.name || 'Unknown',
-            symbol: item.data.metadata?.symbol || '???',
-            image: item.data.metadata?.image,
-            description: item.data.metadata?.description,
-            totalSupply: item.data.total_supply || '0',
-            decimals: parseInt(item.data.metadata?.decimals || '9'),
-            hasLiquidity: liquidityData?.hasLiquidity || false,
-            poolInfo: liquidityData?.pool || undefined,
-            totalLiquidity: liquidityData?.totalLiquidity || 0,
-            deployedAt,
-          };
-          
-          // Log token status
-          if (token.hasLiquidity) {
-            console.log(`✅ Token ${token.symbol} (${item.address}) deployed on cook.tg and has liquidity: $${token.totalLiquidity}`);
-          } else {
-            console.log(`⏳ Token ${token.symbol} (${item.address}) deployed on cook.tg but no liquidity yet`);
-          }
-          
-          return token;
-        });
-      
-      const tokensWithLiquidity = allTokens.filter(t => t.hasLiquidity).length;
-      console.log(`Summary: ${allTokens.length} tokens deployed on cook.tg, ${tokensWithLiquidity} have liquidity (will appear on /cooks)`);
-      
-      setTokens(allTokens);
+      setTokens(validTokens);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
       setError(err.message || 'Failed to load tokens');
@@ -229,25 +164,21 @@ export default function CooksPage() {
     }
   };
 
-  const formatLiquidity = (liquidity: number) => {
-    if (liquidity >= 1000000) {
-      return `${(liquidity / 1000000).toFixed(2)}M TON`;
-    } else if (liquidity >= 1000) {
-      return `${(liquidity / 1000).toFixed(2)}K TON`;
-    } else {
-      return `${liquidity.toFixed(2)} TON`;
+  const formatLiquidity = (value: number) => {
+    if (value >= 1_000_000) {
+      return `$${(value / 1_000_000).toFixed(1)}M`;
     }
+    if (value >= 1_000) {
+      return `$${(value / 1_000).toFixed(1)}K`;
+    }
+    return `$${value.toFixed(2)}`;
   };
 
   // Filter and sort tokens
-  const filteredAndSortedTokens = tokens
-    .filter(token => {
-      if (showOnlyWithLiquidity) {
-        return token.hasLiquidity;
-      }
-      return true;
-    })
-    .sort((a, b) => {
+  const filteredAndSortedTokens = useMemo(() => {
+    let filtered = showOnlyWithLiquidity ? tokens.filter(token => token.hasLiquidity) : tokens;
+
+    return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'newest':
           const aTime = a.deployedAt || 0;
@@ -256,12 +187,12 @@ export default function CooksPage() {
         case 'liquidity':
           return b.totalLiquidity - a.totalLiquidity; // Highest liquidity first
         case 'volume':
-          // For now, use liquidity as volume proxy
           return b.totalLiquidity - a.totalLiquidity; // Highest volume first (using liquidity as proxy)
         default:
           return 0;
       }
     });
+  }, [tokens, showOnlyWithLiquidity, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -277,44 +208,16 @@ export default function CooksPage() {
       <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold text-cook-text mb-2 text-center">
-            <span className="gradient-text-cook">Cooks</span>
+            <span className="gradient-text-cook">Cooks</span> with Liquidity
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Tokens created on Cook.tg
+            Tokens created on Cook.tg that have active liquidity pools on DYOR.io
           </p>
-
-          {/* Filters */}
-          <div className="card mb-6">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnlyWithLiquidity}
-                  onChange={(e) => setShowOnlyWithLiquidity(e.target.checked)}
-                  className="w-5 h-5 accent-cook-orange"
-                />
-                <span className="text-cook-text font-medium">Show only tokens with liquidity</span>
-              </label>
-              
-              <div className="flex items-center gap-2">
-                <span className="text-cook-text-secondary text-sm">Sort by:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="px-4 py-2 bg-cook-bg-secondary border border-cook-border rounded-xl text-cook-text focus:outline-none focus:ring-2 focus:ring-cook-orange"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="liquidity">Highest Liquidity</option>
-                  <option value="volume">Highest Volume</option>
-                </select>
-              </div>
-            </div>
-          </div>
 
           {loading && (
             <div className="card text-center py-12">
               <div className="spinner mx-auto mb-4" />
-              <p className="text-cook-text-secondary">Loading tokens...</p>
+              <p className="text-cook-text-secondary">Loading tokens from DYOR.io...</p>
             </div>
           )}
 
@@ -329,6 +232,32 @@ export default function CooksPage() {
 
           {!loading && !error && (
             <>
+              {/* Filters and Sorting */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
+                <label className="flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyWithLiquidity}
+                    onChange={(e) => setShowOnlyWithLiquidity(e.target.checked)}
+                    className="mr-2 accent-cook-orange"
+                  />
+                  <span className="text-sm text-cook-text">Show only tokens with liquidity</span>
+                </label>
+
+                <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                  <span className="text-sm text-cook-text-secondary">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="select-ton"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="liquidity">Highest Liquidity</option>
+                    <option value="volume">Highest Volume</option>
+                  </select>
+                </div>
+              </div>
+
               {filteredAndSortedTokens.length === 0 ? (
                 <div className="card text-center py-12">
                   <Image 
@@ -339,15 +268,9 @@ export default function CooksPage() {
                     className="mx-auto mb-4 opacity-50"
                     unoptimized
                   />
-                  <p className="text-cook-text-secondary mb-4">
-                    {showOnlyWithLiquidity 
-                      ? 'No tokens with liquidity found yet.' 
-                      : 'No tokens found yet.'}
-                  </p>
+                  <p className="text-cook-text-secondary mb-4">No tokens with liquidity found yet.</p>
                   <p className="text-sm text-cook-text-secondary mb-4">
-                    {showOnlyWithLiquidity
-                      ? 'Create your token and add liquidity on STON.fi to see it here!'
-                      : 'Create your token to see it here!'}
+                    Create your token and add liquidity to see it here! Tokens will appear automatically when they get liquidity on DYOR.io.
                   </p>
                   <Link href="/" className="btn-cook inline-flex items-center gap-2">
                     <Image 
@@ -405,27 +328,11 @@ export default function CooksPage() {
                             {formatSupply(token.totalSupply, token.decimals)} {token.symbol}
                           </span>
                         </div>
-                        {token.hasLiquidity && token.poolInfo && (
-                          <>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-cook-text-secondary">Liquidity</span>
-                              <span className="text-cook-text font-semibold text-green-600 dark:text-green-400">
-                                {formatLiquidity(token.poolInfo.totalLiquidity)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-cook-text-secondary">Status</span>
-                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
-                                Has Liquidity
-                              </span>
-                            </div>
-                          </>
-                        )}
-                        {!token.hasLiquidity && (
+                        {token.hasLiquidity && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-cook-text-secondary">Status</span>
-                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-xs">
-                              No Liquidity
+                            <span className="text-cook-text-secondary">Liquidity</span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
+                              {formatLiquidity(token.totalLiquidity)}
                             </span>
                           </div>
                         )}
