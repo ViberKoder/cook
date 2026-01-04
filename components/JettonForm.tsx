@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { deployJetton2 } from '@/lib/jetton2'
+import toast from 'react-hot-toast'
 import { Address } from '@ton/core'
 
 export default function JettonForm() {
@@ -47,10 +48,14 @@ export default function JettonForm() {
 
     setLoading(true)
     try {
+      toast.loading('Preparing Jetton 2.0 contract...', { id: 'deploy' })
+      
       const ownerAddress = Address.parse(wallet.account.address)
       const totalSupply = BigInt(formData.totalSupply) * BigInt(10 ** parseInt(formData.decimals))
       
-      await deployJetton2({
+      toast.loading('Confirm transaction in wallet (1 TON)...', { id: 'deploy' })
+      
+      const minterAddress = await deployJetton2({
         owner: ownerAddress,
         name: formData.name,
         symbol: formData.symbol,
@@ -61,10 +66,10 @@ export default function JettonForm() {
         tonConnectUI,
       })
 
-      alert('Jetton 2.0 deployed successfully!')
+      toast.success(`Jetton 2.0 deployed successfully! Address: ${minterAddress.toString()}`, { id: 'deploy', duration: 5000 })
     } catch (error: any) {
       console.error('Deployment error:', error)
-      alert(`Deployment failed: ${error.message}`)
+      toast.error(error.message || 'Deployment failed', { id: 'deploy' })
     } finally {
       setLoading(false)
     }

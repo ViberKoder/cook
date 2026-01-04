@@ -1,0 +1,100 @@
+/**
+ * On-chain metadata builder for Jetton 2.0
+ * Based on https://github.com/ton-blockchain/minter-contract/blob/main/build/jetton-minter.deploy.ts
+ * 
+ * Uses TEP-64 standard:
+ * - Prefix 0x00 for on-chain data
+ * - SHA-256 hashed keys
+ * - Snake format for values (chain of refs for long data)
+ */
+
+import { beginCell, Cell, Dictionary } from '@ton/core';
+import { sha256_sync } from '@ton/crypto';
+
+const ONCHAIN_CONTENT_PREFIX = 0x00;
+const SNAKE_PREFIX = 0x00;
+
+// Standard Jetton metadata keys
+export type JettonMetadataKeys = 'name' | 'description' | 'image' | 'symbol' | 'decimals';
+
+// Convert string to snake format cell
+function makeSnakeCell(data: Buffer): Cell {
+  const CELL_MAX_SIZE_BYTES = 127;
+  
+  const chunks: Buffer[] = [];
+  let remaining = data;
+  
+  while (remaining.length > 0) {
+    chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES));
+    remaining = remaining.slice(CELL_MAX_SIZE_BYTES);
+  }
+  
+  // Build from the end
+  let currentCell: Cell | null = null;
+  
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const builder = beginCell();
+    
+    if (i === 0) {
+      // First chunk - add snake prefix
+      builder.storeUint(SNAKE_PREFIX, 8);
+    }
+    
+    builder.storeBuffer(chunks[i]);
+    
+    if (currentCell) {
+      builder.storeRef(currentCell);
+    }
+    
+    currentCell = builder.endCell();
+  }
+  
+  return currentCell || beginCell().storeUint(SNAKE_PREFIX, 8).endCell();
+}
+
+export interface JettonMetadata {
+  name: string;
+  symbol: string;
+  description?: string;
+  image?: string;
+  decimals?: string;
+}
+
+/**
+ * Build on-chain metadata cell for Jetton 2.0
+ * 
+ * @param metadata - Token metadata object
+ * @returns Cell with TEP-64 on-chain metadata
+ */
+export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
+  const dict = Dictionary.empty(
+    Dictionary.Keys.Buffer(32),
+    Dictionary.Values.Cell()
+  );
+  
+  // Standard keys mapping
+  const entries: [JettonMetadataKeys, string | undefined][] = [
+    ['name', metadata.name],
+    ['symbol', metadata.symbol],
+    ['description', metadata.description],
+    ['image', metadata.image],
+    ['decimals', metadata.decimals || '9'],
+  ];
+  
+  for (const [key, value] of entries) {
+    if (value === undefined || value === '') continue;
+    
+    // Hash the key using SHA256
+    const keyHash = Buffer.from(sha256_sync(Buffer.from(key)));
+    const valueBuffer = Buffer.from(value, 'utf-8');
+    const valueCell = makeSnakeCell(valueBuffer);
+    
+    dict.set(keyHash, valueCell);
+  }
+  
+  return beginCell()
+    .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
+    .storeDict(dict)
+    .endCell();
+}
+
