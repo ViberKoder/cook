@@ -59,12 +59,8 @@ export default function TokenPage() {
     setError(null);
     
     try {
-      // Load token info, holders, and pool info in parallel
-      const [tokenResponse, holdersResponse, pool] = await Promise.all([
-        fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`),
-        fetch(`https://tonapi.io/v2/jettons/${tokenAddress}/holders?limit=20`),
-        checkStonfiLiquidity(tokenAddress),
-      ]);
+      // First, load basic token info quickly
+      const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
 
       if (!tokenResponse.ok) {
         throw new Error('Token not found');
@@ -84,35 +80,48 @@ export default function TokenPage() {
         mintable: tokenData.mintable !== false,
       });
 
-      // Load holders
-      if (holdersResponse.ok) {
-        const holdersData = await holdersResponse.json();
-        const totalSupply = BigInt(tokenData.total_supply || '0');
-        
-        const holdersList: Holder[] = (holdersData.addresses || []).map((holder: any) => {
-          const balance = BigInt(holder.balance || '0');
-          const percentage = totalSupply > 0n 
-            ? Number((balance * 10000n) / totalSupply) / 100 
-            : 0;
-          
-          return {
-            address: holder.owner?.address || holder.address,
-            balance: balance.toString(),
-            percentage,
-          };
-        });
-        
-        setHolders(holdersList);
-      }
+      // Mark as loaded so we can show the page
+      setLoading(false);
 
-      // Set pool info
-      if (pool) {
-        setPoolInfo(pool);
-      }
+      // Load additional data (holders and pool) in parallel, but don't block the page
+      const totalSupply = BigInt(tokenData.total_supply || '0');
+      
+      Promise.all([
+        // Load holders
+        fetch(`https://tonapi.io/v2/jettons/${tokenAddress}/holders?limit=20`)
+          .then(res => res.ok ? res.json() : null)
+          .then(holdersData => {
+            if (holdersData) {
+              const holdersList: Holder[] = (holdersData.addresses || []).map((holder: any) => {
+                const balance = BigInt(holder.balance || '0');
+                const percentage = totalSupply > 0n 
+                  ? Number((balance * 10000n) / totalSupply) / 100 
+                  : 0;
+                
+                return {
+                  address: holder.owner?.address || holder.address,
+                  balance: balance.toString(),
+                  percentage,
+                };
+              });
+              
+              setHolders(holdersList);
+            }
+          })
+          .catch(err => console.error('Failed to load holders:', err)),
+        
+        // Check liquidity (don't wait for it, it can be slow)
+        checkStonfiLiquidity(tokenAddress)
+          .then(pool => {
+            if (pool) {
+              setPoolInfo(pool);
+            }
+          })
+          .catch(err => console.error('Failed to check liquidity:', err)),
+      ]);
     } catch (err: any) {
       console.error('Failed to load token data:', err);
       setError(err.message || 'Failed to load token data');
-    } finally {
       setLoading(false);
     }
   };
