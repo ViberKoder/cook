@@ -19,12 +19,8 @@ interface CookToken {
   totalSupply: string;
   decimals: number;
   hasLiquidity: boolean;
-  poolInfo?: {
-    address: string;
-    reserve0: string;
-    reserve1: string;
-    totalLiquidity: number; // Calculated liquidity value
-  };
+  poolInfo?: StonfiPool; // Full pool info if available (from STON.fi or DYOR.io)
+  totalLiquidity: number; // Calculated liquidity value in USD
   deployedAt?: number; // Timestamp when token was added to localStorage
 }
 
