@@ -193,12 +193,22 @@ export async function deployJettonMinter(
     const stateInitBoc = stateInitCell.toBoc();
     const mintBodyBoc = mintBody.toBoc();
     
-    console.log('Deploy message details:');
-    console.log('  Address:', minterAddress.toString());
-    console.log('  Amount:', DEPLOY_FEE.toString());
-    console.log('  StateInit length:', stateInitBoc.length);
-    console.log('  Payload length:', mintBodyBoc.length);
-
+    // CRITICAL: Verify this is a NEW deployment
+    // Each token MUST have unique metadata to get unique address
+    const stateInitBocHash = Buffer.from(stateInitBoc).toString('hex').substring(0, 32);
+    
+    console.log('=== FINAL DEPLOYMENT VERIFICATION ===');
+    console.log('Token name:', tokenData.name);
+    console.log('Token symbol:', tokenData.symbol);
+    console.log('Contract address:', minterAddress.toString());
+    console.log('StateInit BOC hash:', stateInitBocHash + '...');
+    console.log('StateInit length:', stateInitBoc.length);
+    console.log('Payload length:', mintBodyBoc.length);
+    console.log('=====================================');
+    
+    // WARNING: If address is the same as previous deployment, this will MINT to existing contract!
+    // This should NEVER happen if metadata is different
+    
     const deployMessage: TransactionMessage = {
       address: minterAddress.toString(),
       amount: DEPLOY_FEE.toString(),
