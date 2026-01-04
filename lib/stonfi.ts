@@ -38,17 +38,20 @@ async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: nu
       
       // Extract liquidity from usd field
       // Format: { "value": "1000500000", "decimals": 9 }
-      if (data.usd) {
+      if (data.usd && data.usd.value !== undefined && data.usd.value !== null) {
         const liquidityValue = data.usd.value;
-        const liquidityDecimals = data.usd.decimals || 9;
+        const liquidityDecimals = data.usd.decimals !== undefined ? data.usd.decimals : 9;
         
         // Calculate liquidity in USD: value * pow(10, -decimals)
         const liquidityNum = typeof liquidityValue === 'string'
           ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
           : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
         
-        if (liquidityNum > 0) {
-          console.log(`DYOR.io liquidity API found liquidity for ${tokenAddress}: $${liquidityNum}`);
+        console.log(`DYOR.io USD liquidity: value=${liquidityValue}, decimals=${liquidityDecimals}, calculated=${liquidityNum}`);
+        
+        // Accept even very small amounts (> 0.000001 USD)
+        if (liquidityNum > 0.000001) {
+          console.log(`✅ DYOR.io liquidity API found liquidity for ${tokenAddress}: $${liquidityNum}`);
           return {
             liquidity: liquidityNum,
           };
@@ -56,17 +59,39 @@ async function checkDyorLiquidity(tokenAddress: string): Promise<{ liquidity: nu
       }
       
       // Fallback: try value field
-      if (data.value) {
+      if (data.value && data.value.value !== undefined && data.value.value !== null) {
         const liquidityValue = data.value.value;
-        const liquidityDecimals = data.value.decimals || 9;
+        const liquidityDecimals = data.value.decimals !== undefined ? data.value.decimals : 9;
         const liquidityNum = typeof liquidityValue === 'string'
           ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
           : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
         
-        if (liquidityNum > 0) {
-          console.log(`DYOR.io liquidity API (value field) found liquidity for ${tokenAddress}: $${liquidityNum}`);
+        console.log(`DYOR.io value field liquidity: value=${liquidityValue}, decimals=${liquidityDecimals}, calculated=${liquidityNum}`);
+        
+        if (liquidityNum > 0.000001) {
+          console.log(`✅ DYOR.io liquidity API (value field) found liquidity for ${tokenAddress}: $${liquidityNum}`);
           return {
             liquidity: liquidityNum,
+          };
+        }
+      }
+      
+      // Also try ton field (might be in TON, convert to USD approximately)
+      if (data.ton && data.ton.value !== undefined && data.ton.value !== null) {
+        const tonValue = data.ton.value;
+        const tonDecimals = data.ton.decimals !== undefined ? data.ton.decimals : 9;
+        const tonNum = typeof tonValue === 'string'
+          ? parseFloat(tonValue) / (10 ** tonDecimals)
+          : parseFloat(tonValue) / (10 ** tonDecimals);
+        
+        console.log(`DYOR.io TON liquidity: value=${tonValue}, decimals=${tonDecimals}, calculated=${tonNum}`);
+        
+        // If TON liquidity exists, assume it has some USD value (rough estimate: 1 TON ≈ $2)
+        if (tonNum > 0.000001) {
+          const estimatedUsd = tonNum * 2; // Rough estimate
+          console.log(`✅ DYOR.io liquidity API (ton field) found liquidity for ${tokenAddress}: ${tonNum} TON (~$${estimatedUsd})`);
+          return {
+            liquidity: estimatedUsd,
           };
         }
       }
