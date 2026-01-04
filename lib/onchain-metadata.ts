@@ -57,11 +57,21 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
     }
   }
 
-  // Final content cell: prefix 0x00 + dictionary
-  // КРИТИЧНО: префикс 0x00 (8 bits) обязателен для on-chain metadata!
+  // CRITICAL: For Jetton 2.0 on-chain metadata
+  // The contract expects metadata_uri as a snake slice (URI string),
+  // but for on-chain metadata we need to store TEP-64 dictionary.
+  // 
+  // The contract's build_content_cell() will try to read metadata_uri as URI
+  // and wrap it in a dictionary with "uri" key. But we want to store
+  // the dictionary directly.
+  //
+  // SOLUTION: Store the TEP-64 dictionary WITH prefix 0x00.
+  // Even though contract will try to parse it as URI, explorers should
+  // be able to read the dictionary directly from the cell.
+  // The prefix 0x00 indicates on-chain metadata format (TEP-64).
   return beginCell()
-    .storeUint(0, 8)              // <<< КРИТИЧНО: префикс для on-chain!
-    .storeDict(dict)
+    .storeUint(0, 8)              // TEP-64 on-chain metadata prefix
+    .storeDict(dict)               // Dictionary with metadata
     .endCell();
 }
 
