@@ -153,14 +153,15 @@ export async function deployJettonMinter(
 
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
-    // Jetton 2.0 data structure:
-    // total_supply, admin_address, next_admin_address, wallet_code, content
+    // Jetton 2.0 data structure (from jetton-minter.fc):
+    // total_supply:Coins admin_address:MsgAddress next_admin_address:MsgAddress jetton_wallet_code:^Cell metadata_uri:^Cell
+    // CRITICAL: Order must match load_data() in contract!
     const minterData = beginCell()
-      .storeCoins(0)
-      .storeAddress(walletAddress)
-      .storeAddress(null) // next_admin_address
-      .storeRef(getWalletCode())
-      .storeRef(contentCell)
+      .storeCoins(0)                    // total_supply (0 for new token)
+      .storeAddress(walletAddress)      // admin_address
+      .storeAddress(null)                // next_admin_address (null initially)
+      .storeRef(getWalletCode())        // jetton_wallet_code (library ref for Jetton 2.0)
+      .storeRef(contentCell)            // metadata_uri (on-chain TEP-64 metadata with 0x00 prefix)
       .endCell();
 
     // Verify minterData is unique

@@ -28,35 +28,29 @@ export interface JettonMetadata {
  */
 export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   // Build dictionary: key = sha256(key_name) as BigUint(256), value = Cell with string
-  const contentDict = Dictionary.empty<bigint, Cell>(
+  const dict = Dictionary.empty<bigint, Cell>(
     Dictionary.Keys.BigUint(256),
     Dictionary.Values.Cell()
   );
 
-  // Process all metadata fields
-  const metadataObj: Record<string, string> = {
-    name: metadata.name,
-    symbol: metadata.symbol,
-    description: metadata.description || '',
-    image: metadata.image || '',
-    decimals: metadata.decimals || '9',
-  };
-
-  for (const [key, value] of Object.entries(metadataObj)) {
+  // Standard metadata keys (in order of importance)
+  const keys: (keyof JettonMetadata)[] = ['name', 'symbol', 'description', 'image', 'decimals'];
+  
+  for (const key of keys) {
+    const value = metadata[key];
     if (value && value.trim() !== '') {
-      // Hash the key name
-      const keyBuffer = sha256_sync(key); // Buffer 32 bytes
-      const keyBigInt = BigInt('0x' + keyBuffer.toString('hex'));
+      // Hash the key name to get BigUint(256)
+      const keyHash = BigInt('0x' + sha256_sync(key).toString('hex'));
       
       // Store value as snake-string (storeStringTail handles long strings automatically)
       const valueCell = beginCell()
         .storeStringTail(value)
         .endCell();
       
-      contentDict.set(keyBigInt, valueCell);
+      dict.set(keyHash, valueCell);
       
       console.log(`Added metadata key "${key}":`, {
-        keyHash: keyBigInt.toString(16),
+        keyHash: keyHash.toString(16),
         valueLength: value.length,
         valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
       });
@@ -64,19 +58,11 @@ export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
   }
 
   // Final content cell: prefix 0x00 + dictionary
-  const jettonOnChainContent = beginCell()
-    .storeUint(0, 8)              // <--- ОБЯЗАТЕЛЬНЫЙ префикс для on-chain!
-    .storeDict(contentDict)
+  // КРИТИЧНО: префикс 0x00 (8 bits) обязателен для on-chain metadata!
+  return beginCell()
+    .storeUint(0, 8)              // <<< КРИТИЧНО: префикс для on-chain!
+    .storeDict(dict)
     .endCell();
-
-  console.log('On-chain metadata cell created:', {
-    bits: jettonOnChainContent.bits.length,
-    refs: jettonOnChainContent.refs.length,
-    dictSize: contentDict.size,
-    hash: jettonOnChainContent.hash().toString('hex').substring(0, 16) + '...',
-  });
-
-  return jettonOnChainContent;
 }
 
 /**
