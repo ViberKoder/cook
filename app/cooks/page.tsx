@@ -54,12 +54,17 @@ export default function CooksPage() {
           
           const tokenData = await tokenResponse.json();
           
-          // Check for liquidity on STON.fi
-          const pool = await checkStonfiLiquidity(tokenAddress);
-          
-          // If we found a pool OR token is in known list, add it
-          // (For known tokens, we assume they have liquidity if they're in the list)
-          if (pool || isKnownCookToken(tokenAddress)) {
+          // For known cook.tg tokens, check if they exist and assume they have liquidity
+          // (since they're in our known list, they should have been verified)
+          if (isKnownCookToken(tokenAddress)) {
+            // Try to check for actual liquidity, but don't fail if API is down
+            let pool = null;
+            try {
+              pool = await checkStonfiLiquidity(tokenAddress);
+            } catch (e) {
+              console.log('Liquidity check failed, but token is known:', e);
+            }
+            
             tokensWithLiquidity.push({
               address: tokenAddress,
               name: tokenData.metadata?.name || 'Unknown',
