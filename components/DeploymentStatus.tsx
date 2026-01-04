@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
 import { sendDropAdminTransaction, sendAddToCooksTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { addCookToken, setTokenDeployedAt } from '@/lib/cookTokens';
+import { addCookToken, setTokenDeployedAt } from '@/lib/cookTokens'; // Only used in handleAddToCooks
 import toast from 'react-hot-toast';
 
 export type DeploymentStep = 'idle' | 'preparing' | 'deploying' | 'minting' | 'completed' | 'error';
