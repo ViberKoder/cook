@@ -43,41 +43,15 @@ export default function CooksPage() {
       const storedTokens = getCookTokens();
       const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
-      // Load all known tokens and check liquidity
-      const tokenPromises = allTokenAddresses.map(async (tokenAddress): Promise<CookToken | null> => {
+      // First, load all token metadata quickly (parallel)
+      const tokenMetadataPromises = allTokenAddresses.map(async (tokenAddress) => {
         try {
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
-          if (!tokenResponse.ok) {
-            console.warn(`Token ${tokenAddress} not found in API`);
-            return null;
-          }
-          
+          if (!tokenResponse.ok) return null;
           const tokenData = await tokenResponse.json();
-          
-          // Check liquidity - only show tokens with liquidity
-          let hasLiquidity = false;
-          try {
-            const pool = await checkStonfiLiquidity(tokenAddress);
-            hasLiquidity = pool !== null;
-          } catch (e) {
-            console.warn(`Failed to check liquidity for ${tokenAddress}:`, e);
-            hasLiquidity = false;
-          }
-          
-          // Only return token if it has liquidity
-          if (!hasLiquidity) {
-            return null;
-          }
-          
           return {
             address: tokenAddress,
-            name: tokenData.metadata?.name || 'Unknown',
-            symbol: tokenData.metadata?.symbol || '???',
-            image: tokenData.metadata?.image,
-            description: tokenData.metadata?.description,
-            totalSupply: tokenData.total_supply || '0',
-            decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity: true,
+            data: tokenData,
           };
         } catch (err) {
           console.error(`Error loading token ${tokenAddress}:`, err);
@@ -85,10 +59,47 @@ export default function CooksPage() {
         }
       });
       
-      const loadedTokens = await Promise.all(tokenPromises);
-      const validTokens = loadedTokens.filter((t): t is CookToken => t !== null);
+      const tokenMetadataResults = await Promise.all(tokenMetadataPromises);
+      const validMetadata = tokenMetadataResults.filter((r): r is { address: string; data: any } => r !== null);
       
-      setTokens(validTokens);
+      // Then check liquidity for all tokens in parallel (with timeout)
+      const liquidityCheckPromises = validMetadata.map(async (item) => {
+        try {
+          // Set timeout for liquidity check (5 seconds max per token)
+          const pool = await Promise.race([
+            checkStonfiLiquidity(item.address),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
+          return {
+            address: item.address,
+            hasLiquidity: pool !== null,
+          };
+        } catch (e) {
+          return {
+            address: item.address,
+            hasLiquidity: false,
+          };
+        }
+      });
+      
+      const liquidityResults = await Promise.all(liquidityCheckPromises);
+      const liquidityMap = new Map(liquidityResults.map(r => [r.address, r.hasLiquidity]));
+      
+      // Filter and build final token list (only with liquidity)
+      const tokensWithLiquidity: CookToken[] = validMetadata
+        .filter(item => liquidityMap.get(item.address) === true)
+        .map(item => ({
+          address: item.address,
+          name: item.data.metadata?.name || 'Unknown',
+          symbol: item.data.metadata?.symbol || '???',
+          image: item.data.metadata?.image,
+          description: item.data.metadata?.description,
+          totalSupply: item.data.total_supply || '0',
+          decimals: parseInt(item.data.metadata?.decimals || '9'),
+          hasLiquidity: true,
+        }));
+      
+      setTokens(tokensWithLiquidity);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
       setError(err.message || 'Failed to load tokens');
