@@ -9,7 +9,7 @@ const phase::listed = 2;
 ;; For cookpad: max liquidity is 300 TON
 ;; We'll use a threshold supply that corresponds to 300 TON in bonding curve
 const max_supply = 1000000000000000000; ;; 1B tokens
-const threshold_supply = 800000000000000000; ;; 800M tokens (will be adjusted based on 300 TON limit)
+const threshold_supply = 800000000000000000; ;; 800M tokens (adjusted to reach ~300 TON in bonding curve)
 
 const precision = 9;
 
@@ -24,3 +24,8 @@ const forward::deposit = 300000000; ;; 0.3 TON
 
 ;; Cookpad specific: 300 TON max liquidity
 const max_liquidity_ton = 300 * 1000000000; ;; 300 TON in nanotons
+
+;; Cookpad fee: 1% = 100 basis points
+const cookpad::buy_fee_basis = 100;
+const cookpad::sell_fee_basis = 100;
+const cookpad::fee_recipient = "UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz"a;
