@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getCookTokens } from '@/lib/cookTokens';
-import { checkStonfiLiquidity } from '@/lib/stonfi';
+import { getCookTokens, getTokenDeployedAt } from '@/lib/cookTokens';
+import { checkStonfiLiquidity, StonfiPool } from '@/lib/stonfi';
 
 // Cooks page - displays tokens created on cook.tg with liquidity
 
@@ -33,12 +33,17 @@ const HARDCODED_TOKENS: string[] = [
   'EQBkRlirdJlIcPOhuXnOwQjOkAZcIOgHBfFvDf2mUWiqVk-Q', // dontbuyit token
   'EQCnVx4qmrEg8RB6WyujsKsmFZza6RUrEpTfLzdhuM3eCOci', // donttbuyyitt token
   'EQAqnsnR53WLm7CpUH5nJ0mRg671E_aWI_I4Ythke_NnYyMX', // 12 token
+  'EQATYt5Gvv6SYFICozdqHWY9hm7v4OeL75Rn_RJjb4jM0rN-', // test5 token
 ];
+
+type SortOption = 'newest' | 'volume' | 'liquidity';
 
 export default function CooksPage() {
   const [tokens, setTokens] = useState<CookToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOnlyWithLiquidity, setShowOnlyWithLiquidity] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
     loadCookTokens();
@@ -80,14 +85,29 @@ export default function CooksPage() {
           // Set timeout for liquidity check (4 seconds max per token)
           const pool = await Promise.race([
             checkStonfiLiquidity(item.address),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+            new Promise<StonfiPool | null>((resolve) => setTimeout(() => resolve(null), 4000)),
           ]);
           const hasLiquidity = pool !== null;
-          console.log(`Token ${item.address}: liquidity check = ${hasLiquidity}`);
+          
+          // Calculate total liquidity value (reserve0 in TON + reserve1 in token value)
+          let totalLiquidity = 0;
+          if (pool) {
+            try {
+              const reserve0TON = Number(pool.reserve0) / 1e9; // TON reserve
+              const reserve1Token = Number(pool.reserve1) / (10 ** parseInt(item.data.metadata?.decimals || '9'));
+              // Simple calculation: TON value * 2 (approximate)
+              totalLiquidity = reserve0TON * 2;
+            } catch (e) {
+              console.error('Error calculating liquidity:', e);
+            }
+          }
+          
+          console.log(`Token ${item.address}: liquidity check = ${hasLiquidity}, liquidity = ${totalLiquidity}`);
           return {
             address: item.address,
             hasLiquidity,
             pool,
+            totalLiquidity,
           };
         } catch (e) {
           console.error(`Liquidity check error for ${item.address}:`, e);
@@ -95,6 +115,7 @@ export default function CooksPage() {
             address: item.address,
             hasLiquidity: false,
             pool: null,
+            totalLiquidity: 0,
           };
         }
       });
@@ -102,49 +123,33 @@ export default function CooksPage() {
       const liquidityResults = await Promise.all(liquidityCheckPromises);
       console.log('Liquidity check results:', liquidityResults);
       
-      const liquidityMap = new Map(liquidityResults.map(r => [r.address, r.hasLiquidity]));
-      
-      // For hardcoded tokens, assume they have liquidity if API check fails
-      // (they are known to have liquidity)
-      const hardcodedSet = new Set(HARDCODED_TOKENS);
-      
-      // Also show tokens from localStorage (they were deployed on cook.tg)
-      // Even if liquidity check fails, show them (user can add liquidity later)
-      const storedSet = new Set(storedTokens);
-      
-      // Filter and build final token list
-      const tokensWithLiquidity: CookToken[] = validMetadata
-        .filter(item => {
-          const hasLiquidity = liquidityMap.get(item.address) === true;
-          const isHardcoded = hardcodedSet.has(item.address);
-          const isStored = storedSet.has(item.address);
+      // Build final token list - show ALL tokens from localStorage (they were deployed on cook.tg)
+      const allTokens: CookToken[] = validMetadata
+        .map(item => {
+          const liquidityData = liquidityResults.find(r => r.address === item.address);
+          const deployedAt = getTokenDeployedAt(item.address);
           
-          // Show token if:
-          // 1. Liquidity check confirmed it has liquidity, OR
-          // 2. It's in hardcoded list (assumed to have liquidity), OR
-          // 3. It's in localStorage (deployed on cook.tg - show even without liquidity check)
-          const shouldShow = hasLiquidity || isHardcoded || isStored;
-          
-          if (!shouldShow) {
-            console.log(`Filtering out token ${item.address} - no liquidity confirmed and not in lists`);
-          } else {
-            console.log(`Including token ${item.address} - hasLiquidity: ${hasLiquidity}, isHardcoded: ${isHardcoded}, isStored: ${isStored}`);
-          }
-          return shouldShow;
-        })
-        .map(item => ({
-          address: item.address,
-          name: item.data.metadata?.name || 'Unknown',
-          symbol: item.data.metadata?.symbol || '???',
-          image: item.data.metadata?.image,
-          description: item.data.metadata?.description,
-          totalSupply: item.data.total_supply || '0',
-          decimals: parseInt(item.data.metadata?.decimals || '9'),
-          hasLiquidity: liquidityMap.get(item.address) === true || hardcodedSet.has(item.address) || storedSet.has(item.address),
-        }));
+          return {
+            address: item.address,
+            name: item.data.metadata?.name || 'Unknown',
+            symbol: item.data.metadata?.symbol || '???',
+            image: item.data.metadata?.image,
+            description: item.data.metadata?.description,
+            totalSupply: item.data.total_supply || '0',
+            decimals: parseInt(item.data.metadata?.decimals || '9'),
+            hasLiquidity: liquidityData?.hasLiquidity || false,
+            poolInfo: liquidityData?.pool ? {
+              address: liquidityData.pool.address,
+              reserve0: liquidityData.pool.reserve0,
+              reserve1: liquidityData.pool.reserve1,
+              totalLiquidity: liquidityData.totalLiquidity,
+            } : undefined,
+            deployedAt,
+          };
+        });
       
-      console.log(`Found ${tokensWithLiquidity.length} tokens to display out of ${validMetadata.length} total`);
-      setTokens(tokensWithLiquidity);
+      console.log(`Found ${allTokens.length} tokens total`);
+      setTokens(allTokens);
     } catch (err: any) {
       console.error('Failed to load Cook tokens:', err);
       setError(err.message || 'Failed to load tokens');
@@ -164,6 +169,44 @@ export default function CooksPage() {
     }
   };
 
+  const formatLiquidity = (liquidity: number) => {
+    if (liquidity >= 1000000) {
+      return `${(liquidity / 1000000).toFixed(2)}M TON`;
+    } else if (liquidity >= 1000) {
+      return `${(liquidity / 1000).toFixed(2)}K TON`;
+    } else {
+      return `${liquidity.toFixed(2)} TON`;
+    }
+  };
+
+  // Filter and sort tokens
+  const filteredAndSortedTokens = tokens
+    .filter(token => {
+      if (showOnlyWithLiquidity) {
+        return token.hasLiquidity;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          const aTime = a.deployedAt || 0;
+          const bTime = b.deployedAt || 0;
+          return bTime - aTime; // Newest first
+        case 'liquidity':
+          const aLiq = a.poolInfo?.totalLiquidity || 0;
+          const bLiq = b.poolInfo?.totalLiquidity || 0;
+          return bLiq - aLiq; // Highest liquidity first
+        case 'volume':
+          // For now, use liquidity as volume proxy
+          const aVol = a.poolInfo?.totalLiquidity || 0;
+          const bVol = b.poolInfo?.totalLiquidity || 0;
+          return bVol - aVol; // Highest volume first
+        default:
+          return 0;
+      }
+    });
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Background decorations */}
@@ -178,11 +221,39 @@ export default function CooksPage() {
       <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold text-cook-text mb-2 text-center">
-            <span className="gradient-text-cook">Cooks</span> with Liquidity
+            <span className="gradient-text-cook">Cooks</span>
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Tokens created on Cook.tg that have active liquidity pools on STON.fi
+            Tokens created on Cook.tg
           </p>
+
+          {/* Filters */}
+          <div className="card mb-6">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlyWithLiquidity}
+                  onChange={(e) => setShowOnlyWithLiquidity(e.target.checked)}
+                  className="w-5 h-5 accent-cook-orange"
+                />
+                <span className="text-cook-text font-medium">Show only tokens with liquidity</span>
+              </label>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-cook-text-secondary text-sm">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="px-4 py-2 bg-cook-bg-secondary border border-cook-border rounded-xl text-cook-text focus:outline-none focus:ring-2 focus:ring-cook-orange"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="liquidity">Highest Liquidity</option>
+                  <option value="volume">Highest Volume</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
           {loading && (
             <div className="card text-center py-12">
@@ -202,7 +273,7 @@ export default function CooksPage() {
 
           {!loading && !error && (
             <>
-              {tokens.length === 0 ? (
+              {filteredAndSortedTokens.length === 0 ? (
                 <div className="card text-center py-12">
                   <Image 
                     src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
@@ -212,9 +283,15 @@ export default function CooksPage() {
                     className="mx-auto mb-4 opacity-50"
                     unoptimized
                   />
-                  <p className="text-cook-text-secondary mb-4">No tokens with liquidity found yet.</p>
+                  <p className="text-cook-text-secondary mb-4">
+                    {showOnlyWithLiquidity 
+                      ? 'No tokens with liquidity found yet.' 
+                      : 'No tokens found yet.'}
+                  </p>
                   <p className="text-sm text-cook-text-secondary mb-4">
-                    Create your token and add liquidity on STON.fi to see it here!
+                    {showOnlyWithLiquidity
+                      ? 'Create your token and add liquidity on STON.fi to see it here!'
+                      : 'Create your token to see it here!'}
                   </p>
                   <Link href="/" className="btn-cook inline-flex items-center gap-2">
                     <Image 
@@ -272,11 +349,27 @@ export default function CooksPage() {
                             {formatSupply(token.totalSupply, token.decimals)} {token.symbol}
                           </span>
                         </div>
-                        {token.hasLiquidity && (
+                        {token.hasLiquidity && token.poolInfo && (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-cook-text-secondary">Liquidity</span>
+                              <span className="text-cook-text font-semibold text-green-600 dark:text-green-400">
+                                {formatLiquidity(token.poolInfo.totalLiquidity)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-cook-text-secondary">Status</span>
+                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
+                                Has Liquidity
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        {!token.hasLiquidity && (
                           <div className="flex justify-between text-sm">
                             <span className="text-cook-text-secondary">Status</span>
-                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
-                              Has Liquidity
+                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-xs">
+                              No Liquidity
                             </span>
                           </div>
                         )}
