@@ -36,7 +36,7 @@ export default function CooksPage() {
   const [tokens, setTokens] = useState<CookToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showOnlyWithLiquidity, setShowOnlyWithLiquidity] = useState(true);
+  const [showOnlyWithLiquidity, setShowOnlyWithLiquidity] = useState(false); // Removed filter - show all tokens
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   useEffect(() => {
@@ -48,67 +48,30 @@ export default function CooksPage() {
     setError(null);
     
     try {
-      // Get tokens deployed on cook.tg from localStorage
-      // We will check each one via DYOR.io API to see if they have liquidity
+      // Get ALL tokens from localStorage (added via "Add on Cooks" button)
+      // No liquidity check - just show all tokens that were paid for
       const storedTokens = getCookTokens(); // Returns string[]
       const allTokenAddresses = [...new Set([...HARDCODED_TOKENS, ...storedTokens])];
       
-      console.log('Checking cook.tg deployed tokens on DYOR.io:', {
+      console.log('Loading tokens from Cooks:', {
         hardcoded: HARDCODED_TOKENS.length,
         fromStorage: storedTokens.length,
         total: allTokenAddresses.length,
       });
       
       if (allTokenAddresses.length === 0) {
-        console.log('No tokens found. Tokens will appear here after deployment on cook.tg and when they get liquidity on DYOR.io.');
+        console.log('No tokens found. Use "Add on Cooks" button to add your token.');
         setTokens([]);
         setLoading(false);
         return;
       }
       
-      // Check each token via DYOR.io API - only show tokens that appear on DYOR.io with liquidity
+      // Load token metadata from TonAPI for all tokens
       const tokenCheckPromises = allTokenAddresses.map(async (tokenAddress) => {
         try {
           const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
           
-          // Step 1: Check if token exists on DYOR.io and has liquidity
-          const dyorLiquidityResponse = await fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`, {
-            signal: AbortSignal.timeout(5000),
-          });
-          
-          if (!dyorLiquidityResponse.ok) {
-            console.log(`Token ${tokenAddress} not found on DYOR.io or no liquidity`);
-            return null; // Token not on DYOR.io or no liquidity
-          }
-          
-          const dyorLiquidityData = await dyorLiquidityResponse.json();
-          
-          // Extract liquidity value
-          let totalLiquidity = 0;
-          if (dyorLiquidityData.usd && dyorLiquidityData.usd.value !== undefined && dyorLiquidityData.usd.value !== null) {
-            const liquidityValue = dyorLiquidityData.usd.value;
-            const liquidityDecimals = dyorLiquidityData.usd.decimals !== undefined ? dyorLiquidityData.usd.decimals : 9;
-            totalLiquidity = typeof liquidityValue === 'string'
-              ? parseFloat(liquidityValue) / (10 ** liquidityDecimals)
-              : parseFloat(liquidityValue) / (10 ** liquidityDecimals);
-          } else if (dyorLiquidityData.ton && dyorLiquidityData.ton.value !== undefined && dyorLiquidityData.ton.value !== null) {
-            // Fallback to TON liquidity (convert to USD estimate)
-            const tonValue = dyorLiquidityData.ton.value;
-            const tonDecimals = dyorLiquidityData.ton.decimals !== undefined ? dyorLiquidityData.ton.decimals : 9;
-            const tonNum = typeof tonValue === 'string'
-              ? parseFloat(tonValue) / (10 ** tonDecimals)
-              : parseFloat(tonValue) / (10 ** tonDecimals);
-            totalLiquidity = tonNum * 2; // Rough estimate: 1 TON ≈ $2
-          }
-          
-          if (totalLiquidity <= 0.000001) {
-            console.log(`Token ${tokenAddress} on DYOR.io but liquidity is 0 or too low`);
-            return null; // No meaningful liquidity
-          }
-          
-          console.log(`✅ Token ${tokenAddress} found on DYOR.io with liquidity: $${totalLiquidity}`);
-          
-          // Step 2: Get token metadata from TonAPI
+          // Get token metadata from TonAPI
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${normalizedEQ}`, {
             signal: AbortSignal.timeout(5000),
           });
@@ -129,14 +92,14 @@ export default function CooksPage() {
             description: tokenData.metadata?.description,
             totalSupply: tokenData.total_supply || '0',
             decimals: parseInt(tokenData.metadata?.decimals || '9'),
-            hasLiquidity: true, // We already confirmed it has liquidity
-            totalLiquidity,
+            hasLiquidity: false, // No liquidity check needed
+            totalLiquidity: 0, // No liquidity check needed
             deployedAt,
           };
           
           return token;
         } catch (err) {
-          console.error(`Error checking token ${tokenAddress} on DYOR.io:`, err);
+          console.error(`Error loading token ${tokenAddress}:`, err);
           return null;
         }
       });
@@ -144,7 +107,7 @@ export default function CooksPage() {
       const tokenResults = await Promise.all(tokenCheckPromises);
       const validTokens = tokenResults.filter((t): t is CookToken => t !== null && t !== undefined);
       
-      console.log(`Found ${validTokens.length} tokens on DYOR.io with liquidity out of ${allTokenAddresses.length} deployed on cook.tg`);
+      console.log(`Loaded ${validTokens.length} tokens from Cooks`);
       
       setTokens(validTokens);
     } catch (err: any) {
@@ -176,11 +139,9 @@ export default function CooksPage() {
     return `$${value.toFixed(2)}`;
   };
 
-  // Filter and sort tokens
+  // Sort tokens (no filtering - show all)
   const filteredAndSortedTokens = useMemo(() => {
-    let filtered = showOnlyWithLiquidity ? tokens.filter(token => token.hasLiquidity) : tokens;
-
-    return filtered.sort((a, b) => {
+    return tokens.sort((a, b) => {
       switch (sortBy) {
         case 'newest':
           const aTime = a.deployedAt || 0;
@@ -213,7 +174,7 @@ export default function CooksPage() {
             <span className="gradient-text-cook">Cooks</span> with Liquidity
           </h1>
           <p className="text-cook-text-secondary text-center mb-8">
-            Tokens created on Cook.tg that have active liquidity pools on DYOR.io
+            Tokens added to Cooks section via "Add on Cooks" button
           </p>
 
           {loading && (
@@ -234,19 +195,9 @@ export default function CooksPage() {
 
           {!loading && !error && (
             <>
-              {/* Filters and Sorting */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
-                <label className="flex items-center cursor-pointer flex-shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyWithLiquidity}
-                    onChange={(e) => setShowOnlyWithLiquidity(e.target.checked)}
-                    className="mr-2 accent-cook-orange"
-                  />
-                  <span className="text-sm text-cook-text">Show only tokens with liquidity</span>
-                </label>
-
-                <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+              {/* Sorting */}
+              <div className="flex flex-col sm:flex-row justify-end items-center gap-4 mb-8 p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-cook-text-secondary">Sort by:</span>
                   <select
                     value={sortBy}
@@ -270,9 +221,9 @@ export default function CooksPage() {
                     className="mx-auto mb-4 opacity-50"
                     unoptimized
                   />
-                  <p className="text-cook-text-secondary mb-4">No tokens with liquidity found yet.</p>
+                  <p className="text-cook-text-secondary mb-4">No tokens found yet.</p>
                   <p className="text-sm text-cook-text-secondary mb-4">
-                    Create your token and add liquidity to see it here! Tokens will appear automatically when they get liquidity on DYOR.io.
+                    Use the "Add on Cooks" button after deploying your token to add it here.
                   </p>
                   <Link href="/" className="btn-cook inline-flex items-center gap-2">
                     <Image 
@@ -330,14 +281,6 @@ export default function CooksPage() {
                             {formatSupply(token.totalSupply, token.decimals)} {token.symbol}
                           </span>
                         </div>
-                        {token.hasLiquidity && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-cook-text-secondary">Liquidity</span>
-                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-bold">
-                              {formatLiquidity(token.totalLiquidity)}
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="text-center text-sm text-cook-orange font-medium">

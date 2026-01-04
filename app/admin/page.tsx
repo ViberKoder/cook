@@ -6,7 +6,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { Address } from '@ton/core';
-import { loadJettonInfo, JettonInfo, sendMintTransaction, sendChangeMetadataTransaction, sendChangeAdminTransaction, sendDropAdminTransaction } from '@/lib/admin';
+import { loadJettonInfo, JettonInfo, sendMintTransaction, sendChangeMetadataTransaction, sendChangeAdminTransaction, sendDropAdminTransaction, sendAddToCooksTransaction } from '@/lib/admin';
+import { addCookToken, setTokenDeployedAt } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
 
 export default function AdminPage() {

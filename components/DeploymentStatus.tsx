@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { getStonfiPoolUrl } from '@/lib/deploy';
-import { sendDropAdminTransaction } from '@/lib/admin';
+import { sendDropAdminTransaction, sendAddToCooksTransaction } from '@/lib/admin';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { addCookToken, setTokenDeployedAt } from '@/lib/cookTokens';
 import toast from 'react-hot-toast';
@@ -38,6 +38,7 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
   const currentStepIndex = steps.findIndex(s => s.id === step);
   const [showStonfi, setShowStonfi] = useState(false);
   const [revokingAdmin, setRevokingAdmin] = useState(false);
+  const [addingToCooks, setAddingToCooks] = useState(false);
   const { connected, wallet, sendTransaction } = useTonConnect();
 
   const handleRevokeAdmin = async () => {
@@ -54,6 +55,25 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
       toast.error(error.message || 'Failed to revoke admin rights');
     } finally {
       setRevokingAdmin(false);
+    }
+  };
+
+  const handleAddToCooks = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    setAddingToCooks(true);
+    try {
+      await sendAddToCooksTransaction(sendTransaction);
+      addCookToken(deployedAddress);
+      setTokenDeployedAt(deployedAddress);
+      toast.success('Token added to Cooks! Payment of 0.2 TON processed.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add token to Cooks');
+    } finally {
+      setAddingToCooks(false);
     }
   };
 
@@ -188,6 +208,46 @@ export default function DeploymentStatus({ step, deployedAddress, onReset }: Dep
               </div>
             )}
           </div>
+        </div>
+
+        {/* Add to Cooks */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300 dark:border-orange-700 rounded-xl">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Image 
+              src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+              alt="Cook" 
+              width={24}
+              height={24}
+              unoptimized
+            />
+            <h3 className="font-bold text-cook-text">Add Token to Cooks</h3>
+          </div>
+          <p className="text-sm text-cook-text-secondary mb-4 text-center">
+            Pay 0.2 TON to add your token to the Cooks section. Your token will appear immediately without any filters.
+          </p>
+          <button
+            onClick={handleAddToCooks}
+            disabled={!connected || addingToCooks}
+            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {addingToCooks ? (
+              <>
+                <div className="spinner" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Image 
+                  src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                  alt="" 
+                  width={20}
+                  height={20}
+                  unoptimized
+                />
+                Add on Cooks (0.2 TON)
+              </>
+            )}
+          </button>
         </div>
 
         {/* Actions */}

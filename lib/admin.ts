@@ -218,3 +218,26 @@ export async function sendDropAdminTransaction(
   });
 }
 
+/**
+ * Send transaction to add token to Cooks (pay 0.2 TON fee)
+ */
+export async function sendAddToCooksTransaction(
+  sendTransaction: (params: SendTransactionParams) => Promise<any>
+): Promise<void> {
+  const COOKS_FEE_WALLET = 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
+  const COOKS_FEE = toNano('0.2');
+  
+  const address = Address.parse(COOKS_FEE_WALLET);
+  
+  await sendTransaction({
+    to: address.toString(),
+    value: COOKS_FEE.toString(),
+    body: beginCell()
+      .storeUint(0, 32) // op = 0 for simple transfer
+      .storeUint(0, 64) // query_id
+      .endCell()
+      .toBoc()
+      .toString('base64'),
+  });
+}
+
