@@ -104,36 +104,40 @@ export async function deployCookpad(
     let COOKPAD_CODE: Cell;
     
     try {
-      // Try to fetch contract code from example memepad
+      // Fetch contract code from example memepad contract
       const exampleAddress = 'EQCHqNToJxTBPHc91_O7HRULzH4bfX6lLU5b1_76zPnlq3Mz';
       const contractResponse = await fetch(`https://tonapi.io/v2/blockchain/accounts/${exampleAddress}`);
       
-      if (contractResponse.ok) {
-        const contractData = await contractResponse.json();
-        const codeHex = contractData.code;
-        
-        if (codeHex) {
-          // Convert hex to Cell
-          COOKPAD_CODE = Cell.fromBoc(Buffer.from(codeHex, 'hex'))[0];
-        } else {
-          throw new Error('Contract code not found in response');
-        }
-      } else {
-        throw new Error('Failed to fetch contract code');
+      if (!contractResponse.ok) {
+        throw new Error(`Failed to fetch contract: ${contractResponse.statusText}`);
       }
-    } catch (error) {
-      console.error('Failed to load contract code from example:', error);
-      toast.error('Failed to load contract code. Using fallback.', { id: 'deploy-cookpad' });
       
-      // Fallback: Use a simple placeholder code (this won't work, but shows the structure)
-      // In production, this should be replaced with actual compiled cookpad contract
-      COOKPAD_CODE = beginCell()
-        .storeUint(0, 1) // Placeholder
-        .endCell();
+      const contractData = await contractResponse.json();
+      
+      // Get code from account state
+      if (!contractData.code) {
+        throw new Error('Contract code not found in response');
+      }
+      
+      // Parse code from base64
+      const codeBoc = contractData.code;
+      const codeBuffer = Buffer.from(codeBoc, 'base64');
+      const codeCells = Cell.fromBoc(codeBuffer);
+      
+      if (codeCells.length === 0) {
+        throw new Error('Failed to parse contract code');
+      }
+      
+      COOKPAD_CODE = codeCells[0];
+      
+      console.log('Contract code loaded successfully');
+    } catch (error: any) {
+      console.error('Failed to load contract code:', error);
+      toast.error(`Failed to load contract code: ${error.message}`, { id: 'deploy-cookpad', duration: 10000 });
       
       return {
         success: false,
-        error: 'Contract code could not be loaded. Please ensure the contract is compiled or the example contract is accessible.',
+        error: `Failed to load contract code: ${error.message}. Please check your internet connection and try again.`,
       };
     }
 
@@ -153,18 +157,27 @@ export async function deployCookpad(
     // Deploy transaction
     toast.loading('Deploying Cookpad contract...', { id: 'deploy-cookpad' });
     
-    await sendTransaction({
-      to: contractAddr.toString(),
-      value: toNano('0.1').toString(), // Initial balance
-      stateInit: stateInitCell.toBoc().toString('base64'),
-    });
+    try {
+      await sendTransaction({
+        to: contractAddr.toString(),
+        value: toNano('0.15').toString(), // Initial balance (0.15 TON for deployment + gas)
+        stateInit: stateInitCell.toBoc().toString('base64'),
+      });
 
-    toast.success('Cookpad contract deployed successfully!', { id: 'deploy-cookpad' });
+      toast.success('Cookpad contract deployed successfully!', { id: 'deploy-cookpad' });
 
-    return {
-      success: true,
-      address: contractAddr.toString(),
-    };
+      return {
+        success: true,
+        address: contractAddr.toString(),
+      };
+    } catch (error: any) {
+      console.error('Transaction failed:', error);
+      toast.error(`Deployment transaction failed: ${error.message}`, { id: 'deploy-cookpad' });
+      return {
+        success: false,
+        error: error.message || 'Transaction failed',
+      };
+    }
   } catch (error: any) {
     console.error('Cookpad deployment error:', error);
     toast.error(error.message || 'Failed to deploy Cookpad', { id: 'deploy-cookpad' });
