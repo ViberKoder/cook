@@ -280,49 +280,12 @@ export async function deployJettonMinter(
     }
     
         if (result) {
-          // Store metadata in GitHub (off-chain storage)
-          const metadataJson = {
+          // Metadata is now stored on-chain, no need for external storage
+          console.log('Jetton 2.0 deployed with on-chain metadata:', {
+            address: minterAddress.toString(),
             name: metadata.name,
             symbol: metadata.symbol,
-            description: metadata.description || metadata.name,
-            decimals: metadata.decimals || '9',
-            image: metadata.image || undefined,
-          };
-          
-          // GitHub API endpoint to create/update file
-          // Note: This requires GitHub token, so we'll use API endpoint as fallback
-          const githubApiUrl = `https://api.github.com/repos/ViberKoder/cook/contents/metadata/${minterAddress.toString()}.json`;
-          const apiUrl = typeof window !== 'undefined' 
-            ? `${window.location.origin}/api/jetton-metadata/${minterAddress.toString()}`
-            : `https://www.cook.tg/api/jetton-metadata/${minterAddress.toString()}`;
-          
-          console.log('Storing metadata:', {
-            githubUrl: `https://raw.githubusercontent.com/ViberKoder/cook/main/metadata/${minterAddress.toString()}.json`,
-            apiUrl: apiUrl,
-            metadata: metadataJson,
           });
-          
-          // Call API to store metadata (API will handle GitHub storage)
-          if (typeof window !== 'undefined') {
-            fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(metadataJson),
-            })
-            .then(async (response) => {
-              if (response.ok) {
-                console.log('Metadata stored successfully');
-              } else {
-                const errorText = await response.text();
-                console.error('Failed to store metadata:', response.status, errorText);
-              }
-            })
-            .catch((err) => {
-              console.error('Failed to store metadata (network error):', err);
-            });
-          }
           
           toast.success('Jetton 2.0 token created!', { id: 'deploy' });
           return { success: true, address: minterAddress.toString() };
