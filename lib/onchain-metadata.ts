@@ -1,22 +1,66 @@
 /**
- * Jetton 2.0 Metadata Utilities
+ * On-chain metadata builder for Jetton 2.0
+ * Based on https://github.com/ton-blockchain/minter-contract/blob/main/build/jetton-minter.deploy.ts
  * 
- * The Jetton 2.0 contract stores metadata_uri as a snake-encoded string.
- * When get_jetton_data is called, the contract's build_content_cell function
- * creates an on-chain TEP-64 dictionary with:
- *   - "uri" key -> the stored metadata_uri
- *   - "decimals" key -> "9" (hardcoded in contract)
+ * Uses TEP-64 standard:
+ * - Prefix 0x00 for on-chain data
+ * - SHA-256 hashed keys
+ * - Snake format for values (chain of refs for long data)
  * 
- * Explorers and DEXes then fetch the JSON from the URI to get:
- *   name, symbol, description, image
- * 
- * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
- * from the official wrapper. This stores the URI in a ref, which is required
- * because the contract's build_content_cell adds a 0x00 prefix when building
- * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
+ * This is the DIRECT TEP-64 format that Jetton 1.0 uses and that explorers expect.
+ * Jetton 2.0 contract should store this format directly, not a URI.
  */
 
-import { beginCell, Cell } from '@ton/core';
+import { beginCell, Cell, Dictionary } from '@ton/core';
+import { Sha256 } from '@aws-crypto/sha256-js';
+
+const ONCHAIN_CONTENT_PREFIX = 0x00;
+const SNAKE_PREFIX = 0x00;
+
+// Standard Jetton metadata keys
+export type JettonMetadataKeys = 'name' | 'description' | 'image' | 'symbol' | 'decimals';
+
+// SHA256 hash function
+function sha256(str: string): Buffer {
+  const hash = new Sha256();
+  hash.update(str);
+  return Buffer.from(hash.digestSync());
+}
+
+// Convert string to snake format cell
+function makeSnakeCell(data: Buffer): Cell {
+  const CELL_MAX_SIZE_BYTES = 127;
+  
+  const chunks: Buffer[] = [];
+  let remaining = data;
+  
+  while (remaining.length > 0) {
+    chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES));
+    remaining = remaining.slice(CELL_MAX_SIZE_BYTES);
+  }
+  
+  // Build from the end
+  let currentCell: Cell | null = null;
+  
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const builder = beginCell();
+    
+    if (i === 0) {
+      // First chunk - add snake prefix
+      builder.storeUint(SNAKE_PREFIX, 8);
+    }
+    
+    builder.storeBuffer(chunks[i]);
+    
+    if (currentCell) {
+      builder.storeRef(currentCell);
+    }
+    
+    currentCell = builder.endCell();
+  }
+  
+  return currentCell || beginCell().storeUint(SNAKE_PREFIX, 8).endCell();
+}
 
 export interface JettonMetadata {
   name: string;
@@ -27,81 +71,55 @@ export interface JettonMetadata {
 }
 
 /**
- * Build metadata URI for Jetton 2.0
- * Creates a data URI containing the JSON metadata inline.
- * This avoids the need for external hosting and works as on-chain metadata.
- * 
- * IMPORTANT: Using base64 encoding for better explorer compatibility.
- * Some explorers may not support URL-encoded data URIs.
- */
-export function buildMetadataUri(metadata: JettonMetadata): string {
-  // Build JSON object with all required fields
-  const jsonMetadata: any = {
-    name: metadata.name,
-    symbol: metadata.symbol,
-    description: metadata.description || metadata.name,
-    decimals: metadata.decimals || '9',
-  };
-  
-  // Add image if provided (must be a valid URL or data URI)
-  if (metadata.image && metadata.image.trim()) {
-    jsonMetadata.image = metadata.image.trim();
-  }
-  
-  // Stringify JSON
-  const jsonString = JSON.stringify(jsonMetadata);
-  
-  // Use base64 encoding instead of URL encoding for better compatibility
-  // This format is more widely supported by explorers
-  const base64Encoded = Buffer.from(jsonString, 'utf-8').toString('base64');
-  
-  // Return data URI with base64 encoding
-  // Format: data:application/json;base64,<base64_json>
-  return `data:application/json;base64,${base64Encoded}`;
-}
-
-/**
- * Build metadata URI cell for Jetton 2.0 contract
- * 
- * This is the correct way to store metadata in Jetton 2.0.
- * The contract will automatically convert this URI to TEP-64 format
- * when get_jetton_data is called.
- * 
- * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
- * from the official wrapper. This stores the URI in a ref, which is required
- * because the contract's build_content_cell adds a 0x00 prefix when building
- * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
+ * Build on-chain metadata cell for Jetton 2.0
+ * Uses TEP-64 format directly (like Jetton 1.0) for maximum compatibility
  * 
  * @param metadata - Token metadata object
- * @returns Cell with metadata URI stored in ref
+ * @returns Cell with TEP-64 on-chain metadata
  */
 export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  const uri = buildMetadataUri(metadata);
+  const dict = Dictionary.empty(
+    Dictionary.Keys.Buffer(32),
+    Dictionary.Values.Cell()
+  );
   
-  console.log('Building metadata URI:', {
-    uriLength: uri.length,
-    uriPreview: uri.length > 200 ? uri.substring(0, 200) + '...' : uri,
-    metadata: {
-      name: metadata.name,
-      symbol: metadata.symbol,
-      hasDescription: !!metadata.description,
-      hasImage: !!metadata.image,
-    },
-  });
+  // Standard keys mapping
+  const entries: [JettonMetadataKeys, string | undefined][] = [
+    ['name', metadata.name],
+    ['symbol', metadata.symbol],
+    ['description', metadata.description],
+    ['image', metadata.image],
+    ['decimals', metadata.decimals || '9'],
+  ];
   
-  // IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
-  // This stores the string in a ref cell, which is required for Jetton 2.0
-  const cell = beginCell()
-    .storeStringRefTail(uri)
+  for (const [key, value] of entries) {
+    if (value === undefined || value === '') continue;
+    
+    const keyHash = sha256(key);
+    const valueBuffer = Buffer.from(value, 'utf-8');
+    const valueCell = makeSnakeCell(valueBuffer);
+    
+    console.log(`Adding metadata key "${key}":`, {
+      hash: keyHash.toString('hex').substring(0, 16) + '...',
+      valueLength: value.length,
+      valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
+    });
+    
+    dict.set(keyHash, valueCell);
+  }
+  
+  const resultCell = beginCell()
+    .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
+    .storeDict(dict)
     .endCell();
   
-  console.log('Metadata cell created:', {
-    bits: cell.bits.length,
-    refs: cell.refs.length,
-    hasRef: cell.refs.length > 0,
+  console.log('Metadata cell created (TEP-64 format):', {
+    bits: resultCell.bits.length,
+    refs: resultCell.refs.length,
+    dictSize: dict.size,
   });
   
-  return cell;
+  return resultCell;
 }
 
 /**
