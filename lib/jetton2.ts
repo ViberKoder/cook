@@ -38,8 +38,41 @@ export interface JettonDeployParams {
   tonConnectUI: TonConnectUI
 }
 
+// Helper to create snake format cell for long strings
+function makeSnakeCell(data: Buffer): Cell {
+  const CELL_MAX_SIZE_BYTES = 127
+  const chunks: Buffer[] = []
+  let remaining = data
+  
+  while (remaining.length > 0) {
+    chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES))
+    remaining = remaining.slice(CELL_MAX_SIZE_BYTES)
+  }
+  
+  // Build from the end
+  let currentCell: Cell | null = null
+  
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const builder = beginCell()
+    
+    if (i === 0) {
+      builder.storeUint(0, 8) // snake prefix
+    }
+    
+    builder.storeBuffer(chunks[i])
+    
+    if (currentCell) {
+      builder.storeRef(currentCell)
+    }
+    
+    currentCell = builder.endCell()
+  }
+  
+  return currentCell || beginCell().storeUint(0, 8).endCell()
+}
+
 // Create onchain metadata cell for Jetton 2.0
-// Jetton 2.0 uses onchain metadata stored in a dictionary
+// Jetton 2.0 uses onchain metadata stored in a dictionary (TEP-64)
 // Format: dict<256, slice> where key is sha256(key_name), value is cell with data
 async function createOnchainMetadata(params: {
   name: string
@@ -48,31 +81,29 @@ async function createOnchainMetadata(params: {
   imageUrl: string
   decimals: number
 }): Promise<Cell> {
-  // Create dictionary for metadata
-  const metadataDict = Dictionary.empty<bigint, Cell>()
+  // Create dictionary with proper serializers
+  const metadataDict = Dictionary.empty(
+    Dictionary.Keys.Buffer(32), // 32 bytes = 256 bits for SHA256 hash
+    Dictionary.Values.Cell()
+  )
   
   // Helper to create metadata key hash
   // Jetton 2.0 uses SHA256 of the key string
-  const createKey = async (key: string): Promise<bigint> => {
-    // Hash the key string directly
+  const createKey = async (key: string): Promise<Buffer> => {
     const hash = await sha256(Buffer.from(key))
-    return BigInt('0x' + Buffer.from(hash).toString('hex'))
+    return hash
   }
   
-  // Helper to create metadata value cell
-  // For strings: use offchain format (tag 0 + string)
-  // For numbers: use onchain format (tag 1 + uint256)
+  // Helper to create metadata value cell in snake format
   const createValue = (value: string | number): Cell => {
     if (typeof value === 'string') {
-      return beginCell()
-        .storeUint(0, 8) // offchain tag (data stored as reference)
-        .storeStringTail(value)
-        .endCell()
+      const valueBuffer = Buffer.from(value, 'utf-8')
+      return makeSnakeCell(valueBuffer)
     } else {
-      return beginCell()
-        .storeUint(1, 8) // onchain tag (data stored inline)
-        .storeUint(value, 32) // decimals is uint32
-        .endCell()
+      // For numbers, store as uint32 in snake format
+      const valueBuffer = Buffer.allocUnsafe(4)
+      valueBuffer.writeUInt32BE(value, 0)
+      return makeSnakeCell(valueBuffer)
     }
   }
   
@@ -91,8 +122,9 @@ async function createOnchainMetadata(params: {
   }
   metadataDict.set(await createKey('decimals'), createValue(params.decimals))
   
-  // Return metadata cell
+  // Return metadata cell with onchain prefix
   return beginCell()
+    .storeUint(0, 8) // onchain content prefix
     .storeDict(metadataDict)
     .endCell()
 }
