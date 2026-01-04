@@ -117,5 +117,5 @@ export function buildOffchainMetadataCell(url: string): Cell {
 }
 
 // Alias for backward compatibility
-export const buildOnchainMetadataCell = buildTokenMetadataCell;
+export const buildOnchainMetadataCell = (metadata: JettonMetadata, contractAddress?: string) => buildTokenMetadataCell(metadata, contractAddress);
 
