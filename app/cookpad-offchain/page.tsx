@@ -116,7 +116,7 @@ function CookpadOffchainContent() {
       return;
     }
 
-    if (totalLiquidity + amount > 300) {
+    if (totalLiquidityState + amount > 300) {
       toast.error('Maximum liquidity of 300 TON reached. Tokens will be withdrawn onchain.');
       return;
     }
@@ -316,12 +316,12 @@ function CookpadOffchainContent() {
                 <div className="card text-center">
                   <p className="text-sm text-cook-text-secondary mb-1">Total Liquidity</p>
                   <p className="text-2xl font-bold text-cook-text">
-                    {totalLiquidity.toFixed(2)} / 300 TON
+                    {totalLiquidityState.toFixed(2)} / 300 TON
                   </p>
                   <div className="mt-2 w-full bg-cook-bg-secondary rounded-full h-2">
                     <div 
                       className="bg-gradient-to-r from-orange-500 to-yellow-600 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min((totalLiquidity / 300) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((totalLiquidityState / 300) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -374,7 +374,7 @@ function CookpadOffchainContent() {
                       )}
                       <button
                         onClick={handleBuy}
-                        disabled={!buyAmount || loading || totalLiquidity >= 300}
+                        disabled={!buyAmount || loading || totalLiquidityState >= 300}
                         className="btn-cook w-full"
                       >
                         {loading ? 'Processing...' : totalLiquidityState >= 300 ? 'Max Liquidity Reached' : 'Buy Offchain'}
