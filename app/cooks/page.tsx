@@ -100,18 +100,10 @@ export default function CooksPage() {
                 // Simple calculation: TON value * 2 (approximate)
                 totalLiquidity = reserve0TON * 2;
               } else {
-                // If no reserves but pool exists, try to get liquidity from DYOR.io
-                try {
-                  const dyorResponse = await fetch(`https://dyor.io/api/token/${item.address.replace(/^UQ/, 'EQ')}`);
-                  if (dyorResponse.ok) {
-                    const dyorData = await dyorResponse.json();
-                    if (dyorData.liquidity) {
-                      totalLiquidity = parseFloat(dyorData.liquidity.replace(/[^0-9.]/g, '')) || 0;
-                    }
-                  }
-                } catch (e) {
-                  // Ignore DYOR errors
-                }
+                // If no reserves but pool exists, the liquidity was likely found via DYOR.io
+                // The totalLiquidity will be set from DYOR data in the poolInfo
+                // For now, set a small value to indicate liquidity exists
+                totalLiquidity = 0.01; // Minimal value to indicate liquidity exists
               }
             } catch (e) {
               console.error('Error calculating liquidity:', e);

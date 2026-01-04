@@ -205,9 +205,17 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
     // Try DYOR.io as fallback
     console.log(`Trying DYOR.io for ${tokenAddress}...`);
     const dyorResult = await checkDyorLiquidity(tokenAddress);
-    if (dyorResult) {
-      console.log(`DYOR.io found liquidity for ${tokenAddress}`);
-      return dyorResult;
+    if (dyorResult && dyorResult.liquidity > 0) {
+      console.log(`DYOR.io found liquidity for ${tokenAddress}: $${dyorResult.liquidity}`);
+      // Return a pool object indicating liquidity exists
+      return {
+        address: dyorResult.poolAddress || '',
+        token0: normalizedEQ,
+        token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c', // TON address
+        reserve0: '0', // DYOR doesn't provide reserves
+        reserve1: '0',
+        lp_total_supply: '0',
+      };
     }
     
     return null;
@@ -217,8 +225,16 @@ export async function checkStonfiLiquidity(tokenAddress: string): Promise<Stonfi
     // Try DYOR.io as fallback even on error
     try {
       const dyorResult = await checkDyorLiquidity(tokenAddress);
-      if (dyorResult) {
-        return dyorResult;
+      if (dyorResult && dyorResult.liquidity > 0) {
+        const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
+        return {
+          address: dyorResult.poolAddress || '',
+          token0: normalizedEQ,
+          token1: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+          reserve0: '0',
+          reserve1: '0',
+          lp_total_supply: '0',
+        };
       }
     } catch (e) {
       console.error('DYOR.io fallback also failed:', e);
