@@ -40,7 +40,7 @@ export default function CooksPage() {
     
     try {
       // Load all known tokens in parallel for faster loading
-      const tokenPromises = KNOWN_COOK_TOKENS.map(async (tokenAddress) => {
+      const tokenPromises = KNOWN_COOK_TOKENS.map(async (tokenAddress): Promise<CookToken | null> => {
         try {
           const tokenResponse = await fetch(`https://tonapi.io/v2/jettons/${tokenAddress}`);
           if (!tokenResponse.ok) return null;

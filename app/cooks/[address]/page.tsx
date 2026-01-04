@@ -51,6 +51,7 @@ export default function TokenPage() {
     if (tokenAddress) {
       loadTokenData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenAddress]);
 
   const loadTokenData = async () => {
