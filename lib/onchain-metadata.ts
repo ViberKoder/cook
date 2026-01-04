@@ -1,66 +1,22 @@
 /**
- * On-chain metadata builder for Jetton 2.0
- * Based on https://github.com/ton-blockchain/minter-contract/blob/main/build/jetton-minter.deploy.ts
+ * Jetton 2.0 Metadata Utilities
  * 
- * Uses TEP-64 standard:
- * - Prefix 0x00 for on-chain data
- * - SHA-256 hashed keys
- * - Snake format for values (chain of refs for long data)
+ * CRITICAL: Jetton 2.0 contract stores metadata_uri as a snake-encoded string in content cell.
+ * When get_jetton_data is called, the contract's build_content_cell function
+ * creates an on-chain TEP-64 dictionary with:
+ *   - "uri" key -> the stored metadata_uri
+ *   - "decimals" key -> "9" (hardcoded in contract)
  * 
- * This is the DIRECT TEP-64 format that Jetton 1.0 uses and that explorers expect.
- * Jetton 2.0 contract should store this format directly, not a URI.
+ * Explorers and DEXes then fetch the JSON from the URI to get:
+ *   name, symbol, description, image
+ * 
+ * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
+ * from the official wrapper. This stores the URI in a ref, which is required
+ * because the contract's build_content_cell adds a 0x00 prefix when building
+ * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  */
 
-import { beginCell, Cell, Dictionary } from '@ton/core';
-import { Sha256 } from '@aws-crypto/sha256-js';
-
-const ONCHAIN_CONTENT_PREFIX = 0x00;
-const SNAKE_PREFIX = 0x00;
-
-// Standard Jetton metadata keys
-export type JettonMetadataKeys = 'name' | 'description' | 'image' | 'symbol' | 'decimals';
-
-// SHA256 hash function
-function sha256(str: string): Buffer {
-  const hash = new Sha256();
-  hash.update(str);
-  return Buffer.from(hash.digestSync());
-}
-
-// Convert string to snake format cell
-function makeSnakeCell(data: Buffer): Cell {
-  const CELL_MAX_SIZE_BYTES = 127;
-  
-  const chunks: Buffer[] = [];
-  let remaining = data;
-  
-  while (remaining.length > 0) {
-    chunks.push(remaining.slice(0, CELL_MAX_SIZE_BYTES));
-    remaining = remaining.slice(CELL_MAX_SIZE_BYTES);
-  }
-  
-  // Build from the end
-  let currentCell: Cell | null = null;
-  
-  for (let i = chunks.length - 1; i >= 0; i--) {
-    const builder = beginCell();
-    
-    if (i === 0) {
-      // First chunk - add snake prefix
-      builder.storeUint(SNAKE_PREFIX, 8);
-    }
-    
-    builder.storeBuffer(chunks[i]);
-    
-    if (currentCell) {
-      builder.storeRef(currentCell);
-    }
-    
-    currentCell = builder.endCell();
-  }
-  
-  return currentCell || beginCell().storeUint(SNAKE_PREFIX, 8).endCell();
-}
+import { beginCell, Cell } from '@ton/core';
 
 export interface JettonMetadata {
   name: string;
@@ -71,98 +27,86 @@ export interface JettonMetadata {
 }
 
 /**
- * Build on-chain metadata cell for Jetton 2.0
- * Uses TEP-64 format directly (like Jetton 1.0) for maximum compatibility
+ * Build metadata URI for Jetton 2.0
+ * Creates a data URI containing the JSON metadata inline.
+ * This avoids the need for external hosting and works as on-chain metadata.
+ * 
+ * IMPORTANT: Using base64 encoding for better explorer compatibility.
+ */
+export function buildMetadataUri(metadata: JettonMetadata): string {
+  // Build JSON object with all required fields
+  const jsonMetadata: any = {
+    name: metadata.name,
+    symbol: metadata.symbol,
+    description: metadata.description || metadata.name,
+    decimals: metadata.decimals || '9',
+  };
+  
+  // Add image if provided (must be a valid URL or data URI)
+  if (metadata.image && metadata.image.trim()) {
+    jsonMetadata.image = metadata.image.trim();
+  }
+  
+  // Stringify JSON
+  const jsonString = JSON.stringify(jsonMetadata);
+  
+  // Use base64 encoding for better compatibility
+  const base64Encoded = Buffer.from(jsonString, 'utf-8').toString('base64');
+  
+  // Return data URI with base64 encoding
+  // Format: data:application/json;base64,<base64_json>
+  return `data:application/json;base64,${base64Encoded}`;
+}
+
+/**
+ * Build metadata URI cell for Jetton 2.0 contract
+ * 
+ * CRITICAL: Jetton 2.0 expects URI in content cell, not TEP-64 dictionary directly!
+ * The contract will automatically convert this URI to TEP-64 format
+ * when get_jetton_data is called.
+ * 
+ * IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
+ * from the official wrapper. This stores the URI in a ref, which is required
+ * because the contract's build_content_cell adds a 0x00 prefix when building
+ * the TEP-64 dictionary. Using storeStringTail would cause cell overflow.
  * 
  * @param metadata - Token metadata object
- * @returns Cell with TEP-64 on-chain metadata
+ * @returns Cell with metadata URI stored in ref
  */
 export function buildTokenMetadataCell(metadata: JettonMetadata): Cell {
-  const dict = Dictionary.empty(
-    Dictionary.Keys.Buffer(32),
-    Dictionary.Values.Cell()
-  );
+  const uri = buildMetadataUri(metadata);
   
-  // Standard keys mapping
-  const entries: [JettonMetadataKeys, string | undefined][] = [
-    ['name', metadata.name],
-    ['symbol', metadata.symbol],
-    ['description', metadata.description],
-    ['image', metadata.image],
-    ['decimals', metadata.decimals || '9'],
-  ];
-  
-  for (const [key, value] of entries) {
-    // Skip only if truly undefined or empty string
-    if (value === undefined || value === null || value === '') {
-      console.log(`Skipping metadata key "${key}": value is`, value === undefined ? 'undefined' : value === null ? 'null' : 'empty string');
-      continue;
-    }
-    
-    const keyHash = sha256(key);
-    const valueBuffer = Buffer.from(value, 'utf-8');
-    const valueCell = makeSnakeCell(valueBuffer);
-    
-    console.log(`✓ Adding metadata key "${key}":`, {
-      hash: keyHash.toString('hex').substring(0, 16) + '...',
-      valueLength: value.length,
-      valuePreview: value.length > 50 ? value.substring(0, 50) + '...' : value,
-      valueType: typeof value,
-    });
-    
-    dict.set(keyHash, valueCell);
-  }
-  
-  console.log('Final dictionary size:', dict.size, 'keys added');
-  
-  // Build the content cell with TEP-64 format
-  // Prefix (8 bits) + Dictionary (stored in ref if large)
-  // IMPORTANT: Dictionary must be stored correctly for Jetton 2.0
-  const resultCell = beginCell()
-    .storeUint(ONCHAIN_CONTENT_PREFIX, 8)
-    .storeDict(dict)
-    .endCell();
-  
-  // Verify the cell structure
-  const cellBits = resultCell.bits.length;
-  const cellRefs = resultCell.refs.length;
-  const dictSize = dict.size;
-  
-  // Parse back to verify
-  let verifySlice = resultCell.beginParse();
-  const verifyPrefix = verifySlice.loadUint(8);
-  const verifyDict = verifySlice.loadDict(
-    Dictionary.Keys.Buffer(32),
-    Dictionary.Values.Cell()
-  );
-  
-  console.log('Metadata cell created (TEP-64 format):', {
-    bits: cellBits,
-    refs: cellRefs,
-    dictSize: dictSize,
-    verifyPrefix: verifyPrefix,
-    verifyDictSize: verifyDict.size,
-    dictMatches: dictSize === verifyDict.size,
+  console.log('Building metadata URI for Jetton 2.0:', {
+    uriLength: uri.length,
+    uriPreview: uri.length > 200 ? uri.substring(0, 200) + '...' : uri,
+    metadata: {
+      name: metadata.name,
+      symbol: metadata.symbol,
+      hasDescription: !!metadata.description,
+      hasImage: !!metadata.image,
+    },
   });
   
-  // CRITICAL: If dict is empty or not stored correctly, this is a bug
-  if (dictSize === 0) {
-    console.error('ERROR: Dictionary is empty! No metadata will be stored!');
-    throw new Error('Metadata dictionary is empty - check that all values are provided');
+  // IMPORTANT: Must use storeStringRefTail to match jettonContentToCell()
+  // This stores the string in a ref cell, which is required for Jetton 2.0
+  const cell = beginCell()
+    .storeStringRefTail(uri)
+    .endCell();
+  
+  console.log('Metadata URI cell created:', {
+    bits: cell.bits.length,
+    refs: cell.refs.length,
+    hasRef: cell.refs.length > 0,
+  });
+  
+  // Verify we can read it back
+  if (cell.refs.length > 0) {
+    const refCell = cell.refs[0];
+    const uriFromCell = refCell.beginParse().loadStringTail();
+    console.log('Verified URI from cell:', uriFromCell.substring(0, 100) + '...');
   }
   
-  if (dictSize !== verifyDict.size) {
-    console.error('ERROR: Dictionary size mismatch!', {
-      original: dictSize,
-      verified: verifyDict.size,
-    });
-    throw new Error('Dictionary not stored correctly in cell');
-  }
-  
-  // Log all keys in verified dict
-  console.log('Verified dictionary keys:', Array.from(verifyDict.keys()).map(k => k.toString('hex').substring(0, 8) + '...'));
-  
-  return resultCell;
+  return cell;
 }
 
 /**
