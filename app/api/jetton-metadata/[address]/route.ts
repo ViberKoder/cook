@@ -32,13 +32,11 @@ export async function GET(
     const endpoint = await getHttpEndpoint({ network: 'mainnet' });
     const client = new TonClient({ endpoint });
 
-    // Get contract data
-    const contract = await client.open(contractAddress);
+    // Call get_jetton_data directly using runMethod
+    const result = await client.runMethod(contractAddress, 'get_jetton_data', []);
     
-    // Call get_jetton_data
-    const result = await contract.get('get_jetton_data', []);
-    
-    // Read content cell
+    // Stack: total_supply, mintable, admin_address, content, wallet_code
+    result.stack.skip(3); // Skip total_supply, mintable, admin_address
     const contentCell = result.stack.readCell();
     
     // Parse content cell to get URI
