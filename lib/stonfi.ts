@@ -17,115 +17,139 @@ export interface StonfiPool {
  */
 export async function checkStonfiLiquidity(tokenAddress: string): Promise<StonfiPool | null> {
   try {
-    // Normalize address format
-    const normalizedAddress = tokenAddress.replace(/^UQ/, 'EQ');
+    // Normalize address format - try both UQ and EQ formats
+    const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
+    const normalizedUQ = tokenAddress.replace(/^EQ/, 'UQ');
+    const addressesToTry = [normalizedEQ, normalizedUQ, tokenAddress];
     
-    // Try multiple STON.fi API endpoints
-    // Method 1: Try router pools endpoint
-    try {
-      const routerResponse = await fetch(`https://api.ston.fi/v1/router/pools?token_addresses=${normalizedAddress}`, {
-        signal: AbortSignal.timeout(3000), // 3 second timeout
-      });
-      if (routerResponse.ok) {
-        const routerData = await routerResponse.json();
-        const pools = Array.isArray(routerData) ? routerData : (routerData.pools || []);
-        
-        for (const pool of pools) {
-          const token0 = pool.token0_address || pool.token0;
-          const token1 = pool.token1_address || pool.token1;
+    console.log(`Checking liquidity for token: ${tokenAddress} (trying: ${addressesToTry.join(', ')})`);
+    
+    // Try multiple STON.fi API endpoints with different address formats
+    for (const address of addressesToTry) {
+      // Method 1: Try router pools endpoint
+      try {
+        const routerResponse = await fetch(`https://api.ston.fi/v1/router/pools?token_addresses=${address}`, {
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        });
+        if (routerResponse.ok) {
+          const routerData = await routerResponse.json();
+          const pools = Array.isArray(routerData) ? routerData : (routerData.pools || routerData.data || []);
           
-          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
-              pool.reserve0 && pool.reserve1) {
-            const reserve0 = BigInt(pool.reserve0 || '0');
-            const reserve1 = BigInt(pool.reserve1 || '0');
+          console.log(`Router API response for ${address}:`, pools.length, 'pools found');
+          
+          for (const pool of pools) {
+            const token0 = pool.token0_address || pool.token0 || pool.token0Address;
+            const token1 = pool.token1_address || pool.token1 || pool.token1Address;
             
-            if (reserve0 > 0n && reserve1 > 0n) {
-              return {
-                address: pool.address || pool.pool_address || '',
-                token0: token0,
-                token1: token1,
-                reserve0: pool.reserve0,
-                reserve1: pool.reserve1,
-                lp_total_supply: pool.lp_total_supply || '0',
-              };
+            // Check if token matches (try both formats)
+            const matches = 
+              (token0 && (token0 === address || token0 === normalizedEQ || token0 === normalizedUQ)) ||
+              (token1 && (token1 === address || token1 === normalizedEQ || token1 === normalizedUQ));
+            
+            if (matches && pool.reserve0 && pool.reserve1) {
+              const reserve0 = BigInt(pool.reserve0 || '0');
+              const reserve1 = BigInt(pool.reserve1 || '0');
+              
+              if (reserve0 > 0n && reserve1 > 0n) {
+                console.log(`Found pool for ${address}:`, pool.address || pool.pool_address);
+                return {
+                  address: pool.address || pool.pool_address || pool.poolAddress || '',
+                  token0: token0,
+                  token1: token1,
+                  reserve0: pool.reserve0,
+                  reserve1: pool.reserve1,
+                  lp_total_supply: pool.lp_total_supply || pool.lpTotalSupply || '0',
+                };
+              }
             }
           }
         }
+      } catch (e) {
+        console.log(`Router API failed for ${address}:`, e);
       }
-    } catch (e) {
-      console.log('Router API failed, trying alternative:', e);
-    }
-    
-    // Method 2: Try pools endpoint
-    try {
-      const poolsResponse = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${normalizedAddress}`, {
-        signal: AbortSignal.timeout(3000), // 3 second timeout
-      });
-      if (poolsResponse.ok) {
-        const poolsData = await poolsResponse.json();
-        const pools = Array.isArray(poolsData) ? poolsData : (poolsData.pools || []);
-        
-        for (const pool of pools) {
-          const token0 = pool.token0_address || pool.token0;
-          const token1 = pool.token1_address || pool.token1;
+      
+      // Method 2: Try pools endpoint
+      try {
+        const poolsResponse = await fetch(`https://api.ston.fi/v1/pools?token_addresses=${address}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (poolsResponse.ok) {
+          const poolsData = await poolsResponse.json();
+          const pools = Array.isArray(poolsData) ? poolsData : (poolsData.pools || poolsData.data || []);
           
-          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
-              pool.reserve0 && pool.reserve1) {
-            const reserve0 = BigInt(pool.reserve0 || '0');
-            const reserve1 = BigInt(pool.reserve1 || '0');
+          console.log(`Pools API response for ${address}:`, pools.length, 'pools found');
+          
+          for (const pool of pools) {
+            const token0 = pool.token0_address || pool.token0 || pool.token0Address;
+            const token1 = pool.token1_address || pool.token1 || pool.token1Address;
             
-            if (reserve0 > 0n && reserve1 > 0n) {
-              return {
-                address: pool.address || pool.pool_address || '',
-                token0: token0,
-                token1: token1,
-                reserve0: pool.reserve0,
-                reserve1: pool.reserve1,
-                lp_total_supply: pool.lp_total_supply || '0',
-              };
+            const matches = 
+              (token0 && (token0 === address || token0 === normalizedEQ || token0 === normalizedUQ)) ||
+              (token1 && (token1 === address || token1 === normalizedEQ || token1 === normalizedUQ));
+            
+            if (matches && pool.reserve0 && pool.reserve1) {
+              const reserve0 = BigInt(pool.reserve0 || '0');
+              const reserve1 = BigInt(pool.reserve1 || '0');
+              
+              if (reserve0 > 0n && reserve1 > 0n) {
+                console.log(`Found pool for ${address}:`, pool.address || pool.pool_address);
+                return {
+                  address: pool.address || pool.pool_address || pool.poolAddress || '',
+                  token0: token0,
+                  token1: token1,
+                  reserve0: pool.reserve0,
+                  reserve1: pool.reserve1,
+                  lp_total_supply: pool.lp_total_supply || pool.lpTotalSupply || '0',
+                };
+              }
             }
           }
         }
+      } catch (e) {
+        console.log(`Pools API failed for ${address}:`, e);
       }
-    } catch (e) {
-      console.log('Pools API failed, trying alternative:', e);
-    }
-    
-    // Method 3: Try to check via router v2
-    try {
-      const routerV2Response = await fetch(`https://api.ston.fi/v2/pools?token_addresses=${normalizedAddress}`, {
-        signal: AbortSignal.timeout(3000),
-      });
-      if (routerV2Response.ok) {
-        const routerV2Data = await routerV2Response.json();
-        const pools = Array.isArray(routerV2Data) ? routerV2Data : (routerV2Data.pools || []);
-        
-        for (const pool of pools) {
-          const token0 = pool.token0_address || pool.token0;
-          const token1 = pool.token1_address || pool.token1;
+      
+      // Method 3: Try router v2
+      try {
+        const routerV2Response = await fetch(`https://api.ston.fi/v2/pools?token_addresses=${address}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (routerV2Response.ok) {
+          const routerV2Data = await routerV2Response.json();
+          const pools = Array.isArray(routerV2Data) ? routerV2Data : (routerV2Data.pools || routerV2Data.data || []);
           
-          if ((token0 === normalizedAddress || token1 === normalizedAddress) &&
-              pool.reserve0 && pool.reserve1) {
-            const reserve0 = BigInt(pool.reserve0 || '0');
-            const reserve1 = BigInt(pool.reserve1 || '0');
+          for (const pool of pools) {
+            const token0 = pool.token0_address || pool.token0 || pool.token0Address;
+            const token1 = pool.token1_address || pool.token1 || pool.token1Address;
             
-            if (reserve0 > 0n && reserve1 > 0n) {
-              return {
-                address: pool.address || pool.pool_address || '',
-                token0: token0,
-                token1: token1,
-                reserve0: pool.reserve0,
-                reserve1: pool.reserve1,
-                lp_total_supply: pool.lp_total_supply || '0',
-              };
+            const matches = 
+              (token0 && (token0 === address || token0 === normalizedEQ || token0 === normalizedUQ)) ||
+              (token1 && (token1 === address || token1 === normalizedEQ || token1 === normalizedUQ));
+            
+            if (matches && pool.reserve0 && pool.reserve1) {
+              const reserve0 = BigInt(pool.reserve0 || '0');
+              const reserve1 = BigInt(pool.reserve1 || '0');
+              
+              if (reserve0 > 0n && reserve1 > 0n) {
+                console.log(`Found pool for ${address} via v2:`, pool.address || pool.pool_address);
+                return {
+                  address: pool.address || pool.pool_address || pool.poolAddress || '',
+                  token0: token0,
+                  token1: token1,
+                  reserve0: pool.reserve0,
+                  reserve1: pool.reserve1,
+                  lp_total_supply: pool.lp_total_supply || pool.lpTotalSupply || '0',
+                };
+              }
             }
           }
         }
+      } catch (e) {
+        console.log(`Router V2 API failed for ${address}:`, e);
       }
-    } catch (e) {
-      console.log('Router V2 API failed:', e);
     }
     
+    console.log(`No liquidity found for token: ${tokenAddress}`);
     return null;
   } catch (error) {
     console.error('Error checking STON.fi liquidity:', error);
