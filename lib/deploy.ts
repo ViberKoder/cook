@@ -117,13 +117,13 @@ export async function deployJettonMinter(
       throw new Error('Token name and symbol are required');
     }
     
-    const metadata: JettonMetadata = {
-      name: name,
-      symbol: symbol,
-      description: description || name,
-      image: image,
-      decimals: decimals,
-    };
+        const metadata: JettonMetadata = {
+          name: name,
+          symbol: symbol,
+          description: description || name,
+          image: image,
+          decimals: decimals, // уже string из tokenData.decimals?.toString() || '9'
+        };
 
     console.log('=== PROCESSED METADATA ===');
     console.log('metadata.name:', metadata.name, 'length:', metadata.name.length);
