@@ -54,6 +54,8 @@ export default function CookonPage() {
   const [isDeployingClient, setIsDeployingClient] = useState(false);
   const [tokenSuggestion, setTokenSuggestion] = useState<TokenSuggestion>({});
   const [showDeployForm, setShowDeployForm] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -138,22 +140,18 @@ export default function CookonPage() {
 
       if (existingClient) {
         setClientAddress(existingClient.toString());
-        toast.success('Found existing Cocoon client!', { id: 'deploy-client' });
-      } else {
-        // Deploy new client
-        toast.loading('Deploying Cocoon client contract...', { id: 'deploy-client' });
-        const deployResult = await deployCocoonClientContract(
-          ownerAddress,
-          sendTransaction
-        );
-        
-        if (deployResult.success && deployResult.address) {
-          setClientAddress(deployResult.address);
-          toast.success('Cocoon client deployed!', { id: 'deploy-client' });
+        // Check balance
+        const balance = await getCocoonClientBalance(existingClient);
+        setClientBalance(balance);
+        setIsClientReady(balance > 0n); // Ready only if has balance
+        if (balance > 0n) {
+          toast.success('Cocoon client готов! Можно использовать AI.', { id: 'deploy-client' });
         } else {
-          console.warn('Client deployment failed:', deployResult.error);
-          toast.error(deployResult.error || 'Failed to deploy client', { id: 'deploy-client' });
+          toast.success('Client найден, но баланс пуст. Пополните баланс.', { id: 'deploy-client' });
         }
+      } else {
+        // Client doesn't exist - user needs to deploy manually
+        setIsClientReady(false);
       }
     } catch (error: any) {
       console.error('Failed to initialize Cocoon:', error);
