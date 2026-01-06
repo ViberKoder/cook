@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const client = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_XAI_API_KEY || process.env.XAI_API_KEY,
-  baseURL: 'https://api.x.ai/v1',
-  timeout: 360000, // 6 minutes timeout for reasoning models
-});
+// Get API key from environment variables
+// On server side, prefer XAI_API_KEY, fallback to NEXT_PUBLIC_XAI_API_KEY
+const getApiKey = () => {
+  return process.env.XAI_API_KEY || process.env.NEXT_PUBLIC_XAI_API_KEY || '';
+};
+
+const createClient = () => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('XAI API key is not configured. Please set XAI_API_KEY or NEXT_PUBLIC_XAI_API_KEY environment variable.');
+  }
+  
+  return new OpenAI({
+    apiKey: apiKey,
+    baseURL: 'https://api.x.ai/v1',
+    timeout: 360000, // 6 minutes timeout for reasoning models
+  });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +31,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Create client with API key
+    const client = createClient();
 
     // Prepare input messages
     const input = messages.map((msg: any) => ({
