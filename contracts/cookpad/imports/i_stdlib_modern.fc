@@ -70,3 +70,5 @@ const int SEND_MODE_REGULAR = 0;
 ;; Helper functions
 int workchain() asm "0 PUSHINT";
 
+
+

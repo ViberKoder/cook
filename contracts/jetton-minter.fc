@@ -207,10 +207,19 @@
 }
 
 cell build_content_cell(slice metadata_uri) inline {
-    cell content_dict = new_dict();
-    content_dict~set_token_snake_metadata_entry("uri"H, metadata_uri);
-    content_dict~set_token_snake_metadata_entry("decimals"H, "9");
-    return create_token_onchain_metadata(content_dict);
+    ;; Check if metadata_uri is already a TEP-64 dictionary (starts with 0x00)
+    ;; If yes, return it directly. Otherwise, wrap it in "uri" key.
+    int prefix = metadata_uri.preload_uint(8);
+    if (prefix == 0) {
+        ;; Already a TEP-64 dictionary, return it directly
+        return metadata_uri.load_ref();
+    } else {
+        ;; Off-chain URI, wrap it
+        cell content_dict = new_dict();
+        content_dict~set_token_snake_metadata_entry("uri"H, metadata_uri);
+        content_dict~set_token_snake_metadata_entry("decimals"H, "9");
+        return create_token_onchain_metadata(content_dict);
+    }
 }
 
 (int, int, slice, cell, cell) get_jetton_data() method_id {
@@ -227,4 +236,6 @@ slice get_next_admin_address() method_id {
     (int total_supply, slice admin_address, slice next_admin_address, cell jetton_wallet_code, cell metadata_uri) = load_data();
     return next_admin_address;
 }
+
+
 

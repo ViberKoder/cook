@@ -12,3 +12,5 @@ int is_resolvable?(slice addr) inline {
     return wc == workchain();
 }
 
+
+

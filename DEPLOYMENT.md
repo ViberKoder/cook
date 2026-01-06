@@ -27,3 +27,5 @@ Make sure `tonconnect-manifest.json` is accessible at:
 - Test thoroughly on testnet before mainnet deployment
 - Ensure your domain `cook.tg` is properly configured for TON Connect
 
+
+

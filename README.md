@@ -1,104 +1,78 @@
-# Cook - Jetton 2.0 Deployer
+# Cook - Jetton 2.0 Minter
 
-Децентрализованный деплоер Jetton 2.0 на блокчейне TON с on-chain метаданными.
+Deploy your own Jetton 2.0 tokens on The Open Network (TON) blockchain.
 
-## 🚀 Особенности
+## Features
 
-- ✅ **Jetton 2.0 стандарт** - Использует официальные контракты Jetton 2.0 от TON Core
-- ✅ **On-chain metadata** - Метаданные хранятся в блокчейне по стандарту TEP-64
-- ✅ **TON Connect** - Интеграция с TON Connect для безопасного подключения кошельков
-- ✅ **Современный UI/UX** - Красивый и интуитивный интерфейс
-- ✅ **3x быстрее** - Транзакции до 3 раз быстрее чем Jetton 1.0
-- ✅ **Полная совместимость** - Работает с DeDust, STON.fi и всеми TON кошельками
+- 🚀 Deploy Jetton 2.0 tokens with onchain metadata
+- 🔐 Secure wallet connection via TON Connect
+- ⚡ Up to 3x faster than Jetton 1.0
+- 💰 Low deployment cost (1 TON)
+- 🎨 Modern, user-friendly interface
+- 🤖 **Cookon** - AI-powered token creator with Cocoon integration
 
-## 📁 Структура проекта
+## Tech Stack
 
-```
-Cook/
-├── contracts/              # Смарт-контракты Jetton 2.0 (FunC)
-│   ├── jetton-minter.fc    # Контракт минтера
-│   ├── jetton-wallet.fc    # Контракт кошелька
-│   └── ...
-├── imports/                # Вспомогательные FunC файлы
-├── minter-frontend/        # Next.js фронтенд приложение
-│   ├── src/
-│   │   ├── components/    # React компоненты
-│   │   ├── pages/         # Next.js страницы
-│   │   ├── utils/         # Утилиты (деплой, метаданные)
-│   │   └── hooks/         # React хуки
-│   └── public/            # Статические файлы
-└── README.md
-```
+- Next.js 14
+- TypeScript
+- TON Connect
+- Tailwind CSS
+- Jetton 2.0 Standard
 
-## 🛠 Установка и запуск
+## Getting Started
 
-### Требования
-
-- Node.js 18+ 
-- npm или yarn
-
-### Frontend
-
+1. Install dependencies:
 ```bash
-cd minter-frontend
 npm install
+```
+
+2. Run the development server:
+```bash
 npm run dev
 ```
 
-Приложение будет доступно на `http://localhost:3000`
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Production Build
+## Deployment
 
-```bash
-cd minter-frontend
-npm run build
-npm start
-```
+This project is configured for Vercel deployment. Connect your GitHub repository to Vercel for automatic deployments.
 
-## 🔧 Конфигурация
+## TON Connect
 
-### TON Connect
+Configured for domain: https://www.cook.tg/
 
-Домен для TON Connect настроен на: **https://www.cook.tg/**
+## Cookon - AI Token Creator
 
-Манифест TON Connect находится в `minter-frontend/public/tonconnect-manifest.json`
+**Cookon** is an AI-powered Jetton 2.0 deployer that uses Cocoon AI to help users create tokens through natural conversation.
 
-### Метаданные
+### How Cookon Works
 
-Метаданные токена хранятся on-chain по стандарту TEP-64:
-- Префикс: `0x00` для on-chain данных
-- Формат: Snake format (цепочка refs для длинных данных)
-- Ключи: SHA-256 хеши стандартных ключей (name, symbol, description, image, decimals)
+1. **Connect Wallet** - Connect your TON wallet via TON Connect
+2. **Top Up Cocoon Balance** - Deposit TON to pay for AI computation tokens
+3. **Chat with AI** - Have a conversation with Cocoon AI about your token idea:
+   - Describe your token concept
+   - Discuss tokenomics
+   - Get suggestions for name, symbol, supply, description
+   - Receive ideas and recommendations
+4. **Cook it!** - When you're happy with the suggestions, click "Cook it!" to deploy your Jetton 2.0 token to the TON blockchain
 
-## 📝 Использование
+### Cocoon Integration
 
-1. Откройте https://www.cook.tg/
-2. Подключите TON кошелек через TON Connect
-3. Заполните форму создания токена:
-   - Название токена
-   - Символ (ticker)
-   - Описание
-   - Изображение (URL или загрузка)
-   - Общее количество токенов
-   - Количество десятичных знаков (по умолчанию 9)
-4. Нажмите "Cook Jetton"
-5. Подтвердите транзакцию в кошельке (стоимость: 1 TON)
-6. После деплоя вы получите адрес контракта
+Cookon integrates with the [Cocoon Network](https://cocoon.org/) for AI-powered token creation:
 
-## 🔗 Полезные ссылки
+- Uses Cocoon contracts for secure AI computation
+- Pays for AI tokens using TON
+- Leverages Cocoon's decentralized AI infrastructure
+- Full integration with Cocoon Root, Proxy, and Client contracts
 
-- [TON Documentation](https://docs.ton.org)
-- [Jetton 2.0 Contract](https://github.com/ton-blockchain/jetton-contract/tree/jetton-2.0)
-- [TON Explorer](https://tonviewer.com)
-- [STON.fi DEX](https://app.ston.fi)
-- [DeDust DEX](https://dedust.io)
+### Cocoon Resources
 
-## 📄 Лицензия
+- [Cocoon GitHub](https://github.com/TelegramMessenger/cocoon)
+- [Cocoon Contracts](https://github.com/TelegramMessenger/cocoon-contracts)
+- [Cocoon Website](https://cocoon.org/)
+
+## License
 
 MIT
 
-## 🙏 Благодарности
-
-- TON Foundation за официальные контракты Jetton 2.0
-- Сообщество TON за поддержку и обратную связь
 

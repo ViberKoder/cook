@@ -10,3 +10,5 @@ int op::change_admin() asm "0x03";
 int op::change_content() asm "0x04";
 
 
+
+

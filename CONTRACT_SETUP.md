@@ -34,3 +34,5 @@ Jetton 2.0 uses onchain metadata stored in a dictionary:
 
 The current implementation in `createOnchainMetadata()` follows this format.
 
+
+
