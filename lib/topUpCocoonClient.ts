@@ -57,7 +57,7 @@ export async function topUpCocoonClient(
 export async function getCocoonClientBalance(clientAddress: Address): Promise<bigint> {
   try {
     const client = getTonClient();
-    const cocoonClient = CocoonClient.createFromAddress(clientAddress);
+    const cocoonClient = new CocoonClient(clientAddress);
     const clientContract = client.open(cocoonClient);
     
     const state = await clientContract.getData(client);
