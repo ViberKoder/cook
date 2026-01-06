@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // If responseId is provided, continue the conversation by appending new message
     // Otherwise create new conversation
-    const response = await client.responses.create({
+    const response: any = await client.responses.create({
       model: 'grok-4',
       input,
       ...(responseId && { id: responseId }),
