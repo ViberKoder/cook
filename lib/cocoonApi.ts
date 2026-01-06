@@ -56,17 +56,19 @@ export async function getCocoonProxies(): Promise<CocoonProxyInfo[]> {
 
     if (response.ok) {
       const data = await response.json();
-      return data.proxies || [];
+      if (data.proxies && Array.isArray(data.proxies) && data.proxies.length > 0) {
+        return data.proxies;
+      }
     }
 
-    // Fallback: return default proxy endpoint
+    // Fallback: return default proxy endpoint (always return at least one)
     return [{
       endpoint: COCOON_API_BASE,
       address: '',
     }];
   } catch (error) {
     console.error('Error getting Cocoon proxies:', error);
-    // Fallback: return default proxy
+    // Fallback: return default proxy (always return at least one)
     return [{
       endpoint: COCOON_API_BASE,
       address: '',
@@ -86,21 +88,28 @@ export async function sendCocoonChatRequest(
     model: 'default',
     messages,
     stream: false,
-    client_address: clientAddress,
+    ...(clientAddress && { client_address: clientAddress }),
   };
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add client address to headers if provided
+    if (clientAddress) {
+      headers['X-Client-Address'] = clientAddress;
+    }
+
     const response = await fetch(`${endpoint}/api/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(clientAddress && { 'X-Client-Address': clientAddress }),
-      },
+      headers,
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Cocoon API error:', response.status, errorText);
       throw new Error(`Cocoon API error: ${response.status} ${errorText}`);
     }
 

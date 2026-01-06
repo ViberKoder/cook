@@ -87,25 +87,28 @@ export default function CookonPage() {
     if (!connected || !wallet) return;
 
     try {
-      // Get available proxies
-      const proxies = await getAvailableProxies();
+      // Get available proxies from Cocoon API
+      const proxies = await getCocoonProxies();
       if (proxies.length === 0) {
-        toast.error('No Cocoon proxies available');
-        return;
+        // Use default Cocoon API endpoint
+        setProxyEndpoint('https://cocoon.doge.tg');
+      } else {
+        // Use first available proxy
+        const proxy = proxies[0];
+        setProxyEndpoint(proxy.endpoint || 'https://cocoon.doge.tg');
       }
 
-      // Use first available proxy
-      const proxy = proxies[0];
-      setProxyEndpoint(proxy.endpoint || 'https://cocoon-proxy.example.com');
-
-      // Check if client contract already exists
-      // For now, we'll use a placeholder - in production, deploy actual client contract
-      // const clientCode = await getClientCode();
-      // const client = CocoonClient.createFromConfig(...);
-      // setClientAddress(client.address.toString());
+      // Try to deploy or get existing client contract
+      const ownerAddress = Address.parse(wallet.toString());
+      const clientAddr = await deployCocoonClient(ownerAddress);
       
-      // For development, use placeholder
-      setClientAddress(wallet.toString());
+      if (clientAddr) {
+        setClientAddress(clientAddr);
+      } else {
+        // If deployment via API not supported, use wallet address as placeholder
+        // In production, this should deploy actual client contract
+        setClientAddress(wallet.toString());
+      }
     } catch (error: any) {
       console.error('Failed to initialize Cocoon:', error);
       toast.error('Failed to initialize Cocoon: ' + error.message);
@@ -182,12 +185,27 @@ export default function CookonPage() {
         throw new Error('Cocoon not initialized. Please wait...');
       }
 
-      // Send request to Cocoon AI through proxy
-      const aiResponse = await sendAIRequest(
-        inputMessage,
+      // Prepare messages for Cocoon API
+      const messages: CocoonChatMessage[] = [
+        {
+          role: 'system',
+          content: 'Ты AI помощник для создания Jetton 2.0 токенов на блокчейне TON. Помогай пользователям придумывать названия, символы, описания, токеномику и идеи для их токенов. Отвечай на русском языке.',
+        },
+        {
+          role: 'user',
+          content: inputMessage,
+        },
+      ];
+
+      // Send request to Cocoon AI through API
+      const response = await sendCocoonChatRequest(
+        messages,
         clientAddress,
         proxyEndpoint
       );
+
+      // Extract AI response
+      const aiResponse = response.choices?.[0]?.message?.content || 'Извините, не получилось получить ответ от AI.';
 
       // Parse AI response for token suggestions
       const suggestion = parseTokenSuggestion(aiResponse);
