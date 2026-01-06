@@ -185,9 +185,40 @@ export default function CookonPage() {
     scrollToBottom();
   }, [messages]);
 
+  const handleDeployClient = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setIsDeployingClient(true);
+    try {
+      const ownerAddress = Address.parse(wallet.toString());
+      
+      toast.loading('Deploying Cocoon client contract...', { id: 'deploy-client' });
+      const deployResult = await deployCocoonClientContract(
+        ownerAddress,
+        sendTransaction
+      );
+      
+      if (deployResult.success && deployResult.address) {
+        setClientAddress(deployResult.address);
+        setClientBalance(0n); // New client has 0 balance
+        toast.success('Cocoon client deployed! Now top up your balance.', { id: 'deploy-client' });
+      } else {
+        toast.error(deployResult.error || 'Failed to deploy client', { id: 'deploy-client' });
+      }
+    } catch (error: any) {
+      console.error('Client deployment error:', error);
+      toast.error(error.message || 'Failed to deploy client');
+    } finally {
+      setIsDeployingClient(false);
+    }
+  };
+
   const handleTopUp = async () => {
     if (!connected || !wallet || !clientAddress) {
-      toast.error('Please connect your wallet and initialize Cocoon first');
+      toast.error('Please deploy client contract first');
       return;
     }
 
@@ -203,6 +234,7 @@ export default function CookonPage() {
       const clientAddr = Address.parse(clientAddress);
 
       // Top up client contract
+      toast.loading('Topping up balance...', { id: 'topup' });
       const result = await topUpCocoonClient(
         clientAddr,
         depositAmount,
@@ -214,12 +246,13 @@ export default function CookonPage() {
         // Refresh balance
         const newBalance = await getCocoonClientBalance(clientAddr);
         setClientBalance(newBalance);
-        toast.success(`Topped up ${amount} TON for Cocoon tokens!`);
+        setIsClientReady(newBalance > 0n); // Enable chat if has balance
+        toast.success(`Topped up ${amount} TON! You can now use AI chat.`, { id: 'topup' });
       } else {
-        toast.error(result.error || 'Failed to top up');
+        toast.error(result.error || 'Failed to top up', { id: 'topup' });
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to top up');
+      toast.error(error.message || 'Failed to top up', { id: 'topup' });
     } finally {
       setIsToppingUp(false);
     }
@@ -436,8 +469,71 @@ export default function CookonPage() {
             </p>
           </div>
 
-          {/* Balance and Top-up Section */}
-          {connected && (
+          {/* Setup Section - Show if client not ready */}
+          {connected && !isClientReady && (
+            <div className="card mb-6">
+              <h2 className="text-2xl font-bold text-cook-text mb-4">
+                {!clientAddress ? 'Шаг 1: Создайте Cocoon Client' : 'Шаг 2: Пополните баланс'}
+              </h2>
+              
+              {!clientAddress ? (
+                <div className="space-y-4">
+                  <p className="text-cook-text-secondary">
+                    Для использования AI Cocoon необходимо создать Client контракт. Это позволит вам оплачивать вычисления AI.
+                  </p>
+                  <button
+                    onClick={handleDeployClient}
+                    disabled={isDeployingClient || isInitializing}
+                    className="btn-cook w-full"
+                  >
+                    {isDeployingClient ? 'Деплоим...' : 'Создать Client контракт'}
+                  </button>
+                  {isInitializing && (
+                    <p className="text-sm text-cook-text-secondary text-center">
+                      Проверяем существующий контракт...
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-cook-text-secondary">
+                    Client контракт создан! Теперь пополните баланс для использования AI.
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      value={topUpAmount}
+                      onChange={(e) => setTopUpAmount(e.target.value)}
+                      placeholder="1.0"
+                      step="0.1"
+                      min="0.1"
+                      className="input-ton flex-1"
+                    />
+                    <button
+                      onClick={handleTopUp}
+                      disabled={isToppingUp}
+                      className="btn-cook"
+                    >
+                      {isToppingUp ? 'Пополняем...' : 'Пополнить баланс'}
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-sm text-cook-text-secondary">
+                      Текущий баланс: <span className="font-bold text-cook-text">{formatTON(clientBalance)}</span>
+                    </p>
+                    {cocoonParams && (
+                      <p className="text-xs text-cook-text-secondary mt-1">
+                        Цена за токен: {formatTON(cocoonParams.price_per_token || 0n)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Balance Display - Show when ready */}
+          {connected && isClientReady && (
             <div className="card mb-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -465,11 +561,6 @@ export default function CookonPage() {
                   </button>
                 </div>
               </div>
-              {cocoonParams && (
-                <p className="text-xs text-cook-text-secondary mt-2">
-                  Price per token: {formatTON(cocoonParams.price_per_token || 0n)}
-                </p>
-              )}
             </div>
           )}
 
@@ -514,7 +605,15 @@ export default function CookonPage() {
                 <div className="border-t border-cook-border p-4">
                   {!connected ? (
                     <div className="text-center py-4">
-                      <p className="text-cook-text-secondary mb-2">Connect your wallet to start chatting</p>
+                      <p className="text-cook-text-secondary mb-2">Подключите кошелек, чтобы начать</p>
+                    </div>
+                  ) : !isClientReady ? (
+                    <div className="text-center py-4">
+                      <p className="text-cook-text-secondary mb-2">
+                        {!clientAddress 
+                          ? 'Создайте Client контракт и пополните баланс для использования AI'
+                          : 'Пополните баланс для использования AI'}
+                      </p>
                     </div>
                   ) : (
                     <div className="flex gap-2">
@@ -529,7 +628,7 @@ export default function CookonPage() {
                       />
                       <button
                         onClick={handleSendMessage}
-                        disabled={!inputMessage.trim() || isLoading}
+                        disabled={!inputMessage.trim() || isLoading || !isClientReady}
                         className="btn-cook px-6"
                       >
                         Send
