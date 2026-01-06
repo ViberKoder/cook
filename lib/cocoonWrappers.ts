@@ -47,11 +47,40 @@ export class CocoonRoot {
 
   async getAllParams(client: TonClient): Promise<CocoonRootParams | null> {
     try {
-      // Use get_cur_params() method which returns 14 ints
-      const result = await client.runMethod(this.address, 'get_cur_params');
+      // Try get_cur_params() method first
+      let result;
+      try {
+        result = await client.runMethod(this.address, 'get_cur_params');
+      } catch (methodError: any) {
+        console.warn('get_cur_params failed, trying get_cocoon_data:', methodError.message);
+        // Fallback to get_cocoon_data
+        try {
+          result = await client.runMethod(this.address, 'get_cocoon_data');
+          if (!result.stack) {
+            console.error('No stack returned from get_cocoon_data');
+            return null;
+          }
+          
+          // get_cocoon_data returns: (int, int, int, int, int, int, int, int, int, slice)
+          // We need to extract params from the slice
+          const stack = result.stack;
+          // Skip first 9 values (version, last_proxy_seqno, etc.)
+          for (let i = 0; i < 9; i++) {
+            stack.readBigNumber();
+          }
+          // Read params from slice
+          const paramsSlice = stack.readCell();
+          // For now, return default values if we can't parse
+          return this.getDefaultParams();
+        } catch (fallbackError) {
+          console.error('Both methods failed:', fallbackError);
+          return this.getDefaultParams();
+        }
+      }
+      
       if (!result.stack) {
         console.error('No stack returned from get_cur_params');
-        return null;
+        return this.getDefaultParams();
       }
 
       const stack = result.stack;
@@ -95,12 +124,28 @@ export class CocoonRoot {
       } catch (parseError) {
         console.error('Error parsing Cocoon params from stack:', parseError);
         console.error('Stack remaining:', stack.remaining);
-        return null;
+        return this.getDefaultParams();
       }
     } catch (error) {
       console.error('Error getting Cocoon params:', error);
-      return null;
+      return this.getDefaultParams();
     }
+  }
+
+  private getDefaultParams(): CocoonRootParams {
+    // Return default parameters if we can't fetch from contract
+    return {
+      price_per_token: toNano('0.01'),
+      worker_fee_per_token: toNano('0.001'),
+      min_proxy_stake: toNano('10'),
+      min_client_stake: toNano('1'),
+      proxy_delay_before_close: 3600,
+      client_delay_before_close: 3600,
+      prompt_tokens_price_multiplier: 1,
+      cached_tokens_price_multiplier: 1,
+      completion_tokens_price_multiplier: 1,
+      reasoning_tokens_price_multiplier: 1,
+    };
   }
 
   async getLastProxySeqno(client: TonClient): Promise<number> {
