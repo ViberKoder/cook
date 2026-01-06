@@ -152,29 +152,54 @@ export default function CookonPage() {
         proxyPublicKey = Buffer.alloc(32);
       }
 
-      // Check if client already exists
+      // Check if client already exists (with timeout)
       toast.loading('Checking for existing client...', { id: 'deploy-client' });
-      const existingClient = await findExistingClient(
-        ownerAddress,
-        proxyAddress,
-        proxyPublicKey,
-        params
-      );
+      
+      try {
+        const existingClientPromise = findExistingClient(
+          ownerAddress,
+          proxyAddress,
+          proxyPublicKey,
+          params
+        );
+        
+        // Add timeout of 10 seconds
+        const timeoutPromise = new Promise<Address | null>((resolve) => {
+          setTimeout(() => {
+            console.warn('findExistingClient timeout, assuming no client exists');
+            resolve(null);
+          }, 10000);
+        });
+        
+        const existingClient = await Promise.race([existingClientPromise, timeoutPromise]);
 
-      if (existingClient) {
-        setClientAddress(existingClient.toString());
-        // Check balance
-        const balance = await getCocoonClientBalance(existingClient);
-        setClientBalance(balance);
-        setIsClientReady(balance > 0n); // Ready only if has balance
-        if (balance > 0n) {
-          toast.success('Cocoon client готов! Можно использовать AI.', { id: 'deploy-client' });
+        if (existingClient) {
+          setClientAddress(existingClient.toString());
+          // Check balance
+          try {
+            const balance = await getCocoonClientBalance(existingClient);
+            setClientBalance(balance);
+            setIsClientReady(balance > 0n); // Ready only if has balance
+            if (balance > 0n) {
+              toast.success('Cocoon client готов! Можно использовать AI.', { id: 'deploy-client' });
+            } else {
+              toast.success('Client найден, но баланс пуст. Пополните баланс.', { id: 'deploy-client' });
+            }
+          } catch (balanceError) {
+            console.error('Error checking balance:', balanceError);
+            setClientBalance(0n);
+            setIsClientReady(false);
+            toast.success('Client найден, но не удалось проверить баланс. Пополните баланс.', { id: 'deploy-client' });
+          }
         } else {
-          toast.success('Client найден, но баланс пуст. Пополните баланс.', { id: 'deploy-client' });
+          // Client doesn't exist - user needs to deploy manually
+          setIsClientReady(false);
+          toast.dismiss('deploy-client');
         }
-      } else {
-        // Client doesn't exist - user needs to deploy manually
+      } catch (clientCheckError) {
+        console.error('Error checking for existing client:', clientCheckError);
         setIsClientReady(false);
+        toast.dismiss('deploy-client');
       }
     } catch (error: any) {
       console.error('Failed to initialize Cocoon:', error);
