@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
-const client = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_XAI_API_KEY || process.env.XAI_API_KEY,
-  baseURL: 'https://api.x.ai/v1',
-  timeout: 360000, // 6 minutes timeout for reasoning models
-});
+const XAI_API_KEY = process.env.NEXT_PUBLIC_XAI_API_KEY || process.env.XAI_API_KEY;
+const XAI_API_URL = 'https://api.x.ai/v1/responses';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!XAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'XAI API key is not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { messages, responseId } = body;
 
@@ -25,28 +28,49 @@ export async function POST(request: NextRequest) {
       content: msg.content,
     }));
 
-    // If responseId is provided, continue the conversation by appending new message
-    // Otherwise create new conversation
-    const response = await client.responses.create({
+    // Prepare request body
+    const requestBody: any = {
       model: 'grok-4',
       input,
-      ...(responseId && { id: responseId }),
+    };
+
+    // If responseId is provided, continue the conversation
+    if (responseId) {
+      requestBody.id = responseId;
+    }
+
+    // Make request to XAI API
+    const response = await fetch(XAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${XAI_API_KEY}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(360000), // 6 minutes timeout
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error?.message || errorData.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
 
     // Extract text content from response
     // Response content is an array with objects like { type: 'output_text', text: '...' }
     let textContent = '';
-    if (Array.isArray(response.content)) {
-      const outputText = response.content.find((item: any) => item.type === 'output_text');
+    if (Array.isArray(data.content)) {
+      const outputText = data.content.find((item: any) => item.type === 'output_text');
       textContent = outputText?.text || '';
-    } else if (typeof response.content === 'string') {
-      textContent = response.content;
+    } else if (typeof data.content === 'string') {
+      textContent = data.content;
     }
 
     return NextResponse.json({
-      id: response.id,
+      id: data.id,
       content: textContent,
-      role: response.role || 'assistant',
+      role: data.role || 'assistant',
     });
   } catch (error: any) {
     console.error('Grok API error:', error);
