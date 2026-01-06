@@ -58,9 +58,8 @@ export async function getCocoonClientBalance(clientAddress: Address): Promise<bi
   try {
     const client = getTonClient();
     const cocoonClient = new CocoonClient(clientAddress);
-    const clientContract = client.open(cocoonClient);
     
-    const state = await clientContract.getData(client);
+    const state = await cocoonClient.getData(client);
     return state?.balance || 0n;
   } catch (error) {
     console.error('Error getting client balance:', error);
