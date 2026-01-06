@@ -153,18 +153,16 @@ export async function deployCocoonClientContract(
       .endCell();
 
     // Send deploy transaction
+    // For deployment, we send stateInit and body
     const deployMessage = beginCell()
       .storeUint(0, 32) // op code for deploy
-      .storeRef(stateInitCell)
       .endCell();
 
     await sendTransaction({
-      messages: [{
-        address: clientAddress.toString(),
-        amount: (params.min_client_stake + toNano('0.1')).toString(), // stake + gas
-        payload: deployMessage.toBoc().toString('base64'),
-      }],
-      validUntil: Math.floor(Date.now() / 1000) + 60,
+      to: clientAddress.toString(),
+      value: (params.min_client_stake + toNano('0.1')).toString(), // stake + gas
+      stateInit: stateInitCell.toBoc().toString('base64'),
+      body: deployMessage.toBoc().toString('base64'),
     });
 
     return {

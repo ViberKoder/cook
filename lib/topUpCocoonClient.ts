@@ -38,12 +38,9 @@ export async function topUpCocoonClient(
 
     // Send transaction
     await sendTransaction({
-      messages: [{
-        address: clientAddress.toString(),
-        amount: amount.toString(),
-        payload: topUpMessage.toBoc().toString('base64'),
-      }],
-      validUntil: Math.floor(Date.now() / 1000) + 60,
+      to: clientAddress.toString(),
+      value: amount.toString(),
+      body: topUpMessage.toBoc().toString('base64'),
     });
 
     return { success: true };
