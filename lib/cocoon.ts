@@ -232,7 +232,7 @@ export async function getAvailableProxies(): Promise<CocoonProxyInfo[]> {
   try {
     const client = getTonClient();
     const root = getCocoonRoot();
-    const lastSeqno = await root.getLastProxySeqno();
+    const lastSeqno = await root.getLastProxySeqno(client);
     
     const proxies: CocoonProxyInfo[] = [];
     for (let i = 1; i <= lastSeqno; i++) {
