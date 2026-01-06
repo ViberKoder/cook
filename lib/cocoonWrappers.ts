@@ -49,27 +49,54 @@ export class CocoonRoot {
     try {
       // Use get_cur_params() method which returns 14 ints
       const result = await client.runMethod(this.address, 'get_cur_params');
-      if (!result.stack) return null;
+      if (!result.stack) {
+        console.error('No stack returned from get_cur_params');
+        return null;
+      }
 
       const stack = result.stack;
-      // Read 14 parameters from stack
-      return {
-        price_per_token: stack.readBigNumber(),
-        worker_fee_per_token: stack.readBigNumber(),
-        min_proxy_stake: stack.readBigNumber(),
-        min_client_stake: stack.readBigNumber(),
-        proxy_delay_before_close: stack.readNumber(),
-        client_delay_before_close: stack.readNumber(),
-        prompt_tokens_price_multiplier: stack.readNumber(),
-        cached_tokens_price_multiplier: stack.readNumber(),
-        completion_tokens_price_multiplier: stack.readNumber(),
-        reasoning_tokens_price_multiplier: stack.readNumber(),
-        // Additional params if needed
-        // param11: stack.readNumber(),
-        // param12: stack.readNumber(),
-        // param13: stack.readNumber(),
-        // param14: stack.readNumber(),
-      };
+      
+      try {
+        // Read 14 parameters from stack
+        // According to Cocoon docs, get_cur_params returns 14 integers
+        const price_per_token = stack.readBigNumber();
+        const worker_fee_per_token = stack.readBigNumber();
+        const min_proxy_stake = stack.readBigNumber();
+        const min_client_stake = stack.readBigNumber();
+        const proxy_delay_before_close = stack.readNumber();
+        const client_delay_before_close = stack.readNumber();
+        const prompt_tokens_price_multiplier = stack.readNumber();
+        const cached_tokens_price_multiplier = stack.readNumber();
+        const completion_tokens_price_multiplier = stack.readNumber();
+        const reasoning_tokens_price_multiplier = stack.readNumber();
+        
+        // Skip remaining 4 params if they exist
+        try {
+          stack.readNumber(); // param11
+          stack.readNumber(); // param12
+          stack.readNumber(); // param13
+          stack.readNumber(); // param14
+        } catch {
+          // Ignore if less than 14 params
+        }
+
+        return {
+          price_per_token,
+          worker_fee_per_token,
+          min_proxy_stake,
+          min_client_stake,
+          proxy_delay_before_close,
+          client_delay_before_close,
+          prompt_tokens_price_multiplier,
+          cached_tokens_price_multiplier,
+          completion_tokens_price_multiplier,
+          reasoning_tokens_price_multiplier,
+        };
+      } catch (parseError) {
+        console.error('Error parsing Cocoon params from stack:', parseError);
+        console.error('Stack remaining:', stack.remaining);
+        return null;
+      }
     } catch (error) {
       console.error('Error getting Cocoon params:', error);
       return null;

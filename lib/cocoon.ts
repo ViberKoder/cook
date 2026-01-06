@@ -26,7 +26,21 @@ export async function getAllParams(): Promise<CocoonRootParams | null> {
   try {
     const client = getTonClient();
     const root = getCocoonRoot();
-    return await root.getAllParams(client);
+    const params = await root.getAllParams(client);
+    
+    if (!params) {
+      console.error('getAllParams returned null');
+      // Try to get basic info to debug
+      try {
+        const account = await client.getContractState(root.address);
+        console.log('Root contract state:', account.state);
+        console.log('Root contract balance:', account.balance);
+      } catch (debugError) {
+        console.error('Debug error:', debugError);
+      }
+    }
+    
+    return params;
   } catch (error) {
     console.error('Error getting Cocoon params:', error);
     return null;
