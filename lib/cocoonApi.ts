@@ -101,7 +101,7 @@ export async function sendCocoonChatRequest(
       headers['X-Client-Address'] = clientAddress;
     }
 
-    const response = await fetch(`${endpoint}/api/v1/chat/completions`, {
+    const response = await fetch(`${endpoint}/v1/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify(request),

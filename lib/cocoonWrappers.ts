@@ -206,10 +206,12 @@ export class CocoonClient {
 
   async getData(client: TonClient): Promise<CocoonClientState | null> {
     try {
-      const result = await client.runMethod(this.address, 'getData');
+      const result = await client.runMethod(this.address, 'get_cocoon_client_data');
       if (!result.stack) return null;
 
       const stack = result.stack;
+      // Parse ClientData from stack
+      // Structure: balance, stake, tokensUsed, state, unlockTs
       return {
         balance: stack.readBigNumber(),
         stake: stack.readBigNumber(),
