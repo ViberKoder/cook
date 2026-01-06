@@ -23,7 +23,7 @@ const createClient = () => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, responseId } = body;
+    const { messages, temperature = 0.7 } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -35,34 +35,24 @@ export async function POST(request: NextRequest) {
     // Create client with API key
     const client = createClient();
 
-    // Prepare input messages
-    const input = messages.map((msg: any) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
-
-    // If responseId is provided, continue the conversation by appending new message
-    // Otherwise create new conversation
-    const response: any = await client.responses.create({
-      model: 'grok-4',
-      input,
-      ...(responseId && { id: responseId }),
+    // Use chat/completions API as recommended by xAI
+    const response = await client.chat.completions.create({
+      model: 'grok-4-latest',
+      messages: messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      stream: false,
+      temperature: temperature,
     });
 
     // Extract text content from response
-    // Response content is an array with objects like { type: 'output_text', text: '...' }
-    let textContent = '';
-    if (Array.isArray(response.content)) {
-      const outputText = response.content.find((item: any) => item.type === 'output_text');
-      textContent = outputText?.text || '';
-    } else if (typeof response.content === 'string') {
-      textContent = response.content;
-    }
+    const textContent = response.choices[0]?.message?.content || '';
 
     return NextResponse.json({
       id: response.id,
       content: textContent,
-      role: response.role || 'assistant',
+      role: 'assistant',
     });
   } catch (error: any) {
     console.error('Grok API error:', error);
