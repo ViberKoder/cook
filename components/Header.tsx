@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { TonConnectButton } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ export default function Header() {
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="flex items-center space-x-4 md:space-x-8">
             <Link 
               href="/"
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
@@ -35,6 +35,12 @@ export default function Header() {
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
             >
               Cooks
+            </Link>
+            <Link 
+              href="/cookon"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              Cookon
             </Link>
             <Link 
               href="/admin"
