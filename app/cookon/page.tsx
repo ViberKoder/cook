@@ -205,7 +205,7 @@ export default function CookonPage() {
       console.error('Failed to initialize Cocoon:', error);
       toast.error('Failed to initialize Cocoon: ' + error.message);
     }
-  }, [connected, wallet, sendTransaction]);
+  }, [connected, wallet]);
 
   // Load Cocoon parameters on mount
   useEffect(() => {

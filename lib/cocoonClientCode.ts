@@ -24,7 +24,17 @@ async function loadFromDeployedContract(address: string): Promise<Cell | null> {
     
     if (account.state === 'active' && account.code) {
       // Extract code from the contract state
-      return account.code;
+      // account.code is a Buffer containing BOC (Bag of Cells), need to convert to Cell
+      try {
+        // Parse BOC buffer to get cells
+        const cells = Cell.fromBoc(account.code);
+        if (cells && cells.length > 0) {
+          return cells[0];
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse code as BOC:', parseError);
+        return null;
+      }
     }
   } catch (error) {
     console.warn('Failed to load client code from deployed contract:', error);
