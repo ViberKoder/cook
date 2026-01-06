@@ -159,8 +159,17 @@ export class CocoonRoot {
   async getLastProxySeqno(client: TonClient): Promise<number> {
     try {
       const result = await client.runMethod(this.address, 'last_proxy_seqno');
-      if (!result.stack) return 0;
-      return Number(result.stack.readBigNumber());
+      if (!result.stack || result.stack.remaining === 0) {
+        console.warn('Empty stack returned from last_proxy_seqno');
+        return 0;
+      }
+      
+      try {
+        return Number(result.stack.readBigNumber());
+      } catch (readError) {
+        console.warn('Error reading last_proxy_seqno from stack:', readError);
+        return 0;
+      }
     } catch (error) {
       console.error('Error getting last proxy seqno:', error);
       return 0;

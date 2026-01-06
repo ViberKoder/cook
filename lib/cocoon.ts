@@ -104,6 +104,9 @@ export async function getLastProxySeqno(): Promise<number> {
     }
 
     try {
+      if (result.stack.remaining === 0) {
+        return 0;
+      }
       return Number(result.stack.readBigNumber());
     } catch {
       return 0;
