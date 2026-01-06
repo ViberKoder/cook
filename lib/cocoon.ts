@@ -159,7 +159,7 @@ export async function checkHashIsValid(
       { type: 'slice', cell: beginCell().storeBuffer(hash).endCell() }
     ]);
     
-    if (!result.stack) return false;
+    if (!result.stack || result.stack.remaining === 0) return false;
     try {
       return result.stack.readBoolean();
     } catch {
