@@ -74,12 +74,12 @@ export default function CookonPage() {
     if (!wallet || !clientAddress) return;
     
     try {
-      const state = await getClientState(clientAddress);
-      if (state) {
-        setClientBalance(state.balance);
-      }
+      const clientAddr = Address.parse(clientAddress);
+      const balance = await getCocoonClientBalance(clientAddr);
+      setClientBalance(balance);
     } catch (error) {
       console.error('Failed to load client balance:', error);
+      setClientBalance(0n);
     }
   }, [wallet, clientAddress]);
 
@@ -199,12 +199,25 @@ export default function CookonPage() {
 
     setIsToppingUp(true);
     try {
-      // In production, this would send transaction to top up client contract
-      // await clientContract.sendExtTopUp(provider, wallet, toNano('0.1'), toNano(amount.toString()), wallet.address);
-      
-      // For now, simulate the top-up
-      toast.success(`Topped up ${amount} TON for Cocoon tokens!`);
-      setClientBalance(prev => prev + toNano(amount.toString()));
+      const depositAmount = toNano(amount.toString());
+      const clientAddr = Address.parse(clientAddress);
+
+      // Top up client contract
+      const result = await topUpCocoonClient(
+        clientAddr,
+        depositAmount,
+        sendTransaction,
+        Address.parse(wallet.toString())
+      );
+
+      if (result.success) {
+        // Refresh balance
+        const newBalance = await getCocoonClientBalance(clientAddr);
+        setClientBalance(newBalance);
+        toast.success(`Topped up ${amount} TON for Cocoon tokens!`);
+      } else {
+        toast.error(result.error || 'Failed to top up');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to top up');
     } finally {
