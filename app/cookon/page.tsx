@@ -5,7 +5,9 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { getAllParams, getClientState, formatTON, sendAIRequest } from '@/lib/cocoon';
+import { getAllParams, getClientState, formatTON, sendAIRequest, getAvailableProxies } from '@/lib/cocoon';
+import { getCocoonRoot, CocoonClient } from '@/lib/cocoonWrappers';
+import { getTonClient } from '@/lib/cocoon';
 import { deployJettonMinter } from '@/lib/deploy';
 import { TokenData } from '@/components/TokenForm';
 import { toNano } from '@ton/core';
@@ -44,6 +46,9 @@ export default function CookonPage() {
   const [clientBalance, setClientBalance] = useState<bigint>(0n);
   const [topUpAmount, setTopUpAmount] = useState('1');
   const [isToppingUp, setIsToppingUp] = useState(false);
+  const [clientAddress, setClientAddress] = useState<string | null>(null);
+  const [proxyEndpoint, setProxyEndpoint] = useState<string | null>(null);
+  const [isDeployingClient, setIsDeployingClient] = useState(false);
   const [tokenSuggestion, setTokenSuggestion] = useState<TokenSuggestion>({});
   const [showDeployForm, setShowDeployForm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,29 +68,66 @@ export default function CookonPage() {
   };
 
   const loadClientBalance = useCallback(async () => {
-    if (!wallet) return;
+    if (!wallet || !clientAddress) return;
     
     try {
-      // In production, this would check the actual client contract balance
-      // For now, we'll use a placeholder
-      const balance = 0n; // await getClientState(clientAddress);
-      setClientBalance(balance);
+      const state = await getClientState(clientAddress);
+      if (state) {
+        setClientBalance(state.balance);
+      }
     } catch (error) {
       console.error('Failed to load client balance:', error);
     }
-  }, [wallet]);
+  }, [wallet, clientAddress]);
+
+  // Initialize Cocoon client and get proxy
+  const initializeCocoon = useCallback(async () => {
+    if (!connected || !wallet) return;
+
+    try {
+      // Get available proxies
+      const proxies = await getAvailableProxies();
+      if (proxies.length === 0) {
+        toast.error('No Cocoon proxies available');
+        return;
+      }
+
+      // Use first available proxy
+      const proxy = proxies[0];
+      setProxyEndpoint(proxy.endpoint || 'https://cocoon-proxy.example.com');
+
+      // Check if client contract already exists
+      // For now, we'll use a placeholder - in production, deploy actual client contract
+      // const clientCode = await getClientCode();
+      // const client = CocoonClient.createFromConfig(...);
+      // setClientAddress(client.address.toString());
+      
+      // For development, use placeholder
+      setClientAddress(wallet.toString());
+    } catch (error: any) {
+      console.error('Failed to initialize Cocoon:', error);
+      toast.error('Failed to initialize Cocoon: ' + error.message);
+    }
+  }, [connected, wallet]);
 
   // Load Cocoon parameters on mount
   useEffect(() => {
     loadCocoonParams();
   }, []);
 
-  // Load client balance when wallet connects
+  // Initialize Cocoon when wallet connects
   useEffect(() => {
     if (connected && wallet) {
+      initializeCocoon();
+    }
+  }, [connected, wallet, initializeCocoon]);
+
+  // Load client balance when client address is set
+  useEffect(() => {
+    if (clientAddress) {
       loadClientBalance();
     }
-  }, [connected, wallet, loadClientBalance]);
+  }, [clientAddress, loadClientBalance]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -93,8 +135,8 @@ export default function CookonPage() {
   }, [messages]);
 
   const handleTopUp = async () => {
-    if (!connected || !wallet) {
-      toast.error('Please connect your wallet first');
+    if (!connected || !wallet || !clientAddress) {
+      toast.error('Please connect your wallet and initialize Cocoon first');
       return;
     }
 
@@ -106,10 +148,12 @@ export default function CookonPage() {
 
     setIsToppingUp(true);
     try {
-      // In production, this would deploy/update the Cocoon client contract
-      // For now, we'll simulate it
+      // In production, this would send transaction to top up client contract
+      // await clientContract.sendExtTopUp(provider, wallet, toNano('0.1'), toNano(amount.toString()), wallet.address);
+      
+      // For now, simulate the top-up
       toast.success(`Topped up ${amount} TON for Cocoon tokens!`);
-      setClientBalance(toNano(amount.toString()));
+      setClientBalance(prev => prev + toNano(amount.toString()));
     } catch (error: any) {
       toast.error(error.message || 'Failed to top up');
     } finally {
@@ -132,12 +176,15 @@ export default function CookonPage() {
     setIsLoading(true);
 
     try {
-      // Send request to Cocoon AI
-      // In production, this would use the actual Cocoon proxy endpoint
+      if (!proxyEndpoint || !clientAddress) {
+        throw new Error('Cocoon not initialized. Please wait...');
+      }
+
+      // Send request to Cocoon AI through proxy
       const aiResponse = await sendAIRequest(
         inputMessage,
-        wallet?.toString() || '',
-        'https://cocoon-proxy.example.com' // Placeholder
+        clientAddress,
+        proxyEndpoint
       );
 
       // Parse AI response for token suggestions

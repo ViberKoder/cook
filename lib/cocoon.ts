@@ -1,6 +1,7 @@
-import { TonClient, Address, toNano, beginCell, contractAddress } from '@ton/ton';
+import { TonClient, Address, toNano, beginCell, contractAddress, Cell } from '@ton/ton';
 import { KeyPair, sign } from '@ton/crypto';
 import { COCOON_ROOT_ADDRESS, TON_CENTER_ENDPOINT, TON_CENTER_API_KEY } from './cocoonConfig';
+import { getCocoonRoot, CocoonRoot, CocoonClient, CocoonRootParams, CocoonProxyInfo, CocoonClientState } from './cocoonWrappers';
 
 // Initialize TON client
 export function getTonClient(): TonClient {
@@ -46,34 +47,8 @@ export interface CocoonProxyInfo {
 export async function getAllParams(): Promise<CocoonRootParams | null> {
   try {
     const client = getTonClient();
-    const rootAddr = parseAddr(COCOON_ROOT_ADDRESS);
-    
-    const result = await client.runMethod(rootAddr, 'getAllParams');
-    
-    if (!result.stack) {
-      return null;
-    }
-
-    const stack = result.stack;
-    // Read stack items - adjust based on actual contract return format
-    // Note: Stack reading order depends on contract implementation
-    try {
-      return {
-        price_per_token: stack.readBigNumber(),
-        worker_fee_per_token: stack.readBigNumber(),
-        min_proxy_stake: stack.readBigNumber(),
-        min_client_stake: stack.readBigNumber(),
-        proxy_delay_before_close: stack.readNumber(),
-        client_delay_before_close: stack.readNumber(),
-        prompt_tokens_price_multiplier: stack.readNumber(),
-        cached_tokens_price_multiplier: stack.readNumber(),
-        completion_tokens_price_multiplier: stack.readNumber(),
-        reasoning_tokens_price_multiplier: stack.readNumber(),
-      };
-    } catch (error) {
-      console.error('Error reading stack:', error);
-      return null;
-    }
+    const root = getCocoonRoot();
+    return await root.getAllParams(client);
   } catch (error) {
     console.error('Error getting Cocoon params:', error);
     return null;
@@ -237,41 +212,114 @@ export function calculateClientAddress(
   }
 }
 
-// Send AI request to Cocoon (simplified - actual implementation requires full Cocoon integration)
+// Send AI request to Cocoon proxy
 export async function sendAIRequest(
   prompt: string,
   clientAddress: string,
   proxyEndpoint: string
 ): Promise<string> {
-  // This is a placeholder - actual implementation would:
-  // 1. Connect to Cocoon proxy endpoint
-  // 2. Send request with proper authentication
-  // 3. Handle streaming response
-  // 4. Update client contract balance
-  
   try {
-    // For now, return a mock response
-    // In production, this would make actual API calls to Cocoon proxy
-    const response = await fetch(proxyEndpoint, {
+    // Send request to Cocoon proxy endpoint
+    // Cocoon proxy expects POST request with prompt and client address
+    const response = await fetch(proxyEndpoint + '/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Client-Address': clientAddress,
       },
       body: JSON.stringify({
-        prompt,
-        client_address: clientAddress,
+        model: 'default', // Use default model or specify
+        messages: [
+          {
+            role: 'system',
+            content: 'Ты AI помощник для создания Jetton 2.0 токенов на блокчейне TON. Помогай пользователям придумывать названия, символы, описания, токеномику и идеи для их токенов. Отвечай на русском языке.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
       }),
     });
 
     if (!response.ok) {
-      throw new Error('AI request failed');
+      const errorText = await response.text();
+      throw new Error(`AI request failed: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
-    return data.response || 'Error: No response from AI';
-  } catch (error) {
+    
+    // Extract response from Cocoon API format
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
+    }
+    
+    return data.response || data.content || 'Error: No response from AI';
+  } catch (error: any) {
     console.error('Error sending AI request:', error);
+    // Fallback to mock response for development
+    if (error.message?.includes('fetch')) {
+      return generateFallbackAIResponse(prompt);
+    }
     throw error;
+  }
+}
+
+// Fallback AI response generator (for development/testing)
+function generateFallbackAIResponse(prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('название') || lowerPrompt.includes('name')) {
+    return 'Отличный вопрос! Давай придумаем название для твоего токена. Вот несколько идей:\n\n1. **CryptoChef** - для кулинарной тематики\n2. **TokenKitchen** - игривое название\n3. **CookCoin** - простое и понятное\n\nКакой стиль тебе ближе? Расскажи больше о концепции токена, и я предложу более точные варианты!';
+  }
+  
+  if (lowerPrompt.includes('символ') || lowerPrompt.includes('symbol') || lowerPrompt.includes('ticker')) {
+    return 'Для символа токена рекомендую:\n\n- **CHEF** - если выбрали кулинарную тематику\n- **COOK** - короткий и запоминающийся\n- **KIT** - для TokenKitchen\n\nСимвол должен быть 3-5 букв, легко запоминаться. Что выбираешь?';
+  }
+  
+  if (lowerPrompt.includes('суплай') || lowerPrompt.includes('supply')) {
+    return 'Для суплая рекомендую:\n\n- **1,000,000,000** (1 миллиард) - стандартный вариант\n- **100,000,000** (100 миллионов) - для более редкого токена\n- **10,000,000,000** (10 миллиардов) - для массового использования\n\nКакой суплай подходит твоей концепции?';
+  }
+  
+  if (lowerPrompt.includes('описание') || lowerPrompt.includes('description')) {
+    return 'Отличная идея! Для описания токена важно:\n\n- Кратко описать цель и назначение\n- Упомянуть уникальные особенности\n- Добавить призыв к действию\n\nРасскажи больше о своем токене, и я помогу составить идеальное описание!';
+  }
+  
+  return 'Интересная идея! Расскажи больше:\n\n- Какую проблему решает твой токен?\n- Кто твоя целевая аудитория?\n- Какие уникальные функции у токена?\n\nЧем больше деталей, тем лучше я смогу помочь с созданием!';
+}
+
+// Get available Cocoon proxies
+export async function getAvailableProxies(): Promise<CocoonProxyInfo[]> {
+  try {
+    const client = getTonClient();
+    const root = getCocoonRoot();
+    const lastSeqno = await root.getLastProxySeqno();
+    
+    const proxies: CocoonProxyInfo[] = [];
+    for (let i = 1; i <= lastSeqno; i++) {
+      const proxyInfo = await root.getProxyInfo(client, i);
+      if (proxyInfo) {
+        proxies.push(proxyInfo);
+      }
+    }
+    
+    return proxies;
+  } catch (error) {
+    console.error('Error getting proxies:', error);
+    return [];
+  }
+}
+
+// Get client state
+export async function getClientState(clientAddress: string): Promise<CocoonClientState | null> {
+  try {
+    const client = getTonClient();
+    const clientContract = new CocoonClient(Address.parse(clientAddress));
+    return await clientContract.getData(client);
+  } catch (error) {
+    console.error('Error getting client state:', error);
+    return null;
   }
 }
 
