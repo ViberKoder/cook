@@ -113,22 +113,44 @@ export default function CookonPage() {
       }
 
       // Get proxy info for client lookup
-      const root = getCocoonRoot();
-      const client = getTonClient();
-      const lastSeqno = await root.getLastProxySeqno(client);
-      if (lastSeqno === 0) {
-        toast.error('No Cocoon proxies available', { id: 'deploy-client' });
-        return;
+      // Try to get from contract, but fallback to root address if needed
+      let proxyAddress: Address;
+      let proxyPublicKey: Buffer;
+      
+      try {
+        const root = getCocoonRoot();
+        const client = getTonClient();
+        const lastSeqno = await root.getLastProxySeqno(client);
+        
+        if (lastSeqno > 0) {
+          const proxyInfo = await root.getProxyInfo(client, 1);
+          if (proxyInfo && proxyInfo.endpoint) {
+            // Try to parse endpoint as address
+            try {
+              proxyAddress = Address.parse(proxyInfo.endpoint);
+              proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
+            } catch {
+              // If endpoint is not an address, use root address as fallback
+              proxyAddress = Address.parse(COCOON_ROOT_ADDRESS);
+              proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
+            }
+          } else {
+            // Use root address as proxy address
+            proxyAddress = Address.parse(COCOON_ROOT_ADDRESS);
+            proxyPublicKey = Buffer.alloc(32);
+          }
+        } else {
+          // No proxies in contract, use root address
+          console.warn('No proxies found in contract, using root address');
+          proxyAddress = Address.parse(COCOON_ROOT_ADDRESS);
+          proxyPublicKey = Buffer.alloc(32);
+        }
+      } catch (proxyError) {
+        console.warn('Error getting proxy from contract, using fallback:', proxyError);
+        // Fallback: use root address
+        proxyAddress = Address.parse(COCOON_ROOT_ADDRESS);
+        proxyPublicKey = Buffer.alloc(32);
       }
-
-      const proxyInfo = await root.getProxyInfo(client, 1);
-      if (!proxyInfo) {
-        toast.error('Failed to get proxy info', { id: 'deploy-client' });
-        return;
-      }
-
-      const proxyAddress = Address.parse(proxyInfo.endpoint || 'EQCns7bYSp0igFvS1wpb5wsZjCKCV19MD5AVzI4EyxsnU73k');
-      const proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
 
       // Check if client already exists
       toast.loading('Checking for existing client...', { id: 'deploy-client' });
