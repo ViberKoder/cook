@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { getAllParams, formatTON } from '@/lib/cocoon';
+import { getAllParams, formatTON, getTonClient } from '@/lib/cocoon';
 import { getCocoonRoot } from '@/lib/cocoonWrappers';
 import { getCocoonProxies, sendCocoonChatRequest, CocoonChatMessage } from '@/lib/cocoonApi';
 import { deployCocoonClientContract, findExistingClient, checkClientExists } from '@/lib/deployCocoonClient';
