@@ -47,10 +47,12 @@ export class CocoonRoot {
 
   async getAllParams(client: TonClient): Promise<CocoonRootParams | null> {
     try {
-      const result = await client.runMethod(this.address, 'getAllParams');
+      // Use get_cur_params() method which returns 14 ints
+      const result = await client.runMethod(this.address, 'get_cur_params');
       if (!result.stack) return null;
 
       const stack = result.stack;
+      // Read 14 parameters from stack
       return {
         price_per_token: stack.readBigNumber(),
         worker_fee_per_token: stack.readBigNumber(),
@@ -62,6 +64,11 @@ export class CocoonRoot {
         cached_tokens_price_multiplier: stack.readNumber(),
         completion_tokens_price_multiplier: stack.readNumber(),
         reasoning_tokens_price_multiplier: stack.readNumber(),
+        // Additional params if needed
+        // param11: stack.readNumber(),
+        // param12: stack.readNumber(),
+        // param13: stack.readNumber(),
+        // param14: stack.readNumber(),
       };
     } catch (error) {
       console.error('Error getting Cocoon params:', error);
