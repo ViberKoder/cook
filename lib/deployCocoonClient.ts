@@ -209,8 +209,8 @@ export async function deployCocoonClientContract(
     
     // Build stateInit cell: split_depth + special + code + data
     const stateInitBoc = beginCell()
-      .storeUint(0, 1) // split_depth
-      .storeUint(0, 1) // special
+      .storeBit(0) // split_depth
+      .storeBit(0) // special
       .storeRef(stateInit.code)
       .storeRef(stateInit.data)
       .endCell();
