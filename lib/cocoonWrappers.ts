@@ -156,22 +156,53 @@ export class CocoonRoot {
     };
   }
 
-  async getLastProxySeqno(client: TonClient): Promise<number> {
+    async getLastProxySeqno(client: TonClient): Promise<number> {
+    // Retry helper with exponential backoff for rate limiting
+    const retryWithBackoff = async (fn: () => Promise<any>, maxRetries: number = 2, initialDelay: number = 2000): Promise<any> => {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          return await fn();
+        } catch (error: any) {
+          const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+          const isLastAttempt = attempt === maxRetries - 1;
+          
+          if (isRateLimit && !isLastAttempt) {
+            const delay = initialDelay * Math.pow(2, attempt);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          
+          throw error;
+        }
+      }
+      throw new Error('Max retries exceeded');
+    };
+
     try {
-      const result = await client.runMethod(this.address, 'last_proxy_seqno');
+      // Use retry logic for rate limiting
+      const result = await retryWithBackoff(async () => {
+        return await Promise.race([
+          client.runMethod(this.address, 'last_proxy_seqno'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+        ]) as any;
+      }, 2, 2000);
+      
       if (!result.stack || result.stack.remaining === 0) {
-        console.warn('Empty stack returned from last_proxy_seqno');
         return 0;
       }
       
       try {
         return Number(result.stack.readBigNumber());
       } catch (readError) {
-        console.warn('Error reading last_proxy_seqno from stack:', readError);
         return 0;
       }
-    } catch (error) {
-      console.error('Error getting last proxy seqno:', error);
+    } catch (error: any) {
+      // Silently handle rate limiting (429) and timeout errors
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      if (!isRateLimit && error?.message !== 'Timeout' && !error?.message?.includes('Timeout')) {
+        // Only log non-rate-limit, non-timeout errors
+        console.warn('Error getting last proxy seqno:', error?.message || error);
+      }
       return 0;
     }
   }
