@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -18,13 +18,12 @@ export default function CookonPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'РџСЂРёРІРµС‚! РЇ Grok, С‚РІРѕР№ AI-РїРѕРјРѕС‰РЅРёРє! рџљЂ\n\nРЇ РјРѕРіСѓ РїРѕРјРѕС‡СЊ С‚РµР±Рµ СЃ СЂР°Р·Р»РёС‡РЅС‹РјРё РІРѕРїСЂРѕСЃР°РјРё, РѕР±СЃСѓРґРёС‚СЊ РёРґРµРё РёР»Рё РїСЂРѕСЃС‚Рѕ РїРѕР±РѕР»С‚Р°С‚СЊ. Р§С‚Рѕ С‚РµР±СЏ РёРЅС‚РµСЂРµСЃСѓРµС‚?',
+      content: 'Hello! I''m Grok, your AI assistant! рџљЂ\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?',
       timestamp: new Date(),
     },
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [responseId, setResponseId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +69,7 @@ export default function CookonPage() {
         },
         body: JSON.stringify({
           messages: apiMessages,
-          responseId: responseId,
+          temperature: 0.7,
         }),
       });
 
@@ -84,15 +83,11 @@ export default function CookonPage() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.content || 'РќРµС‚ РѕС‚РІРµС‚Р° РѕС‚ AI',
+        content: data.content || 'No response from AI',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-
-      if (data.id) {
-        setResponseId(data.id);
-      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error(error.message || 'Failed to send message to AI');
@@ -100,7 +95,7 @@ export default function CookonPage() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'РР·РІРёРЅРёС‚Рµ, РїСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР° РїСЂРё РѕР±СЂР°С‰РµРЅРёРё Рє AI. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰Рµ СЂР°Р·.',
+        content: 'Sorry, an error occurred while contacting AI. Please try again.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
@@ -121,11 +116,10 @@ export default function CookonPage() {
       {
         id: '1',
         role: 'assistant',
-        content: 'РџСЂРёРІРµС‚! РЇ Grok, С‚РІРѕР№ AI-РїРѕРјРѕС‰РЅРёРє! рџљЂ\n\nРЇ РјРѕРіСѓ РїРѕРјРѕС‡СЊ С‚РµР±Рµ СЃ СЂР°Р·Р»РёС‡РЅС‹РјРё РІРѕРїСЂРѕСЃР°РјРё, РѕР±СЃСѓРґРёС‚СЊ РёРґРµРё РёР»Рё РїСЂРѕСЃС‚Рѕ РїРѕР±РѕР»С‚Р°С‚СЊ. Р§С‚Рѕ С‚РµР±СЏ РёРЅС‚РµСЂРµСЃСѓРµС‚?',
+        content: 'Hello! I''m Grok, your AI assistant! рџљЂ\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?',
         timestamp: new Date(),
       },
     ]);
-    setResponseId(null);
   };
 
   return (
@@ -155,18 +149,18 @@ export default function CookonPage() {
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Р§Р°С‚ СЃ Grok 4 - С‚РІРѕР№ AI-РїРѕРјРѕС‰РЅРёРє РґР»СЏ СЃРѕР·РґР°РЅРёСЏ РјРµРјРєРѕРёРЅРѕРІ Рё РЅРµ С‚РѕР»СЊРєРѕ! рџљЂ
+              Chat with Grok 4 - your AI assistant for creating memecoins and more! рџљЂ
             </p>
           </div>
 
           <div className="card">
             <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
-              <h2 className="text-xl font-bold text-cook-text">Р§Р°С‚ СЃ Grok</h2>
+              <h2 className="text-xl font-bold text-cook-text">Chat with Grok</h2>
               <button
                 onClick={handleClearChat}
                 className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
               >
-                РћС‡РёСЃС‚РёС‚СЊ С‡Р°С‚
+                Clear chat
               </button>
             </div>
 
@@ -196,7 +190,7 @@ export default function CookonPage() {
                     <div className="bg-cook-bg-secondary rounded-xl p-4">
                       <div className="flex items-center gap-2">
                         <div className="spinner w-4 h-4" />
-                        <span className="text-cook-text-secondary">Grok РґСѓРјР°РµС‚...</span>
+                        <span className="text-cook-text-secondary">Grok is thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -210,7 +204,7 @@ export default function CookonPage() {
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="РќР°РїРёС€Рё СЃРѕРѕР±С‰РµРЅРёРµ..."
+                    placeholder="Type your message..."
                     className="flex-1 input-ton resize-none"
                     rows={2}
                     disabled={isLoading}
@@ -223,7 +217,7 @@ export default function CookonPage() {
                     {isLoading ? (
                       <div className="spinner w-5 h-5" />
                     ) : (
-                      'РћС‚РїСЂР°РІРёС‚СЊ'
+                      'Send'
                     )}
                   </button>
                 </div>
