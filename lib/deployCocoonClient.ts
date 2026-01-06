@@ -271,7 +271,9 @@ export async function deployCocoonClientContract(
     // storeStateInit correctly serializes stateInit: split_depth + special + code + data
     // Note: storeStateInit returns a Cell, so we can use it directly
     // storeStateInit already formats the stateInit correctly, no need to wrap in beginCell
-    const stateInitCell = beginCell()`n      .store(storeStateInit(stateInit))`n      .endCell();
+    const stateInitCell = beginCell()
+      .store(storeStateInit(stateInit))
+      .endCell();
 
     // Serialize stateInit to base64 BOC for TonConnect
     // TonConnect expects stateInit as a base64-encoded BOC
