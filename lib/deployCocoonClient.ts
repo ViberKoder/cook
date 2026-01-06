@@ -46,10 +46,10 @@ export async function findExistingClient(
       .storeCoins(params.min_client_stake)
       .storeUint(params.proxy_delay_before_close, 32)
       .storeUint(params.client_delay_before_close, 32)
-      .storeUint(params.prompt_tokens_price_multiplier, 32)
-      .storeUint(params.cached_tokens_price_multiplier, 32)
-      .storeUint(params.completion_tokens_price_multiplier, 32)
-      .storeUint(params.reasoning_tokens_price_multiplier, 32)
+      .storeUint(BigInt(params.prompt_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.cached_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.completion_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.reasoning_tokens_price_multiplier || 1), 64)
       .endCell();
 
     // Calculate client address
@@ -175,10 +175,10 @@ export async function deployCocoonClientContract(
       .storeCoins(params.min_client_stake)
       .storeUint(params.proxy_delay_before_close, 32)
       .storeUint(params.client_delay_before_close, 32)
-      .storeUint(params.prompt_tokens_price_multiplier, 32)
-      .storeUint(params.cached_tokens_price_multiplier, 32)
-      .storeUint(params.completion_tokens_price_multiplier, 32)
-      .storeUint(params.reasoning_tokens_price_multiplier, 32)
+      .storeUint(BigInt(params.prompt_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.cached_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.completion_tokens_price_multiplier || 1), 64)
+      .storeUint(BigInt(params.reasoning_tokens_price_multiplier || 1), 64)
       .endCell();
 
     // Convert proxyPublicKey Buffer to bigint if needed
