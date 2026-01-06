@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { TonConnectButton } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -35,24 +35,6 @@ export default function Header() {
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
             >
               Cooks
-            </Link>
-            <Link 
-              href="/cookpad"
-              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
-            >
-              Cookpad
-            </Link>
-            <Link 
-              href="/cookpad-offchain"
-              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
-            >
-              Cookpad Offchain
-            </Link>
-            <Link 
-              href="/cookpad/create"
-              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
-            >
-              Create Cookpad
             </Link>
             <Link 
               href="/admin"
