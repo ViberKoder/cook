@@ -6,10 +6,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { getAllParams, getClientState, formatTON } from '@/lib/cocoon';
-import { getCocoonRoot, CocoonClient } from '@/lib/cocoonWrappers';
-import { getTonClient } from '@/lib/cocoon';
+import { getCocoonRoot } from '@/lib/cocoonWrappers';
 import { getCocoonProxies, sendCocoonChatRequest, CocoonChatMessage } from '@/lib/cocoonApi';
-import { deployCocoonClientContract } from '@/lib/deployCocoonClient';
+import { deployCocoonClientContract, findExistingClient, checkClientExists } from '@/lib/deployCocoonClient';
+import { topUpCocoonClient, getCocoonClientBalance } from '@/lib/topUpCocoonClient';
 import { Address } from '@ton/core';
 import { deployJettonMinter } from '@/lib/deploy';
 import { TokenData } from '@/components/TokenForm';
@@ -99,33 +99,67 @@ export default function CookonPage() {
         setProxyEndpoint(proxy.endpoint || 'https://cocoon.doge.tg');
       }
 
-      // Try to deploy Cocoon client contract
+      // Try to find or deploy Cocoon client contract
       const ownerAddress = Address.parse(wallet.toString());
       
-      // Check if client already exists for this wallet
-      // For now, we'll deploy a new one each time
-      // In production, should check if client exists first
-      toast.loading('Deploying Cocoon client contract...', { id: 'deploy-client' });
-      
-      const deployResult = await deployCocoonClientContract(
+      // Get network parameters to find existing client
+      const params = await getAllParams();
+      if (!params) {
+        toast.error('Failed to get Cocoon parameters', { id: 'deploy-client' });
+        return;
+      }
+
+      // Get proxy info for client lookup
+      const root = getCocoonRoot();
+      const client = getTonClient();
+      const lastSeqno = await root.getLastProxySeqno(client);
+      if (lastSeqno === 0) {
+        toast.error('No Cocoon proxies available', { id: 'deploy-client' });
+        return;
+      }
+
+      const proxyInfo = await root.getProxyInfo(client, 1);
+      if (!proxyInfo) {
+        toast.error('Failed to get proxy info', { id: 'deploy-client' });
+        return;
+      }
+
+      const proxyAddress = Address.parse(proxyInfo.endpoint || 'EQCns7bYSp0igFvS1wpb5wsZjCKCV19MD5AVzI4EyxsnU73k');
+      const proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
+
+      // Check if client already exists
+      toast.loading('Checking for existing client...', { id: 'deploy-client' });
+      const existingClient = await findExistingClient(
         ownerAddress,
-        sendTransaction
+        proxyAddress,
+        proxyPublicKey,
+        params
       );
-      
-      if (deployResult.success && deployResult.address) {
-        setClientAddress(deployResult.address);
-        toast.success('Cocoon client deployed!', { id: 'deploy-client' });
+
+      if (existingClient) {
+        setClientAddress(existingClient.toString());
+        toast.success('Found existing Cocoon client!', { id: 'deploy-client' });
       } else {
-        // If deployment fails, use wallet address as fallback
-        console.warn('Client deployment failed, using wallet address:', deployResult.error);
-        setClientAddress(wallet.toString());
-        toast.error(deployResult.error || 'Failed to deploy client, using fallback', { id: 'deploy-client' });
+        // Deploy new client
+        toast.loading('Deploying Cocoon client contract...', { id: 'deploy-client' });
+        const deployResult = await deployCocoonClientContract(
+          ownerAddress,
+          sendTransaction
+        );
+        
+        if (deployResult.success && deployResult.address) {
+          setClientAddress(deployResult.address);
+          toast.success('Cocoon client deployed!', { id: 'deploy-client' });
+        } else {
+          console.warn('Client deployment failed:', deployResult.error);
+          toast.error(deployResult.error || 'Failed to deploy client', { id: 'deploy-client' });
+        }
       }
     } catch (error: any) {
       console.error('Failed to initialize Cocoon:', error);
       toast.error('Failed to initialize Cocoon: ' + error.message);
     }
-  }, [connected, wallet]);
+  }, [connected, wallet, sendTransaction]);
 
   // Load Cocoon parameters on mount
   useEffect(() => {

@@ -5,16 +5,64 @@ import { Address, Cell, beginCell, toNano, contractAddress, storeStateInit } fro
 import { SendTransactionParams } from '@/hooks/useTonConnect';
 import { CocoonClient } from './cocoonWrappers';
 import { getCocoonRoot, CocoonRoot } from './cocoonWrappers';
-import { getTonClient, parseAddr, COCOON_ROOT_ADDRESS } from './cocoon';
-import { COCOON_CODE_HASHES } from './cocoonConfig';
+import { getTonClient, parseAddr } from './cocoon';
+import { COCOON_ROOT_ADDRESS, COCOON_CODE_HASHES } from './cocoonConfig';
+import { getClientCode } from './cocoonClientCode';
 
-// Get client contract code (simplified - in production should load from contract)
-// Client code hash: l00kU45gA7Gjk/hwhSW4EyTPiniu6ItFhdUbb2RVUUc=
-export async function getClientCode(): Promise<Cell> {
-  // In production, this should load the actual client contract code
-  // For now, return a placeholder cell
-  // The actual code should be loaded from cocoon-contracts repository
-  return beginCell().endCell();
+// Check if client contract already exists
+export async function checkClientExists(clientAddress: Address): Promise<boolean> {
+  try {
+    const client = getTonClient();
+    const account = await client.getContractState(clientAddress);
+    return account.state.type === 'active';
+  } catch (error) {
+    return false;
+  }
+}
+
+// Find existing client contract for owner
+export async function findExistingClient(
+  ownerAddress: Address,
+  proxyAddress: Address,
+  proxyPublicKey: Buffer,
+  params: any
+): Promise<Address | null> {
+  try {
+    const client = getTonClient();
+    const root = getCocoonRoot();
+    
+    // Get params cell
+    const paramsCell = beginCell()
+      .storeCoins(params.price_per_token)
+      .storeCoins(params.worker_fee_per_token)
+      .storeCoins(params.min_proxy_stake)
+      .storeCoins(params.min_client_stake)
+      .storeUint(params.proxy_delay_before_close, 32)
+      .storeUint(params.client_delay_before_close, 32)
+      .storeUint(params.prompt_tokens_price_multiplier, 32)
+      .storeUint(params.cached_tokens_price_multiplier, 32)
+      .storeUint(params.completion_tokens_price_multiplier, 32)
+      .storeUint(params.reasoning_tokens_price_multiplier, 32)
+      .endCell();
+
+    // Calculate client address
+    const clientCode = getClientCode();
+    const clientAddress = CocoonClient.calculateClientAddress(
+      clientCode,
+      proxyAddress,
+      proxyPublicKey,
+      ownerAddress,
+      paramsCell,
+      params.min_client_stake
+    );
+
+    // Check if contract exists
+    const exists = await checkClientExists(clientAddress);
+    return exists ? clientAddress : null;
+  } catch (error) {
+    console.error('Error finding existing client:', error);
+    return null;
+  }
 }
 
 // Deploy Cocoon Client contract
@@ -47,8 +95,23 @@ export async function deployCocoonClientContract(
     const proxyAddress = parseAddr(proxyInfo.endpoint || COCOON_ROOT_ADDRESS);
     const proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
 
+    // Check if client already exists
+    const existingClient = await findExistingClient(
+      ownerAddress,
+      proxyAddress,
+      proxyPublicKey,
+      params
+    );
+
+    if (existingClient) {
+      return {
+        success: true,
+        address: existingClient.toString(),
+      };
+    }
+
     // Get client code
-    const clientCode = await getClientCode();
+    const clientCode = getClientCode();
     
     // Create params cell (simplified - should contain actual network params)
     const paramsCell = beginCell()
