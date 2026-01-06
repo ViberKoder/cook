@@ -194,7 +194,7 @@ export async function deployCocoonClientContract(
     // A valid code cell should have at least some bits or refs
     const isEmpty = !clientCode || 
       (clientCode.bits.length === 0 && clientCode.refs.length === 0) ||
-      (clientCode.bits.length === 1 && !clientCode.bits.at(0) === 0 && clientCode.refs.length === 0);
+      (clientCode.bits.length === 1 && !clientCode.bits.at(0) && clientCode.refs.length === 0);
     
     if (isEmpty) {
       console.error('Client code is empty - cannot deploy without contract code');
