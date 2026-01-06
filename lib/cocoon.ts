@@ -141,37 +141,6 @@ export interface CocoonClientState {
   unlockTs: number;
 }
 
-// Get client contract state
-export async function getClientState(clientAddress: string): Promise<CocoonClientState | null> {
-  try {
-    const client = getTonClient();
-    const addr = parseAddr(clientAddress);
-    
-    const result = await client.runMethod(addr, 'getData');
-    
-    if (!result.stack) {
-      return null;
-    }
-
-    const stack = result.stack;
-    try {
-      return {
-        balance: stack.readBigNumber(),
-        stake: stack.readBigNumber(),
-        tokensUsed: stack.readBigNumber(),
-        state: stack.readNumber(),
-        unlockTs: stack.readNumber(),
-      };
-    } catch (error) {
-      console.error('Error reading client state stack:', error);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error getting client state:', error);
-    return null;
-  }
-}
-
 // Calculate client contract address
 export function calculateClientAddress(
   clientCode: Buffer,
