@@ -181,11 +181,12 @@ export async function deployCocoonClientContract(
       .storeUint(params.reasoning_tokens_price_multiplier, 32)
       .endCell();
 
-    // Create client contract
+    // Convert proxyPublicKey Buffer to bigint if needed
+    // CocoonClient.createFromConfig handles both Buffer and bigint
     const cocoonClient = CocoonClient.createFromConfig({
       ownerAddress,
       proxyAddress,
-      proxyPublicKey,
+      proxyPublicKey, // Can be Buffer or bigint
       state: 0,
       balance: 0n,
       stake: params.min_client_stake,

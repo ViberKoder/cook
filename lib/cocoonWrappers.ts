@@ -246,7 +246,7 @@ export class CocoonClient {
     config: {
       ownerAddress: Address;
       proxyAddress: Address;
-      proxyPublicKey: Buffer;
+      proxyPublicKey: Buffer | bigint;
       state: number;
       balance: bigint;
       stake: bigint;
@@ -257,16 +257,28 @@ export class CocoonClient {
     },
     code: Cell
   ): CocoonClient {
-    const data = beginCell()
+    // Convert proxyPublicKey to bigint if it's a Buffer
+    const proxyPublicKeyBigInt = typeof config.proxyPublicKey === 'bigint' 
+      ? config.proxyPublicKey 
+      : BigInt('0x' + config.proxyPublicKey.toString('hex'));
+
+    // Create constData cell (ownerAddress, proxyAddress, proxyPublicKey)
+    const constData = beginCell()
       .storeAddress(config.ownerAddress)
       .storeAddress(config.proxyAddress)
-      .storeBuffer(config.proxyPublicKey)
+      .storeUint(proxyPublicKeyBigInt, 256)
+      .endCell();
+
+    // Create main data cell according to CocoonClient structure
+    // state (2 bits), balance, stake, tokensUsed, unlockTs, secretHash, constData ref, params ref
+    const data = beginCell()
       .storeUint(config.state, 2)
       .storeCoins(config.balance)
       .storeCoins(config.stake)
       .storeUint(config.tokensUsed, 64)
       .storeUint(config.unlockTs, 32)
       .storeUint(config.secretHash, 256)
+      .storeRef(constData)
       .storeRef(config.params)
       .endCell();
 
@@ -279,7 +291,7 @@ export class CocoonClient {
   static calculateClientAddress(
     clientCode: Cell,
     proxyAddress: Address,
-    proxyPublicKey: Buffer,
+    proxyPublicKey: Buffer | bigint,
     ownerAddress: Address,
     paramsCell: Cell,
     minClientStake: bigint
