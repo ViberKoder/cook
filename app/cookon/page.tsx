@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -59,7 +59,7 @@ export default function CookonPage() {
     if (connected && wallet) {
       loadClientBalance();
     }
-  }, [connected, wallet]);
+  }, [connected, wallet, loadClientBalance]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function CookonPage() {
     }
   };
 
-  const loadClientBalance = async () => {
+  const loadClientBalance = useCallback(async () => {
     if (!wallet) return;
     
     try {
@@ -90,7 +90,7 @@ export default function CookonPage() {
     } catch (error) {
       console.error('Failed to load client balance:', error);
     }
-  };
+  }, [wallet]);
 
   const handleTopUp = async () => {
     if (!connected || !wallet) {

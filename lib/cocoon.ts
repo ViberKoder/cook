@@ -210,23 +210,24 @@ export function calculateClientAddress(
   // Actual implementation should use the same logic as CocoonClient.calculateAddress()
   // For now, return a placeholder - in production, use proper contract address calculation
   try {
-    const stateInit = beginCell()
-      .storeRef(beginCell().storeBuffer(clientCode).endCell())
-      .storeRef(
-        beginCell()
-          .storeAddress(ownerAddress)
-          .storeAddress(proxyAddress)
-          .storeBuffer(proxyPublicKey)
-          .storeUint(0, 2) // state
-          .storeCoins(0) // balance
-          .storeCoins(minClientStake) // stake
-          .storeUint(0, 64) // tokensUsed
-          .storeUint(0, 32) // unlockTs
-          .storeUint(0, 256) // secretHash
-          .storeRef(beginCell().storeBuffer(paramsCell).endCell())
-          .endCell()
-      )
+    const codeCell = beginCell().storeBuffer(clientCode).endCell();
+    const dataCell = beginCell()
+      .storeAddress(ownerAddress)
+      .storeAddress(proxyAddress)
+      .storeBuffer(proxyPublicKey)
+      .storeUint(0, 2) // state
+      .storeCoins(0) // balance
+      .storeCoins(minClientStake) // stake
+      .storeUint(0, 64) // tokensUsed
+      .storeUint(0, 32) // unlockTs
+      .storeUint(0, 256) // secretHash
+      .storeRef(beginCell().storeBuffer(paramsCell).endCell())
       .endCell();
+    
+    const stateInit = {
+      code: codeCell,
+      data: dataCell,
+    };
     
     return contractAddress(0, stateInit);
   } catch (error) {
