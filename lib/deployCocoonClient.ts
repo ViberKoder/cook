@@ -14,7 +14,7 @@ export async function checkClientExists(clientAddress: Address): Promise<boolean
   try {
     const client = getTonClient();
     const account = await client.getContractState(clientAddress);
-    return account.state.type === 'active';
+    return account.state === 'active';
   } catch (error) {
     return false;
   }
