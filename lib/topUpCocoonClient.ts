@@ -19,7 +19,7 @@ export async function topUpCocoonClient(
     
     // Check if client contract exists
     const account = await client.getContractState(clientAddress);
-    if (account.state.type !== 'active') {
+    if (account.state !== 'active') {
       return { success: false, error: 'Client contract does not exist' };
     }
 
