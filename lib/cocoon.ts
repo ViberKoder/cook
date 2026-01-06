@@ -50,7 +50,7 @@ export async function getAllParams(): Promise<CocoonRootParams | null> {
     
     const result = await client.runMethod(rootAddr, 'getAllParams');
     
-    if (result.exitCode !== 0) {
+    if (!result.stack) {
       return null;
     }
 
@@ -59,16 +59,16 @@ export async function getAllParams(): Promise<CocoonRootParams | null> {
     // Note: Stack reading order depends on contract implementation
     try {
       return {
-        price_per_token: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        worker_fee_per_token: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        min_proxy_stake: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        min_client_stake: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        proxy_delay_before_close: stack.remaining > 0 ? stack.readNumber() : 0,
-        client_delay_before_close: stack.remaining > 0 ? stack.readNumber() : 0,
-        prompt_tokens_price_multiplier: stack.remaining > 0 ? stack.readNumber() : 0,
-        cached_tokens_price_multiplier: stack.remaining > 0 ? stack.readNumber() : 0,
-        completion_tokens_price_multiplier: stack.remaining > 0 ? stack.readNumber() : 0,
-        reasoning_tokens_price_multiplier: stack.remaining > 0 ? stack.readNumber() : 0,
+        price_per_token: stack.readBigNumber(),
+        worker_fee_per_token: stack.readBigNumber(),
+        min_proxy_stake: stack.readBigNumber(),
+        min_client_stake: stack.readBigNumber(),
+        proxy_delay_before_close: stack.readNumber(),
+        client_delay_before_close: stack.readNumber(),
+        prompt_tokens_price_multiplier: stack.readNumber(),
+        cached_tokens_price_multiplier: stack.readNumber(),
+        completion_tokens_price_multiplier: stack.readNumber(),
+        reasoning_tokens_price_multiplier: stack.readNumber(),
       };
     } catch (error) {
       console.error('Error reading stack:', error);
@@ -88,7 +88,7 @@ export async function getLastProxySeqno(): Promise<number> {
     
     const result = await client.runMethod(rootAddr, 'last_proxy_seqno');
     
-    if (result.exitCode !== 0) {
+    if (!result.stack) {
       return 0;
     }
 
@@ -111,7 +111,7 @@ export async function getProxyInfo(seqno: number): Promise<CocoonProxyInfo | nul
     
     const result = await client.runMethod(rootAddr, 'get_proxy_info', [{ type: 'int', value: BigInt(seqno) }]);
     
-    if (result.exitCode !== 0) {
+    if (!result.stack) {
       return null;
     }
 
@@ -145,7 +145,7 @@ export async function checkHashIsValid(
       { type: 'slice', cell: beginCell().storeBuffer(hash).endCell() }
     ]);
     
-    if (result.exitCode !== 0) return false;
+    if (!result.stack) return false;
     try {
       return result.stack.readBoolean();
     } catch {
@@ -174,18 +174,18 @@ export async function getClientState(clientAddress: string): Promise<CocoonClien
     
     const result = await client.runMethod(addr, 'getData');
     
-    if (result.exitCode !== 0) {
+    if (!result.stack) {
       return null;
     }
 
     const stack = result.stack;
     try {
       return {
-        balance: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        stake: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        tokensUsed: stack.remaining > 0 ? stack.readBigNumber() : 0n,
-        state: stack.remaining > 0 ? stack.readNumber() : 0,
-        unlockTs: stack.remaining > 0 ? stack.readNumber() : 0,
+        balance: stack.readBigNumber(),
+        stake: stack.readBigNumber(),
+        tokensUsed: stack.readBigNumber(),
+        state: stack.readNumber(),
+        unlockTs: stack.readNumber(),
       };
     } catch (error) {
       console.error('Error reading client state stack:', error);
