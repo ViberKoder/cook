@@ -8,7 +8,8 @@ import { useTonConnect } from '@/hooks/useTonConnect';
 import { getAllParams, getClientState, formatTON } from '@/lib/cocoon';
 import { getCocoonRoot, CocoonClient } from '@/lib/cocoonWrappers';
 import { getTonClient } from '@/lib/cocoon';
-import { getCocoonProxies, sendCocoonChatRequest, CocoonChatMessage, deployCocoonClient } from '@/lib/cocoonApi';
+import { getCocoonProxies, sendCocoonChatRequest, CocoonChatMessage } from '@/lib/cocoonApi';
+import { deployCocoonClientContract } from '@/lib/deployCocoonClient';
 import { Address } from '@ton/core';
 import { deployJettonMinter } from '@/lib/deploy';
 import { TokenData } from '@/components/TokenForm';
@@ -98,16 +99,27 @@ export default function CookonPage() {
         setProxyEndpoint(proxy.endpoint || 'https://cocoon.doge.tg');
       }
 
-      // Try to deploy or get existing client contract
+      // Try to deploy Cocoon client contract
       const ownerAddress = Address.parse(wallet.toString());
-      const clientAddr = await deployCocoonClient(ownerAddress);
       
-      if (clientAddr) {
-        setClientAddress(clientAddr);
+      // Check if client already exists for this wallet
+      // For now, we'll deploy a new one each time
+      // In production, should check if client exists first
+      toast.loading('Deploying Cocoon client contract...', { id: 'deploy-client' });
+      
+      const deployResult = await deployCocoonClientContract(
+        ownerAddress,
+        sendTransaction
+      );
+      
+      if (deployResult.success && deployResult.address) {
+        setClientAddress(deployResult.address);
+        toast.success('Cocoon client deployed!', { id: 'deploy-client' });
       } else {
-        // If deployment via API not supported, use wallet address as placeholder
-        // In production, this should deploy actual client contract
+        // If deployment fails, use wallet address as fallback
+        console.warn('Client deployment failed, using wallet address:', deployResult.error);
         setClientAddress(wallet.toString());
+        toast.error(deployResult.error || 'Failed to deploy client, using fallback', { id: 'deploy-client' });
       }
     } catch (error: any) {
       console.error('Failed to initialize Cocoon:', error);
