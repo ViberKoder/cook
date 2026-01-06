@@ -49,23 +49,6 @@ export default function CookonPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load Cocoon parameters on mount
-  useEffect(() => {
-    loadCocoonParams();
-  }, []);
-
-  // Load client balance when wallet connects
-  useEffect(() => {
-    if (connected && wallet) {
-      loadClientBalance();
-    }
-  }, [connected, wallet, loadClientBalance]);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -91,6 +74,23 @@ export default function CookonPage() {
       console.error('Failed to load client balance:', error);
     }
   }, [wallet]);
+
+  // Load Cocoon parameters on mount
+  useEffect(() => {
+    loadCocoonParams();
+  }, []);
+
+  // Load client balance when wallet connects
+  useEffect(() => {
+    if (connected && wallet) {
+      loadClientBalance();
+    }
+  }, [connected, wallet, loadClientBalance]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleTopUp = async () => {
     if (!connected || !wallet) {
