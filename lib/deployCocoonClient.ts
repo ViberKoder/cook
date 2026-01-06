@@ -13,9 +13,17 @@ import { getClientCode } from './cocoonClientCode';
 export async function checkClientExists(clientAddress: Address): Promise<boolean> {
   try {
     const client = getTonClient();
-    const account = await client.getContractState(clientAddress);
+    
+    // Add timeout wrapper
+    const checkPromise = client.getContractState(clientAddress);
+    const timeoutPromise = new Promise<any>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout')), 5000);
+    });
+    
+    const account = await Promise.race([checkPromise, timeoutPromise]);
     return account.state === 'active';
   } catch (error) {
+    console.warn('checkClientExists error:', error);
     return false;
   }
 }
@@ -29,7 +37,6 @@ export async function findExistingClient(
 ): Promise<Address | null> {
   try {
     const client = getTonClient();
-    const root = getCocoonRoot();
     
     // Get params cell
     const paramsCell = beginCell()
@@ -56,9 +63,22 @@ export async function findExistingClient(
       params.min_client_stake
     );
 
-    // Check if contract exists
-    const exists = await checkClientExists(clientAddress);
-    return exists ? clientAddress : null;
+    // Check if contract exists (with timeout)
+    try {
+      const checkPromise = checkClientExists(clientAddress);
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          console.warn('checkClientExists timeout');
+          resolve(false);
+        }, 5000); // 5 second timeout
+      });
+      
+      const exists = await Promise.race([checkPromise, timeoutPromise]);
+      return exists ? clientAddress : null;
+    } catch (checkError) {
+      console.error('Error checking client existence:', checkError);
+      return null;
+    }
   } catch (error) {
     console.error('Error finding existing client:', error);
     return null;
