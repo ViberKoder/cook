@@ -9,21 +9,56 @@ import { getTonClient, parseAddr } from './cocoon';
 import { COCOON_ROOT_ADDRESS, COCOON_CODE_HASHES } from './cocoonConfig';
 import { getClientCode, loadClientCode } from './cocoonClientCode';
 
+// Retry helper with exponential backoff for rate limiting
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  initialDelay: number = 2000
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      const isLastAttempt = attempt === maxRetries - 1;
+      
+      if (isRateLimit && !isLastAttempt) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 // Check if client contract already exists
 export async function checkClientExists(clientAddress: Address): Promise<boolean> {
   try {
     const client = getTonClient();
     
-    // Add timeout wrapper
-    const checkPromise = client.getContractState(clientAddress);
-    const timeoutPromise = new Promise<any>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout')), 5000);
-    });
+    // Use retry logic for rate limiting and increase timeout
+    const account = await retryWithBackoff(async () => {
+      return await Promise.race([
+        client.getContractState(clientAddress),
+        new Promise<any>((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout')), 15000); // Increased to 15s
+        })
+      ]);
+    }, 2, 2000);
     
-    const account = await Promise.race([checkPromise, timeoutPromise]);
     return account.state === 'active';
-  } catch (error) {
-    console.warn('checkClientExists error:', error);
+  } catch (error: any) {
+    // Don't log rate limit errors - they're expected
+    if (error?.response?.status !== 429 && error?.status !== 429) {
+      if (error?.message === 'Timeout' || error?.message?.includes('Timeout')) {
+        // Timeout is expected in some cases
+      } else {
+        console.warn('checkClientExists error:', error?.message || error);
+      }
+    }
     return false;
   }
 }
@@ -39,6 +74,7 @@ export async function findExistingClient(
     const client = getTonClient();
     
     // Get params cell
+    // Note: multipliers might be large, so we use 64 bits for them
     const paramsCell = beginCell()
       .storeCoins(params.price_per_token)
       .storeCoins(params.worker_fee_per_token)
@@ -64,19 +100,15 @@ export async function findExistingClient(
     );
 
     // Check if contract exists (with timeout)
+    // checkClientExists already has timeout and retry logic, so just call it
     try {
-      const checkPromise = checkClientExists(clientAddress);
-      const timeoutPromise = new Promise<boolean>((resolve) => {
-        setTimeout(() => {
-          console.warn('checkClientExists timeout');
-          resolve(false);
-        }, 5000); // 5 second timeout
-      });
-      
-      const exists = await Promise.race([checkPromise, timeoutPromise]);
+      const exists = await checkClientExists(clientAddress);
       return exists ? clientAddress : null;
-    } catch (checkError) {
-      console.error('Error checking client existence:', checkError);
+    } catch (checkError: any) {
+      // Don't log rate limit errors
+      if (checkError?.response?.status !== 429 && checkError?.status !== 429) {
+        console.warn('Error checking client existence:', checkError?.message || checkError);
+      }
       return null;
     }
   } catch (error) {
@@ -159,15 +191,39 @@ export async function deployCocoonClientContract(
     }
     
     // Check if client code is valid (not empty)
-    if (!clientCode || clientCode.bits.length === 0) {
+    // A valid code cell should have at least some bits or refs
+    const isEmpty = !clientCode || 
+      (clientCode.bits.length === 0 && clientCode.refs.length === 0) ||
+      (clientCode.bits.length === 1 && !clientCode.bits.get(0) && clientCode.refs.length === 0);
+    
+    if (isEmpty) {
       console.error('Client code is empty - cannot deploy without contract code');
-      return { 
-        success: false, 
-        error: 'Client contract code not available. Cocoon client code needs to be loaded from cocoon-contracts repository. Please set NEXT_PUBLIC_COCOON_CLIENT_CODE_URL environment variable.' 
-      };
+      console.warn('Attempting to load from deployed contract...');
+      
+      // Try one more time to load from deployed contract
+      try {
+        const { loadFromDeployedContract } = await import('./cocoonClientCode');
+        const deployedCode = await loadFromDeployedContract('EQBRPfbCT0ixgfD-AgV_yGTd2zjxSqLnBVJzW9CFJ9GQvK87');
+        if (deployedCode && deployedCode.bits.length > 0) {
+          clientCode = deployedCode;
+          console.log('Successfully loaded client code from deployed contract');
+        } else {
+          return { 
+            success: false, 
+            error: 'Client contract code not available. Please ensure NEXT_PUBLIC_COCOON_CLIENT_CODE_URL is set or the example contract is accessible.' 
+          };
+        }
+      } catch (loadError) {
+        console.error('Failed to load client code:', loadError);
+        return { 
+          success: false, 
+          error: 'Client contract code not available. Cocoon client code needs to be loaded from cocoon-contracts repository. Please set NEXT_PUBLIC_COCOON_CLIENT_CODE_URL environment variable.' 
+        };
+      }
     }
     
     // Create params cell (simplified - should contain actual network params)
+    // Note: multipliers might be large, so we use 64 bits for them
     const paramsCell = beginCell()
       .storeCoins(params.price_per_token)
       .storeCoins(params.worker_fee_per_token)
@@ -204,43 +260,76 @@ export async function deployCocoonClientContract(
     }
 
     // Create stateInit properly for TonConnect
-    // TonConnect expects stateInit as a single BOC containing both code and data
+    // TonConnect expects stateInit as a serialized BOC
     const stateInit = cocoonClient.init;
     
-    // Build stateInit cell: split_depth + special + code + data
-    const stateInitBoc = beginCell()
-      .storeBit(0) // split_depth
-      .storeBit(0) // special
-      .storeRef(stateInit.code)
-      .storeRef(stateInit.data)
-      .endCell();
+    if (!stateInit) {
+      return { success: false, error: 'Failed to create client init' };
+    }
 
-    // Send deploy transaction
-    // For deployment, we send stateInit and minimal body
-    const deployMessage = beginCell()
-      .storeUint(0, 32) // op code for deploy (0 = simple transfer with stateInit)
-      .endCell();
+    // Use storeStateInit helper for proper serialization
+    // storeStateInit correctly serializes stateInit: split_depth + special + code + data
+    // Note: storeStateInit returns a Cell, so we can use it directly
+    // storeStateInit already formats the stateInit correctly, no need to wrap in beginCell
+    const stateInitCell = storeStateInit(stateInit);
+
+    // Serialize stateInit to base64 BOC for TonConnect
+    // TonConnect expects stateInit as a base64-encoded BOC
+    const stateInitBoc = stateInitCell.toBoc().toString('base64');
+
+    // For deployment with stateInit, body should be empty or minimal
+    // Some wallets may reject completely empty body, so use minimal message
+    // Try empty first, but have alternative ready
+    let deployMessage = beginCell().endCell();
+    let deployBodyBoc = deployMessage.toBoc().toString('base64');
+    
+    // Alternative: if empty body causes issues, use a minimal init message with op code 0
+    // This is more compatible with some wallets
+    const alternativeBody = beginCell().storeUint(0, 32).endCell();
+    const alternativeBodyBoc = alternativeBody.toBoc().toString('base64');
+
+    // Calculate total value needed: stake + gas fees
+    const totalValue = params.min_client_stake + toNano('0.15'); // stake + extra gas for deployment
 
     console.log('Deploying client contract:', {
       address: clientAddress.toString(),
-      value: (params.min_client_stake + toNano('0.1')).toString(),
+      value: totalValue.toString(),
+      stake: params.min_client_stake.toString(),
       hasStateInit: !!stateInit,
+      stateInitLength: stateInitBoc.length,
     });
 
     try {
-      await sendTransaction({
-        to: clientAddress.toString(),
-        value: (params.min_client_stake + toNano('0.1')).toString(), // stake + gas
-        stateInit: stateInitBoc.toBoc().toString('base64'),
-        body: deployMessage.toBoc().toString('base64'),
-      });
-      
-      console.log('Deploy transaction sent successfully');
+      // Try with empty body first
+      try {
+        await sendTransaction({
+          to: clientAddress.toString(),
+          value: totalValue.toString(),
+          stateInit: stateInitBoc,
+          body: deployBodyBoc,
+        });
+        console.log('Deploy transaction sent successfully with empty body');
+      } catch (emptyBodyError: any) {
+        // If empty body fails, try with minimal body
+        console.warn('Empty body failed, trying with minimal body:', emptyBodyError.message);
+        await sendTransaction({
+          to: clientAddress.toString(),
+          value: totalValue.toString(),
+          stateInit: stateInitBoc,
+          body: alternativeBodyBoc,
+        });
+        console.log('Deploy transaction sent successfully with minimal body');
+      }
     } catch (txError: any) {
       console.error('Transaction error:', txError);
+      // Provide more detailed error message
+      const errorMsg = txError.message || 'Transaction failed';
+      const detailedError = errorMsg.includes('cancel') || errorMsg.includes('reject') 
+        ? `${errorMsg}. Please check: 1) Sufficient balance (need ${totalValue.toString()} nanoTON), 2) Network connection, 3) Wallet permissions`
+        : errorMsg;
       return {
         success: false,
-        error: txError.message || 'Transaction failed',
+        error: detailedError,
       };
     }
 

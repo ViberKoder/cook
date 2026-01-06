@@ -47,33 +47,56 @@ export async function getCocoonProxies(): Promise<CocoonProxyInfo[]> {
   try {
     // Try to get proxies from Cocoon API
     // If API doesn't provide this, use default proxy
-    const response = await fetch(`${COCOON_API_BASE}/api/v1/proxies`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Note: API may have CORS restrictions, so we handle errors gracefully
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    try {
+      const response = await fetch(`${COCOON_API_BASE}/api/v1/proxies`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Add mode to handle CORS
+        mode: 'cors',
+        credentials: 'omit',
+        signal: controller.signal,
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.proxies && Array.isArray(data.proxies) && data.proxies.length > 0) {
-        return data.proxies;
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.proxies && Array.isArray(data.proxies) && data.proxies.length > 0) {
+          return data.proxies;
+        }
+      }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      // Silently handle CORS and network errors - they're expected
+      if (fetchError.name === 'AbortError') {
+        // Timeout - just use fallback
+      } else if (fetchError.name === 'TypeError' && (fetchError.message.includes('fetch') || fetchError.message.includes('CORS'))) {
+        // CORS error - expected, use fallback
+      } else {
+        // Other errors - log but don't throw
+        console.warn('Error getting Cocoon proxies:', fetchError.message);
       }
     }
-
-    // Fallback: return default proxy endpoint (always return at least one)
-    return [{
-      endpoint: COCOON_API_BASE,
-      address: '',
-    }];
-  } catch (error) {
-    console.error('Error getting Cocoon proxies:', error);
-    // Fallback: return default proxy (always return at least one)
-    return [{
-      endpoint: COCOON_API_BASE,
-      address: '',
-    }];
+  } catch (error: any) {
+    // Any other errors - just use fallback
+    // Don't log CORS errors as they're expected
+    if (!error.message?.includes('CORS') && !error.message?.includes('fetch')) {
+      console.warn('Error getting Cocoon proxies:', error);
+    }
   }
+
+  // Fallback: return default proxy endpoint (always return at least one)
+  // This is the expected behavior when CORS blocks the request
+  return [{
+    endpoint: COCOON_API_BASE,
+    address: '',
+  }];
 }
 
 // Send chat completion request to Cocoon

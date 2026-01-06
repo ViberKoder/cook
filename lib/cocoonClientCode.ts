@@ -15,12 +15,46 @@ const EXAMPLE_CLIENT_ADDRESS = 'EQBRPfbCT0ixgfD-AgV_yGTd2zjxSqLnBVJzW9CFJ9GQvK87
 
 let cachedClientCode: Cell | null = null;
 
+// Retry helper with exponential backoff for rate limiting
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  initialDelay: number = 2000
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      const isLastAttempt = attempt === maxRetries - 1;
+      
+      if (isRateLimit && !isLastAttempt) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.warn(`Rate limited (429) when loading client code, retrying in ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 // Load client code from a deployed contract
+// Fixed: Properly converts account.code Buffer to Cell using BOC parsing
 async function loadFromDeployedContract(address: string): Promise<Cell | null> {
   try {
     const client = getTonClient();
     const contractAddress = Address.parse(address);
-    const account = await client.getContractState(contractAddress);
+    
+    // Use retry logic for rate limiting
+    const account = await retryWithBackoff(async () => {
+      return await Promise.race([
+        client.getContractState(contractAddress),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+      ]) as any;
+    }, 2, 2000);
     
     if (account.state === 'active' && account.code) {
       // Extract code from the contract state
@@ -36,8 +70,15 @@ async function loadFromDeployedContract(address: string): Promise<Cell | null> {
         return null;
       }
     }
-  } catch (error) {
-    console.warn('Failed to load client code from deployed contract:', error);
+  } catch (error: any) {
+    // Don't log rate limit errors as warnings - they're expected
+    if (error?.response?.status === 429 || error?.status === 429) {
+      // Silently handle rate limiting
+    } else if (error?.message === 'Timeout' || error?.message?.includes('Timeout')) {
+      console.warn('Timeout loading client code from deployed contract');
+    } else {
+      console.warn('Failed to load client code from deployed contract:', error?.message || error);
+    }
   }
   return null;
 }
@@ -67,7 +108,12 @@ async function loadFromGitHub(): Promise<Cell | null> {
 
 export async function loadClientCode(): Promise<Cell | null> {
   if (cachedClientCode) {
-    return cachedClientCode;
+    // Verify cached code is valid
+    if (cachedClientCode.bits.length > 1 || cachedClientCode.refs.length > 0) {
+      return cachedClientCode;
+    }
+    // If cached code is empty, clear cache and reload
+    cachedClientCode = null;
   }
 
   // Try to load from URL if provided
@@ -76,8 +122,12 @@ export async function loadClientCode(): Promise<Cell | null> {
       const response = await fetch(CLIENT_CODE_URL);
       if (response.ok) {
         const boc = await response.text();
-        cachedClientCode = Cell.fromBase64(boc);
-        return cachedClientCode;
+        const code = Cell.fromBase64(boc);
+        // Verify code is not empty
+        if (code.bits.length > 1 || code.refs.length > 0) {
+          cachedClientCode = code;
+          return cachedClientCode;
+        }
       }
     } catch (error) {
       console.warn('Failed to load client code from URL:', error);
@@ -85,24 +135,30 @@ export async function loadClientCode(): Promise<Cell | null> {
   }
 
   // Try to load from deployed contract (example)
-  const deployedCode = await loadFromDeployedContract(EXAMPLE_CLIENT_ADDRESS);
-  if (deployedCode) {
-    cachedClientCode = deployedCode;
-    return cachedClientCode;
+  try {
+    const deployedCode = await loadFromDeployedContract(EXAMPLE_CLIENT_ADDRESS);
+    if (deployedCode && (deployedCode.bits.length > 1 || deployedCode.refs.length > 0)) {
+      cachedClientCode = deployedCode;
+      return cachedClientCode;
+    }
+  } catch (error) {
+    console.warn('Failed to load from deployed contract:', error);
   }
 
   // Try to load from GitHub
-  const githubCode = await loadFromGitHub();
-  if (githubCode) {
-    cachedClientCode = githubCode;
-    return githubCode;
+  try {
+    const githubCode = await loadFromGitHub();
+    if (githubCode && (githubCode.bits.length > 1 || githubCode.refs.length > 0)) {
+      cachedClientCode = githubCode;
+      return githubCode;
+    }
+  } catch (error) {
+    console.warn('Failed to load from GitHub:', error);
   }
 
-  // For now, return a minimal placeholder cell
-  // This will allow address calculation but won't work for actual deployment
-  // TODO: Load actual client code from cocoon-contracts repository
-  console.warn('Using placeholder client code - deployment may fail. Please provide NEXT_PUBLIC_COCOON_CLIENT_CODE_URL or compile the contract.');
-  return beginCell().endCell();
+  // Return null instead of empty cell to indicate failure
+  console.error('Failed to load client code from all sources. Please provide NEXT_PUBLIC_COCOON_CLIENT_CODE_URL or ensure the example contract is accessible.');
+  return null;
 }
 
 export function getClientCode(): Cell {

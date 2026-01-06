@@ -23,72 +23,96 @@ export function formatTON(nano: bigint): string {
 
 // Get all parameters from Root contract
 export async function getAllParams(): Promise<CocoonRootParams | null> {
+  const defaultParams = {
+    price_per_token: toNano('0.01'),
+    worker_fee_per_token: toNano('0.001'),
+    min_proxy_stake: toNano('10'),
+    min_client_stake: toNano('1'),
+    proxy_delay_before_close: 3600,
+    client_delay_before_close: 3600,
+    prompt_tokens_price_multiplier: 1,
+    cached_tokens_price_multiplier: 1,
+    completion_tokens_price_multiplier: 1,
+    reasoning_tokens_price_multiplier: 1,
+  };
+
   try {
     const client = getTonClient();
     const root = getCocoonRoot();
     
-    // Check if root contract exists
+    // Check if root contract exists with retry logic
     try {
-      const account = await client.getContractState(root.address);
+      const account = await retryWithBackoff(async () => {
+        return await Promise.race([
+          client.getContractState(root.address),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+        ]);
+      }, 2, 2000);
+      
       if (account.state !== 'active') {
         console.warn('Root contract is not active, state:', account.state);
         // Return default params to allow deployment
-        return root.getAllParams(client).catch(() => {
-          // If getAllParams fails, return default
-          return {
-            price_per_token: toNano('0.01'),
-            worker_fee_per_token: toNano('0.001'),
-            min_proxy_stake: toNano('10'),
-            min_client_stake: toNano('1'),
-            proxy_delay_before_close: 3600,
-            client_delay_before_close: 3600,
-            prompt_tokens_price_multiplier: 1,
-            cached_tokens_price_multiplier: 1,
-            completion_tokens_price_multiplier: 1,
-            reasoning_tokens_price_multiplier: 1,
-          };
-        });
+        return defaultParams;
       }
-    } catch (stateError) {
-      console.warn('Could not check root contract state:', stateError);
+    } catch (stateError: any) {
+      // Don't log rate limit errors
+      if (stateError?.response?.status !== 429 && stateError?.status !== 429) {
+        console.warn('Could not check root contract state:', stateError?.message || stateError);
+      }
+      // Return default params to allow deployment
+      return defaultParams;
     }
     
-    const params = await root.getAllParams(client);
+    // Get params with retry logic
+    const params = await retryWithBackoff(async () => {
+      return await root.getAllParams(client);
+    }, 2, 2000).catch(() => {
+      // If getAllParams fails after retries, return default
+      return defaultParams;
+    });
     
     if (!params) {
       console.warn('getAllParams returned null, using default params');
-      // Return default params to allow deployment to proceed
-      return {
-        price_per_token: toNano('0.01'),
-        worker_fee_per_token: toNano('0.001'),
-        min_proxy_stake: toNano('10'),
-        min_client_stake: toNano('1'),
-        proxy_delay_before_close: 3600,
-        client_delay_before_close: 3600,
-        prompt_tokens_price_multiplier: 1,
-        cached_tokens_price_multiplier: 1,
-        completion_tokens_price_multiplier: 1,
-        reasoning_tokens_price_multiplier: 1,
-      };
+      return defaultParams;
     }
     
     return params;
-  } catch (error) {
-    console.error('Error getting Cocoon params:', error);
+  } catch (error: any) {
+    // Don't log rate limit errors
+    if (error?.response?.status !== 429 && error?.status !== 429) {
+      console.warn('Error getting Cocoon params:', error?.message || error);
+    }
     // Return default params instead of null to allow deployment
-    return {
-      price_per_token: toNano('0.01'),
-      worker_fee_per_token: toNano('0.001'),
-      min_proxy_stake: toNano('10'),
-      min_client_stake: toNano('1'),
-      proxy_delay_before_close: 3600,
-      client_delay_before_close: 3600,
-      prompt_tokens_price_multiplier: 1,
-      cached_tokens_price_multiplier: 1,
-      completion_tokens_price_multiplier: 1,
-      reasoning_tokens_price_multiplier: 1,
-    };
+    return defaultParams;
   }
+}
+
+// Retry helper with exponential backoff for rate limiting
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      const isLastAttempt = attempt === maxRetries - 1;
+      
+      if (isRateLimit && !isLastAttempt) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.warn(`Rate limited (429), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // If not rate limit or last attempt, throw error
+      throw error;
+    }
+  }
+  throw new Error('Max retries exceeded');
 }
 
 // Get last proxy seqno
@@ -97,7 +121,13 @@ export async function getLastProxySeqno(): Promise<number> {
     const client = getTonClient();
     const rootAddr = parseAddr(COCOON_ROOT_ADDRESS);
     
-    const result = await client.runMethod(rootAddr, 'last_proxy_seqno');
+    // Use retry logic for rate limiting
+    const result = await retryWithBackoff(async () => {
+      return await Promise.race([
+        client.runMethod(rootAddr, 'last_proxy_seqno'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+      ]) as any;
+    }, 2, 2000); // 2 retries with 2s initial delay
     
     if (!result.stack) {
       return 0;
@@ -111,8 +141,18 @@ export async function getLastProxySeqno(): Promise<number> {
     } catch {
       return 0;
     }
-  } catch (error) {
-    console.error('Error getting last proxy seqno:', error);
+  } catch (error: any) {
+    // Handle rate limiting (429) and timeout errors gracefully
+    if (error?.response?.status === 429 || error?.status === 429) {
+      // Silently handle rate limiting after retries
+    } else if (error?.message === 'Timeout' || error?.message?.includes('Timeout')) {
+      console.warn('Timeout getting last proxy seqno, returning 0');
+    } else {
+      // Only log non-rate-limit errors
+      if (error?.response?.status !== 429 && error?.status !== 429) {
+        console.warn('Error getting last proxy seqno:', error?.message || error);
+      }
+    }
     return 0;
   }
 }

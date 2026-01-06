@@ -52,12 +52,18 @@ export class CocoonRoot {
       try {
         result = await client.runMethod(this.address, 'get_cur_params');
       } catch (methodError: any) {
-        console.warn('get_cur_params failed, trying get_cocoon_data:', methodError.message);
+        // Don't log rate limit errors (429) - they're expected
+        const isRateLimit = methodError?.response?.status === 429 || methodError?.status === 429;
+        if (!isRateLimit) {
+          console.warn('get_cur_params failed, trying get_cocoon_data:', methodError.message);
+        }
         // Fallback to get_cocoon_data
         try {
           result = await client.runMethod(this.address, 'get_cocoon_data');
           if (!result.stack) {
-            console.error('No stack returned from get_cocoon_data');
+            if (!isRateLimit) {
+              console.error('No stack returned from get_cocoon_data');
+            }
             return null;
           }
           
@@ -72,8 +78,12 @@ export class CocoonRoot {
           const paramsSlice = stack.readCell();
           // For now, return default values if we can't parse
           return this.getDefaultParams();
-        } catch (fallbackError) {
-          console.error('Both methods failed:', fallbackError);
+        } catch (fallbackError: any) {
+          // Don't log rate limit errors
+          const isFallbackRateLimit = fallbackError?.response?.status === 429 || fallbackError?.status === 429;
+          if (!isFallbackRateLimit && !isRateLimit) {
+            console.error('Both methods failed:', fallbackError);
+          }
           return this.getDefaultParams();
         }
       }
@@ -134,8 +144,12 @@ export class CocoonRoot {
         console.error('Stack remaining:', stack.remaining);
         return this.getDefaultParams();
       }
-    } catch (error) {
-      console.error('Error getting Cocoon params:', error);
+    } catch (error: any) {
+      // Don't log rate limit errors (429) - they're expected
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      if (!isRateLimit) {
+        console.error('Error getting Cocoon params:', error);
+      }
       return this.getDefaultParams();
     }
   }
@@ -156,7 +170,7 @@ export class CocoonRoot {
     };
   }
 
-    async getLastProxySeqno(client: TonClient): Promise<number> {
+  async getLastProxySeqno(client: TonClient): Promise<number> {
     // Retry helper with exponential backoff for rate limiting
     const retryWithBackoff = async (fn: () => Promise<any>, maxRetries: number = 2, initialDelay: number = 2000): Promise<any> => {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -209,9 +223,13 @@ export class CocoonRoot {
 
   async getProxyInfo(client: TonClient, seqno: number): Promise<CocoonProxyInfo | null> {
     try {
-      const result = await client.runMethod(this.address, 'get_proxy_info', [
-        { type: 'int', value: BigInt(seqno) }
-      ]);
+      const result = await Promise.race([
+        client.runMethod(this.address, 'get_proxy_info', [
+          { type: 'int', value: BigInt(seqno) }
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+      ]) as any;
+      
       if (!result.stack) return null;
 
       // Parse proxy info from stack (simplified - actual structure may differ)
@@ -223,8 +241,12 @@ export class CocoonRoot {
         balance: 0n,
         stake: 0n,
       };
-    } catch (error) {
-      console.error('Error getting proxy info:', error);
+    } catch (error: any) {
+      // Don't log rate limit errors (429) - they're expected
+      const isRateLimit = error?.response?.status === 429 || error?.status === 429;
+      if (!isRateLimit && error?.message !== 'Timeout' && !error?.message?.includes('Timeout')) {
+        console.error('Error getting proxy info:', error);
+      }
       return null;
     }
   }
