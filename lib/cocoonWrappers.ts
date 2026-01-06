@@ -86,6 +86,12 @@ export class CocoonRoot {
       const stack = result.stack;
       
       try {
+        // Check if stack has enough items
+        if (stack.remaining < 10) {
+          console.warn('Not enough items in stack for params, got:', stack.remaining);
+          return this.getDefaultParams();
+        }
+
         // Read 14 parameters from stack
         // According to Cocoon docs, get_cur_params returns 14 integers
         const price_per_token = stack.readBigNumber();
@@ -101,10 +107,12 @@ export class CocoonRoot {
         
         // Skip remaining 4 params if they exist
         try {
-          stack.readNumber(); // param11
-          stack.readNumber(); // param12
-          stack.readNumber(); // param13
-          stack.readNumber(); // param14
+          if (stack.remaining >= 4) {
+            stack.readNumber(); // param11
+            stack.readNumber(); // param12
+            stack.readNumber(); // param13
+            stack.readNumber(); // param14
+          }
         } catch {
           // Ignore if less than 14 params
         }
@@ -186,7 +194,7 @@ export class CocoonRoot {
       const result = await client.runMethod(this.address, 'worker_hash_is_valid', [
         { type: 'slice', cell: beginCell().storeBuffer(hash).endCell() }
       ]);
-      if (!result.stack) return false;
+      if (!result.stack || result.stack.remaining === 0) return false;
       return result.stack.readBoolean();
     } catch {
       return false;
@@ -198,7 +206,7 @@ export class CocoonRoot {
       const result = await client.runMethod(this.address, 'proxy_hash_is_valid', [
         { type: 'slice', cell: beginCell().storeBuffer(hash).endCell() }
       ]);
-      if (!result.stack) return false;
+      if (!result.stack || result.stack.remaining === 0) return false;
       return result.stack.readBoolean();
     } catch {
       return false;
@@ -210,7 +218,7 @@ export class CocoonRoot {
       const result = await client.runMethod(this.address, 'model_hash_is_valid', [
         { type: 'slice', cell: beginCell().storeBuffer(hash).endCell() }
       ]);
-      if (!result.stack) return false;
+      if (!result.stack || result.stack.remaining === 0) return false;
       return result.stack.readBoolean();
     } catch {
       return false;
