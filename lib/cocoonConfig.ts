@@ -1,6 +1,11 @@
 // Cocoon Network Configuration
 export const COCOON_ROOT_ADDRESS = 'EQCns7bYSp0igFvS1wpb5wsZjCKCV19MD5AVzI4EyxsnU73k';
 
+// Cocoon API endpoints
+export const COCOON_API_BASE = 'https://cocoon.doge.tg';
+export const COCOON_API_DOCS = 'https://cocoon.doge.tg/api-docs';
+export const COCOON_CLIENT_DEMO = 'https://cocoon.doge.tg/client-demo';
+
 // TON Center API endpoint
 export const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2/jsonRPC';
 export const TON_CENTER_API_KEY = process.env.NEXT_PUBLIC_TON_CENTER_API_KEY || '';
