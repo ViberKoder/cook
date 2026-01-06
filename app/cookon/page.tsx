@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { getAllParams, formatTON, getTonClient } from '@/lib/cocoon';
 import { getCocoonRoot } from '@/lib/cocoonWrappers';
+import { COCOON_ROOT_ADDRESS } from '@/lib/cocoonConfig';
 import { getCocoonProxies, sendCocoonChatRequest, CocoonChatMessage } from '@/lib/cocoonApi';
 import { deployCocoonClientContract, findExistingClient, checkClientExists } from '@/lib/deployCocoonClient';
 import { topUpCocoonClient, getCocoonClientBalance } from '@/lib/topUpCocoonClient';

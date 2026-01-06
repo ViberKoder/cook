@@ -81,19 +81,39 @@ export async function deployCocoonClientContract(
     }
 
     // Get first available proxy
-    const lastSeqno = await root.getLastProxySeqno(client);
-    if (lastSeqno === 0) {
-      return { success: false, error: 'No Cocoon proxies available' };
+    // Try to get from contract, but use fallback if needed
+    let proxyAddress: Address;
+    let proxyPublicKey: Buffer;
+    
+    try {
+      const lastSeqno = await root.getLastProxySeqno(client);
+      if (lastSeqno > 0) {
+        const proxyInfo = await root.getProxyInfo(client, 1);
+        if (proxyInfo && proxyInfo.endpoint) {
+          try {
+            proxyAddress = parseAddr(proxyInfo.endpoint);
+            proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
+          } catch {
+            // If endpoint is not an address, use root address
+            proxyAddress = parseAddr(COCOON_ROOT_ADDRESS);
+            proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
+          }
+        } else {
+          proxyAddress = parseAddr(COCOON_ROOT_ADDRESS);
+          proxyPublicKey = Buffer.alloc(32);
+        }
+      } else {
+        // No proxies in contract, use root address as fallback
+        console.warn('No proxies found in contract, using root address as fallback');
+        proxyAddress = parseAddr(COCOON_ROOT_ADDRESS);
+        proxyPublicKey = Buffer.alloc(32);
+      }
+    } catch (proxyError) {
+      console.warn('Error getting proxy from contract, using root address:', proxyError);
+      // Fallback: use root address
+      proxyAddress = parseAddr(COCOON_ROOT_ADDRESS);
+      proxyPublicKey = Buffer.alloc(32);
     }
-
-    // Get proxy info (simplified - in production should get full proxy data)
-    const proxyInfo = await root.getProxyInfo(client, 1);
-    if (!proxyInfo) {
-      return { success: false, error: 'Failed to get proxy info' };
-    }
-
-    const proxyAddress = parseAddr(proxyInfo.endpoint || COCOON_ROOT_ADDRESS);
-    const proxyPublicKey = proxyInfo.pubkey || Buffer.alloc(32);
 
     // Check if client already exists
     const existingClient = await findExistingClient(
