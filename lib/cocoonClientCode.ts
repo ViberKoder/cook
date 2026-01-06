@@ -43,7 +43,7 @@ async function retryWithBackoff<T>(
 
 // Load client code from a deployed contract
 // Fixed: Properly converts account.code Buffer to Cell using BOC parsing
-async function loadFromDeployedContract(address: string): Promise<Cell | null> {
+export async function loadFromDeployedContract(address: string): Promise<Cell | null> {
   try {
     const client = getTonClient();
     const contractAddress = Address.parse(address);
