@@ -21,28 +21,6 @@ export function formatTON(nano: bigint): string {
   return (Number(nano) / 1e9).toFixed(4) + ' TON';
 }
 
-// Cocoon Root Contract Interface
-export interface CocoonRootParams {
-  price_per_token: bigint;
-  worker_fee_per_token: bigint;
-  min_proxy_stake: bigint;
-  min_client_stake: bigint;
-  proxy_delay_before_close: number;
-  client_delay_before_close: number;
-  prompt_tokens_price_multiplier: number;
-  cached_tokens_price_multiplier: number;
-  completion_tokens_price_multiplier: number;
-  reasoning_tokens_price_multiplier: number;
-}
-
-export interface CocoonProxyInfo {
-  endpoint: string;
-  pubkey: Buffer;
-  state: number;
-  balance: bigint;
-  stake: bigint;
-}
-
 // Get all parameters from Root contract
 export async function getAllParams(): Promise<CocoonRootParams | null> {
   try {
@@ -130,15 +108,6 @@ export async function checkHashIsValid(
     console.error(`Error checking ${hashType} hash:`, error);
     return false;
   }
-}
-
-// Cocoon Client Contract Interface
-export interface CocoonClientState {
-  balance: bigint;
-  stake: bigint;
-  tokensUsed: bigint;
-  state: number;
-  unlockTs: number;
 }
 
 // Calculate client contract address
