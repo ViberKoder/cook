@@ -7,7 +7,7 @@ import { CocoonClient } from './cocoonWrappers';
 import { getCocoonRoot, CocoonRoot } from './cocoonWrappers';
 import { getTonClient, parseAddr } from './cocoon';
 import { COCOON_ROOT_ADDRESS, COCOON_CODE_HASHES } from './cocoonConfig';
-import { getClientCode } from './cocoonClientCode';
+import { getClientCode, loadClientCode } from './cocoonClientCode';
 
 // Check if client contract already exists
 export async function checkClientExists(clientAddress: Address): Promise<boolean> {
@@ -150,8 +150,22 @@ export async function deployCocoonClientContract(
       };
     }
 
-    // Get client code
-    const clientCode = getClientCode();
+    // Try to load client code (async)
+    let clientCode = await loadClientCode();
+    
+    // If async load failed, try sync version
+    if (!clientCode || clientCode.bits.length === 0) {
+      clientCode = getClientCode();
+    }
+    
+    // Check if client code is valid (not empty)
+    if (!clientCode || clientCode.bits.length === 0) {
+      console.error('Client code is empty - cannot deploy without contract code');
+      return { 
+        success: false, 
+        error: 'Client contract code not available. Cocoon client code needs to be loaded from cocoon-contracts repository. Please set NEXT_PUBLIC_COCOON_CLIENT_CODE_URL environment variable.' 
+      };
+    }
     
     // Create params cell (simplified - should contain actual network params)
     const paramsCell = beginCell()
@@ -188,22 +202,46 @@ export async function deployCocoonClientContract(
       return { success: false, error: 'Failed to create client init' };
     }
 
-    const stateInitCell = beginCell()
-      .store(storeStateInit(cocoonClient.init))
+    // Create stateInit properly for TonConnect
+    // TonConnect expects stateInit as a single BOC containing both code and data
+    const stateInit = cocoonClient.init;
+    
+    // Build stateInit cell: split_depth + special + code + data
+    const stateInitBoc = beginCell()
+      .storeUint(0, 1) // split_depth
+      .storeUint(0, 1) // special
+      .storeRef(stateInit.code)
+      .storeRef(stateInit.data)
       .endCell();
 
     // Send deploy transaction
-    // For deployment, we send stateInit and body
+    // For deployment, we send stateInit and minimal body
     const deployMessage = beginCell()
-      .storeUint(0, 32) // op code for deploy
+      .storeUint(0, 32) // op code for deploy (0 = simple transfer with stateInit)
       .endCell();
 
-    await sendTransaction({
-      to: clientAddress.toString(),
-      value: (params.min_client_stake + toNano('0.1')).toString(), // stake + gas
-      stateInit: stateInitCell.toBoc().toString('base64'),
-      body: deployMessage.toBoc().toString('base64'),
+    console.log('Deploying client contract:', {
+      address: clientAddress.toString(),
+      value: (params.min_client_stake + toNano('0.1')).toString(),
+      hasStateInit: !!stateInit,
     });
+
+    try {
+      await sendTransaction({
+        to: clientAddress.toString(),
+        value: (params.min_client_stake + toNano('0.1')).toString(), // stake + gas
+        stateInit: stateInitBoc.toBoc().toString('base64'),
+        body: deployMessage.toBoc().toString('base64'),
+      });
+      
+      console.log('Deploy transaction sent successfully');
+    } catch (txError: any) {
+      console.error('Transaction error:', txError);
+      return {
+        success: false,
+        error: txError.message || 'Transaction failed',
+      };
+    }
 
     return {
       success: true,
