@@ -13,23 +13,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // System prompt for memecoin creation
-    const systemPrompt = `You are an expert memecoin creator and crypto consultant specializing in The Open Network (TON) blockchain. Your role is to help users create compelling memecoin narratives and token concepts.
+    // System prompt for memecoin creation - concise and focused
+    const systemPrompt = `You are a memecoin creator for TON blockchain. Respond ONLY in this format:
 
-When creating a memecoin concept, always respond in the following structured format:
+Name: [name]
+Symbol: [3-5 chars]
+Supply: [number with commas]
+Description: [2-3 sentences max: idea, uniqueness, advantage]
+Image: [brief description or URL]
 
-Name: [Full token name]
-Symbol: [Token ticker/symbol, 3-5 characters]
-Supply: [Total supply number with commas]
-Description: [Detailed description including: the idea of the token, what makes it unique, what are its advantages, the narrative/story behind it, target audience, and why it would be successful]
-Image: [URL or description of what the image should be]
+Keep responses SHORT and CONCISE. Description should be 2-3 sentences maximum. Be creative but brief.`;
 
-Be creative, engaging, and focus on creating viral-worthy concepts that have strong community appeal. Consider current trends, memes, and cultural references. Make sure the concepts are feasible and have clear value propositions.`;
+    // Hidden prompt to add to user messages (not visible to user)
+    const hiddenPrompt = `\n\n[Keep response brief and structured. Maximum 150 words total.]`;
 
     // Add system prompt to messages if not already present
-    const messagesWithSystem = messages.some((m: any) => m.role === 'system')
+    let messagesWithSystem = messages.some((m: any) => m.role === 'system')
       ? messages
       : [{ role: 'system', content: systemPrompt }, ...messages];
+
+    // Add hidden prompt to the last user message to enforce brevity
+    const lastMessageIndex = messagesWithSystem.length - 1;
+    if (lastMessageIndex >= 0 && messagesWithSystem[lastMessageIndex].role === 'user') {
+      messagesWithSystem = [
+        ...messagesWithSystem.slice(0, lastMessageIndex),
+        {
+          ...messagesWithSystem[lastMessageIndex],
+          content: messagesWithSystem[lastMessageIndex].content + hiddenPrompt,
+        },
+      ];
+    }
 
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
@@ -40,7 +53,8 @@ Be creative, engaging, and focus on creating viral-worthy concepts that have str
       body: JSON.stringify({
         model: 'grok-4-1-fast-reasoning',
         messages: messagesWithSystem,
-        temperature: temperature,
+        temperature: 0.5, // Lower temperature for faster, more focused responses
+        max_tokens: 300, // Limit response length
       }),
     });
 
