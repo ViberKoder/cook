@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -18,7 +18,7 @@ export default function CookonPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I''m Grok, your AI assistant! рџљЂ\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?',
+      content: `Hello! I'm Grok, your AI assistant! 😊\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?`,
       timestamp: new Date(),
     },
   ]);
@@ -116,7 +116,7 @@ export default function CookonPage() {
       {
         id: '1',
         role: 'assistant',
-        content: 'Hello! I''m Grok, your AI assistant! рџљЂ\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?',
+        content: `Hello! I'm Grok, your AI assistant! 😊\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?`,
         timestamp: new Date(),
       },
     ]);
@@ -149,7 +149,7 @@ export default function CookonPage() {
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Chat with Grok 4 - your AI assistant for creating memecoins and more! рџљЂ
+              Chat with Grok 4 - your AI assistant for creating memecoins and more! 😊
             </p>
           </div>
 
