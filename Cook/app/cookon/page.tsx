@@ -13,12 +13,44 @@ interface Message {
   timestamp: Date;
 }
 
+// Helper function to format memecoin responses
+const formatMemecoinResponse = (content: string): string => {
+  // Check if content follows the structured format
+  const hasStructure = /Name:\s*.+\nSymbol:\s*.+\nSupply:\s*.+\nDescription:\s*.+\nImage:\s*.+/i.test(content);
+  
+  if (hasStructure) {
+    // Parse and format the structured response
+    const lines = content.split('\n');
+    let formatted = '';
+    
+    for (const line of lines) {
+      if (line.match(/^Name:\s*/i)) {
+        formatted += `\n**${line.trim()}**\n`;
+      } else if (line.match(/^Symbol:\s*/i)) {
+        formatted += `**${line.trim()}**\n`;
+      } else if (line.match(/^Supply:\s*/i)) {
+        formatted += `**${line.trim()}**\n`;
+      } else if (line.match(/^Description:\s*/i)) {
+        formatted += `\n**${line.trim()}**\n`;
+      } else if (line.match(/^Image:\s*/i)) {
+        formatted += `\n**${line.trim()}**\n`;
+      } else {
+        formatted += line + '\n';
+      }
+    }
+    
+    return formatted.trim();
+  }
+  
+  return content;
+};
+
 export default function CookonPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: `Hello! I'm Grok, your AI assistant! 😊\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?`,
+      content: `Hello! I'm Grok, your AI memecoin creator! 🚀\n\nI specialize in creating compelling memecoin narratives and token concepts for The Open Network (TON) blockchain.\n\nTell me your idea, theme, or concept, and I'll help you create a complete memecoin concept with:\n• Name and Symbol\n• Supply\n• Detailed Description\n• Image suggestions\n\nWhat memecoin idea would you like to explore?`,
       timestamp: new Date(),
     },
   ]);
@@ -80,10 +112,13 @@ export default function CookonPage() {
 
       const data = await response.json();
 
+      const rawContent = data.content || 'No response from AI';
+      const formattedContent = formatMemecoinResponse(rawContent);
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.content || 'No response from AI',
+        content: formattedContent,
         timestamp: new Date(),
       };
 
@@ -116,7 +151,7 @@ export default function CookonPage() {
       {
         id: '1',
         role: 'assistant',
-        content: `Hello! I'm Grok, your AI assistant! 😊\n\nI can help you with various questions, discuss ideas, or just chat. What interests you?`,
+        content: `Hello! I'm Grok, your AI memecoin creator! 🚀\n\nI specialize in creating compelling memecoin narratives and token concepts for The Open Network (TON) blockchain.\n\nTell me your idea, theme, or concept, and I'll help you create a complete memecoin concept with:\n• Name and Symbol\n• Supply\n• Detailed Description\n• Image suggestions\n\nWhat memecoin idea would you like to explore?`,
         timestamp: new Date(),
       },
     ]);
@@ -149,7 +184,7 @@ export default function CookonPage() {
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Chat with Grok 4 - your AI assistant for creating memecoins and more! 😊
+              Chat with Grok 4 - your AI assistant for creating memecoins on TON blockchain! 🚀
             </p>
           </div>
 
