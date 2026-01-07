@@ -149,7 +149,7 @@ export default function CookonPage() {
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Chat with Grok 4 - your AI assistant for creating memecoins and more! рџљЂ
+              Chat with Grok 4 - your AI assistant for creating memecoins and more! 😊
             </p>
           </div>
 
