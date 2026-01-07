@@ -13,33 +13,26 @@ interface Message {
   timestamp: Date;
 }
 
-// Helper function to format memecoin responses
+// Helper function to format memecoin responses with better structure
 const formatMemecoinResponse = (content: string): string => {
   // Check if content follows the structured format
-  const hasStructure = /Name:\s*.+\nSymbol:\s*.+\nSupply:\s*.+\nDescription:\s*.+\nImage:\s*.+/i.test(content);
+  const nameMatch = content.match(/Name:\s*(.+)/i);
+  const symbolMatch = content.match(/Symbol:\s*(.+)/i);
+  const supplyMatch = content.match(/Supply:\s*(.+)/i);
+  const descriptionMatch = content.match(/Description:\s*([\s\S]+?)(?=\nImage:|$)/i);
+  const imageMatch = content.match(/Image:\s*(.+)/i);
   
-  if (hasStructure) {
-    // Parse and format the structured response
-    const lines = content.split('\n');
-    let formatted = '';
-    
-    for (const line of lines) {
-      if (line.match(/^Name:\s*/i)) {
-        formatted += `\n**${line.trim()}**\n`;
-      } else if (line.match(/^Symbol:\s*/i)) {
-        formatted += `**${line.trim()}**\n`;
-      } else if (line.match(/^Supply:\s*/i)) {
-        formatted += `**${line.trim()}**\n`;
-      } else if (line.match(/^Description:\s*/i)) {
-        formatted += `\n**${line.trim()}**\n`;
-      } else if (line.match(/^Image:\s*/i)) {
-        formatted += `\n**${line.trim()}**\n`;
-      } else {
-        formatted += line + '\n';
-      }
+  if (nameMatch && symbolMatch && supplyMatch && descriptionMatch) {
+    // Format as structured response
+    let formatted = '🎯 **MEMECOIN CONCEPT**\n\n';
+    formatted += `**Name:** ${nameMatch[1].trim()}\n`;
+    formatted += `**Symbol:** ${symbolMatch[1].trim()}\n`;
+    formatted += `**Supply:** ${supplyMatch[1].trim()}\n`;
+    formatted += `\n**Description:**\n${descriptionMatch[1].trim()}\n`;
+    if (imageMatch) {
+      formatted += `\n**Image:** ${imageMatch[1].trim()}\n`;
     }
-    
-    return formatted.trim();
+    return formatted;
   }
   
   return content;
