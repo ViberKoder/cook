@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+// Removed OpenAI import - using direct fetch 'openai';
 
 // Get API key from environment variables
 const getApiKey = () => {
-  return process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+  return process.env.XAI_API_KEY || process.env.NEXT_PUBLIC_XAI_API_KEY || '';
 };
 
 const createClient = () => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY or NEXT_PUBLIC_OPENAI_API_KEY environment variable.');
+    throw new Error('XAI API key is not configured. Please set XAI_API_KEY or NEXT_PUBLIC_XAI_API_KEY environment variable.');
   }
   
   return new OpenAI({
