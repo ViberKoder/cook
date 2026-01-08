@@ -444,8 +444,10 @@ export default function CookonPage() {
                   onDeploy={handleDeploy} 
                   isConnected={connected}
                   error={error}
-                  initialData={tokenData}
-                  onDataChange={(data: TokenData) => setTokenData(data)}
+                  {...({
+                    initialData: tokenData,
+                    onDataChange: (data: TokenData) => setTokenData(data),
+                  } as Partial<{ initialData: TokenData; onDataChange: (data: TokenData) => void }>)}
                 />
               </div>
             </div>
