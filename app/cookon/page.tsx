@@ -277,10 +277,10 @@ JSON_DATA:
         console.log('Updating token data with:', jsonData); // Debug log
         
         const updatedData: TokenData = {
-          name: (jsonData.name || '').trim() || tokenData.name || '',
-          symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '') || tokenData.symbol || '').toUpperCase(),
-          description: (jsonData.description || '').trim() || tokenData.description || '',
-          image: tokenData.image || '',
+          name: (jsonData.name || '').trim(),
+          symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase(),
+          description: (jsonData.description || '').trim(),
+          image: tokenData.image || '', // Will be updated when image is generated
           imageData: tokenData.imageData || '',
           decimals: tokenData.decimals || 9,
           totalSupply: tokenData.totalSupply || '1000000000',
@@ -288,15 +288,18 @@ JSON_DATA:
         };
         
         console.log('Updated token data:', updatedData); // Debug log
-        setTokenData(updatedData);
+        
+        // Force update by creating a new object reference
+        setTokenData({ ...updatedData });
         
         // Generate image if prompt provided
         if (jsonData.imagePrompt) {
           console.log('Generating image with prompt:', jsonData.imagePrompt); // Debug log
-          generateImage(jsonData.imagePrompt);
+          // Pass updatedData to image generation so it can update the form
+          generateImage(jsonData.imagePrompt, updatedData);
+        } else {
+          toast.success('Token form automatically filled!');
         }
-        
-        toast.success('Token form automatically filled!');
       } else {
         console.log('No JSON data found, trying text parsing'); // Debug log
         // Fallback: try to parse from text
@@ -344,10 +347,10 @@ JSON_DATA:
     }
   };
 
-  const generateImage = async (prompt: string) => {
+  const generateImage = async (prompt: string, currentData?: TokenData) => {
     try {
       setIsLoading(true);
-      // Use image generation API (you'll need to implement this)
+      // Use image generation API
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -359,11 +362,16 @@ JSON_DATA:
       if (response.ok) {
         const data = await response.json();
         if (data.imageUrl) {
-          setTokenData(prev => ({
-            ...prev,
-            image: data.imageUrl,
-          }));
-          toast.success('Image generated!');
+          setTokenData(prev => {
+            const updated = {
+              ...prev,
+              ...(currentData || {}),
+              image: data.imageUrl,
+            };
+            console.log('Token data after image generation:', updated);
+            return updated;
+          });
+          toast.success('Image generated and form updated!');
         }
       }
     } catch (error) {
