@@ -440,7 +440,6 @@ export default function CookonPage() {
               {/* Token Form Section - Right */}
               <div className="card">
                 <h2 className="text-xl font-bold text-cook-text mb-6">Форма токена</h2>
-                {/* @ts-ignore - TokenFormProps includes initialData and onDataChange */}
                 <TokenForm 
                   onDeploy={handleDeploy} 
                   isConnected={connected}
