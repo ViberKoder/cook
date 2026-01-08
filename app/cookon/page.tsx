@@ -485,11 +485,30 @@ JSON_DATA:
 
       <Header />
 
-      <main className="relative z-10 h-screen">
-        <div className="h-full flex flex-col">
+      <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <Image 
+                src="https://em-content.zobj.net/source/telegram/386/light-bulb_1f4a1.webp" 
+                alt="Cookon" 
+                width={120}
+                height={120}
+                className="drop-shadow-lg"
+                unoptimized
+              />
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="gradient-text-cook">Cookon</span>
+            </h1>
+            <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
+              Cookon AI — create your own viral memecoin, in chat with AI!💬🧠
+            </p>
+          </div>
+
           {step === 'idle' || step === 'error' ? (
-            <div className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center p-4 border-b border-cook-border bg-cook-bg">
+            <div className="card max-w-5xl mx-auto">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
                 <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
                 <button
                   onClick={handleClearChat}
@@ -499,7 +518,7 @@ JSON_DATA:
                 </button>
               </div>
 
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="h-[calc(100vh-400px)] min-h-[500px] flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-3">
@@ -507,7 +526,7 @@ JSON_DATA:
                         className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[85%] rounded-xl p-4 ${
+                          className={`max-w-[70%] rounded-xl p-4 ${
                             message.role === 'user'
                               ? 'bg-cook-orange text-white'
                               : 'bg-cook-bg-secondary text-cook-text'
@@ -566,7 +585,7 @@ JSON_DATA:
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-4/5 mx-auto mt-1.5 py-0.5 flex items-center justify-center text-4xl"
+                            className="btn-cook w-2/5 mx-auto mt-1.5 py-0.5 flex items-center justify-center text-4xl"
                           >
                             {!connected ? (
                               'Connect Wallet'
@@ -628,18 +647,18 @@ JSON_DATA:
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <div className="w-full max-w-4xl">
-                <DeploymentStatus 
-                  step={step}
-                  deployedAddress={deployedAddress}
-                  onReset={handleReset}
-                />
-              </div>
+            <div className="max-w-4xl mx-auto">
+              <DeploymentStatus 
+                step={step}
+                deployedAddress={deployedAddress}
+                onReset={handleReset}
+              />
             </div>
           )}
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
