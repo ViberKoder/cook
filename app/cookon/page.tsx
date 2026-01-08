@@ -46,12 +46,26 @@ export default function CookonPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll if user is near the bottom (within 200px)
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+      
+      if (isNearBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll on new messages, not on every render
+    if (messages.length > 0) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length]);
 
   // Parse AI response to extract token data
   const parseTokenData = (content: string): Partial<TokenData> => {
@@ -292,13 +306,19 @@ JSON_DATA:
         
         console.log('Extracted token data:', extractedTokenData); // Debug log
         
-        // Always generate image - use imagePrompt if provided, otherwise use description
-        const imagePrompt = jsonData.imagePrompt || jsonData.description || chatMessage;
+        // Always generate image - use imagePrompt if provided, otherwise create prompt from description
+        const imagePrompt = jsonData.imagePrompt || 
+          (jsonData.description ? `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${jsonData.description.substring(0, 200)}` : 
+          `A memecoin token logo: ${chatMessage}`);
+        
         if (imagePrompt) {
           console.log('Generating image with prompt:', imagePrompt); // Debug log
           // Generate image and update the token data in the message
           const messageId = (Date.now() + 1).toString();
-          generateImageForMessage(imagePrompt, extractedTokenData, messageId);
+          // Don't await, let it generate in background
+          generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
+            console.error('Image generation failed:', err);
+          });
         }
       } else {
         console.log('No JSON data found, trying text parsing'); // Debug log
@@ -346,6 +366,7 @@ JSON_DATA:
 
   const generateImageForMessage = async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
+      console.log('Starting image generation for message:', messageId, 'with prompt:', prompt);
       // Use image generation API
       const response = await fetch('/api/generate-image', {
         method: 'POST',
@@ -355,23 +376,37 @@ JSON_DATA:
         body: JSON.stringify({ prompt }),
       });
 
+      console.log('Image generation response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Image generation response data:', data);
         if (data.imageUrl) {
           // Update the message with the generated image
-          setMessages(prev => prev.map(msg => 
-            msg.id === messageId && msg.tokenData
-              ? {
-                  ...msg,
-                  tokenData: {
-                    ...msg.tokenData,
-                    image: data.imageUrl,
+          setMessages(prev => {
+            const updated = prev.map(msg => 
+              msg.id === messageId && msg.tokenData
+                ? {
+                    ...msg,
+                    tokenData: {
+                      ...msg.tokenData,
+                      image: data.imageUrl,
+                    }
                   }
-                }
-              : msg
-          ));
+                : msg
+            );
+            console.log('Updated messages with image:', updated);
+            return updated;
+          });
           toast.success('Image generated!');
+        } else {
+          console.error('No imageUrl in response:', data);
+          toast.error('Image generation failed - no image URL');
         }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Image generation failed:', response.status, errorData);
+        toast.error(`Image generation failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
@@ -558,7 +593,7 @@ JSON_DATA:
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-full mt-4 py-2 text-sm"
+                            className="btn-cook w-full mt-4 py-3 text-base font-semibold"
                           >
                             {!connected ? (
                               'Connect Wallet'
@@ -567,8 +602,8 @@ JSON_DATA:
                                 <Image 
                                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                                   alt="" 
-                                  width={16}
-                                  height={16}
+                                  width={32}
+                                  height={32}
                                   className="mr-2"
                                   unoptimized
                                 />
