@@ -292,11 +292,13 @@ JSON_DATA:
         
         console.log('Extracted token data:', extractedTokenData); // Debug log
         
-        // Generate image if prompt provided
-        if (jsonData.imagePrompt) {
-          console.log('Generating image with prompt:', jsonData.imagePrompt); // Debug log
+        // Always generate image - use imagePrompt if provided, otherwise use description
+        const imagePrompt = jsonData.imagePrompt || jsonData.description || chatMessage;
+        if (imagePrompt) {
+          console.log('Generating image with prompt:', imagePrompt); // Debug log
           // Generate image and update the token data in the message
-          generateImageForMessage(jsonData.imagePrompt, extractedTokenData, (Date.now() + 1).toString());
+          const messageId = (Date.now() + 1).toString();
+          generateImageForMessage(imagePrompt, extractedTokenData, messageId);
         }
       } else {
         console.log('No JSON data found, trying text parsing'); // Debug log
@@ -461,7 +463,7 @@ JSON_DATA:
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Image 
-                src="https://em-content.zobj.net/source/telegram/386/robot_1f916.webp" 
+                src="https://em-content.zobj.net/source/telegram/386/light-bulb_1f4a1.webp" 
                 alt="Cookon" 
                 width={120}
                 height={120}
@@ -473,7 +475,7 @@ JSON_DATA:
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Cookon AI — create a viral memecoin with AI! 🐸🚀
+              Cookon AI — create your own viral memecoin, in chat with AI!💬🧠
             </p>
           </div>
 
@@ -512,37 +514,51 @@ JSON_DATA:
                       
                       {/* Mini token form for assistant messages with token data */}
                       {message.role === 'assistant' && message.tokenData && (
-                        <div className="bg-cook-bg-secondary rounded-xl p-4 border border-cook-border">
-                          <h3 className="text-sm font-semibold text-cook-text mb-3">Token Details</h3>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="text-cook-text-secondary">Name:</span>
-                              <span className="text-cook-text ml-2 font-medium">{message.tokenData.name || 'N/A'}</span>
-                            </div>
-                            <div>
-                              <span className="text-cook-text-secondary">Symbol:</span>
-                              <span className="text-cook-text ml-2 font-medium">${message.tokenData.symbol || 'N/A'}</span>
-                            </div>
-                            {message.tokenData.description && (
-                              <div>
-                                <span className="text-cook-text-secondary">Description:</span>
-                                <p className="text-cook-text mt-1 text-xs line-clamp-2">{message.tokenData.description}</p>
-                              </div>
-                            )}
+                        <div className="bg-cook-bg-secondary rounded-xl p-5 border border-cook-border">
+                          <h3 className="text-base font-bold text-cook-text mb-4">Token Details</h3>
+                          <div className="space-y-3">
                             {message.tokenData.image && (
-                              <div className="mt-2">
+                              <div className="flex justify-center mb-3">
                                 <img 
                                   src={message.tokenData.image} 
                                   alt="Token preview" 
-                                  className="w-16 h-16 rounded-lg object-cover"
+                                  className="w-32 h-32 rounded-xl object-cover border-2 border-cook-border"
                                 />
                               </div>
                             )}
+                            <div className="bg-cook-bg rounded-lg p-3">
+                              <div className="space-y-2">
+                                <div>
+                                  <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Token Name</span>
+                                  <p className="text-lg font-bold text-cook-text mt-1">{message.tokenData.name || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Symbol</span>
+                                  <p className="text-xl font-bold text-cook-orange mt-1">${message.tokenData.symbol || 'N/A'}</p>
+                                </div>
+                                {message.tokenData.description && (
+                                  <div>
+                                    <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Description</span>
+                                    <p className="text-sm text-cook-text mt-1 leading-relaxed">{message.tokenData.description}</p>
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-cook-border">
+                                  <div>
+                                    <span className="text-xs text-cook-text-secondary">Supply</span>
+                                    <p className="text-sm font-medium text-cook-text">{message.tokenData.totalSupply || '1,000,000,000'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-xs text-cook-text-secondary">Decimals</span>
+                                    <p className="text-sm font-medium text-cook-text">{message.tokenData.decimals || 9}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-full mt-4"
+                            className="btn-cook w-full mt-4 py-2 text-sm"
                           >
                             {!connected ? (
                               'Connect Wallet'
@@ -551,8 +567,8 @@ JSON_DATA:
                                 <Image 
                                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                                   alt="" 
-                                  width={20}
-                                  height={20}
+                                  width={16}
+                                  height={16}
                                   className="mr-2"
                                   unoptimized
                                 />
