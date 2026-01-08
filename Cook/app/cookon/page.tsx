@@ -91,6 +91,11 @@ export default function CookonPage() {
       return false;
     }
 
+    if (!tonConnectUI) {
+      toast.error('TON Connect is not initialized');
+      return false;
+    }
+
     try {
       const paymentAddress = Address.parse(PAYMENT_WALLET);
       const transaction = {
@@ -339,7 +344,13 @@ export default function CookonPage() {
               <div className="text-center p-6">
                 <p className="text-cook-text mb-4">Please connect your TON wallet to access Cookon</p>
                 <button
-                  onClick={() => tonConnectUI.openModal()}
+                  onClick={() => {
+                    if (tonConnectUI) {
+                      tonConnectUI.openModal();
+                    } else {
+                      toast.error('TON Connect is not initialized. Please check your configuration.');
+                    }
+                  }}
                   className="btn-cook"
                 >
                   Connect Wallet
