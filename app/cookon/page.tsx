@@ -109,7 +109,7 @@ export default function CookonPage() {
 
 1. Сначала проведи быстрый поиск актуальных трендов и новостей:
    - Используй web_search и/или x_keyword_search, чтобы найти самые свежие мемы, новости из мира крипты, TON-экосистемы, Telegram, популярные события, вирусные шутки и культурные моменты за последние 7–14 дней.
-   - Обрати особое внимание на: новости TON (Notcoin, Hamster Kombat, новые игры/боты), тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
+   - Обрати особое внимание на: новости TON, о том что говорит Павел Дуров, что говорят о Telegram и TON Foundation, тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
    - Найди 3–5 самых горячих тем/событий, которые можно легко и смешно привязать к мемкоину.
 
 2. На основе найденного создай мемкоин с нуля:
@@ -584,7 +584,7 @@ JSON_DATA:
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-full mt-4 py-1.5 text-xs"
+                            className="btn-cook w-2/5 mx-auto mt-1.5 py-1 flex items-center justify-center text-4xl"
                           >
                             {!connected ? (
                               'Connect Wallet'
@@ -593,8 +593,8 @@ JSON_DATA:
                                 <Image 
                                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                                   alt="" 
-                                  width={96}
-                                  height={96}
+                                  width={48}
+                                  height={48}
                                   className="mr-2"
                                   unoptimized
                                 />

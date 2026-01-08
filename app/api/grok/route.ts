@@ -36,14 +36,21 @@ export async function POST(request: NextRequest) {
     const client = createClient();
 
     // Use chat/completions API as recommended by xAI
+    // Grok-4-latest has built-in web search capabilities for real-time Twitter/news updates
+    // Economic settings: max_tokens limits response length, reducing costs
+    // Recommended TPM/RPM settings for cost efficiency:
+    //   - TPM (Tokens Per Minute): 10000-20000 (standard tier, adjust based on usage)
+    //   - RPM (Requests Per Minute): 10-20 (for cost savings, use 10-15)
+    // These are typically configured in your xAI API key settings, not in code
     const response = await client.chat.completions.create({
-      model: 'grok-4-latest',
+      model: 'grok-4-latest', // This model has built-in web search for real-time updates
       messages: messages.map((msg: any) => ({
         role: msg.role,
         content: msg.content,
       })),
       stream: false,
       temperature: temperature,
+      max_tokens: 2000, // Limit tokens for cost efficiency (adjust based on needs)
     });
 
     // Extract text content from response
