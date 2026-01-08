@@ -311,10 +311,21 @@ JSON_DATA:
           (jsonData.description ? `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${jsonData.description.substring(0, 200)}` : 
           `A memecoin token logo: ${chatMessage}`);
         
+        // Create message first to get the ID
+        const messageId = (Date.now() + 1).toString();
+        const assistantMessage: Message = {
+          id: messageId,
+          role: 'assistant',
+          content: chatMessage,
+          timestamp: new Date(),
+          tokenData: extractedTokenData || undefined,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Generate image after message is added
         if (imagePrompt) {
           console.log('Generating image with prompt:', imagePrompt); // Debug log
-          // Generate image and update the token data in the message
-          const messageId = (Date.now() + 1).toString();
           // Don't await, let it generate in background
           generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
             console.error('Image generation failed:', err);
@@ -337,17 +348,17 @@ JSON_DATA:
             mintable: true,
           };
         }
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: chatMessage,
+          timestamp: new Date(),
+          tokenData: extractedTokenData || undefined,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
       }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: chatMessage,
-        timestamp: new Date(),
-        tokenData: extractedTokenData || undefined,
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error(error.message || 'Failed to send message to AI');
