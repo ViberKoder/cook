@@ -45,27 +45,7 @@ export default function CookonPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    // Only scroll if user is near the bottom (within 200px)
-    if (chatContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-      
-      if (isNearBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  };
-
-  useEffect(() => {
-    // Only scroll on new messages, not on every render
-    if (messages.length > 0) {
-      const timer = setTimeout(() => {
-        scrollToBottom();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [messages.length]);
+  // Removed automatic scrolling
 
   // Parse AI response to extract token data
   const parseTokenData = (content: string): Partial<TokenData> => {
@@ -604,7 +584,7 @@ JSON_DATA:
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-full mt-4 py-3 text-base font-semibold"
+                            className="btn-cook w-full mt-4 py-1.5 text-xs"
                           >
                             {!connected ? (
                               'Connect Wallet'
@@ -613,8 +593,8 @@ JSON_DATA:
                                 <Image 
                                   src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                                   alt="" 
-                                  width={32}
-                                  height={32}
+                                  width={96}
+                                  height={96}
                                   className="mr-2"
                                   unoptimized
                                 />
