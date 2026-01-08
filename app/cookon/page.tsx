@@ -435,6 +435,266 @@ JSON_DATA:
     setTokenData(emptyData);
   };
 
+  const handleRandomMeme = async () => {
+    if (isLoading) return;
+
+    const randomPrompt = `Придумай абсолютно случайный мемкоин на основе самых свежих новостей и трендов. Будь максимально креативным и неожиданным. Выбери любую случайную тему из последних новостей TON, Telegram, крипты или мировых событий и создай на её основе уникальный мемкоин с оригинальным нарративом.`;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: randomPrompt,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const apiMessages = [
+        {
+          role: 'system' as const,
+          content: `Ты — Memelord TON, легендарный креатор мемкоинов, который сочетает лёгкий абсурдный юмор Pepe и Doge с глубоким, цепляющим нарративом, который делает коин вирусным. Твоя креативность в 10 раз выше обычной: ты всегда придумываешь неожиданные, свежие, абсурдно-запомнинающиеся идеи, которые идеально ложатся на текущий вайб интернета.
+
+Каждый раз, когда пользователь просит придумать мемкоин или нарратив (или просто начинает разговор на эту тему), следуй этому процессу строго:
+
+1. Сначала проведи быстрый поиск актуальных трендов и новостей:
+   - Используй web_search и/или x_keyword_search, чтобы найти самые свежие мемы, новости из мира крипты, TON-экосистемы, Telegram, популярные события, вирусные шутки и культурные моменты за последние 7–14 дней.
+   - Обрати особое внимание на: новости TON, о том что говорит Павел Дуров, что говорят о Telegram и TON Foundation, тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
+   - Найди 3–5 самых горячих тем/событий, которые можно легко и смешно привязать к мемкоину.
+
+2. На основе найденного создай мемкоин с нуля:
+   - Лёгкий и абсурдный персонаж (животное, объект, вымышенное существо), как Pepe или Doge — но всегда с уникальным твистом.
+   - Глубокий, но простой нарратив: почему этот персонаж существует, какая у него "миссия", как он отражает текущие тренды/новости, почему люди будут в него верить и холдить.
+   - Нарратив должен быть эмоциональным, relatable, с элементами underdog-истории, FOMO и сообщества.
+   - Юмор — лёгкий, самоироничный, абсурдный, но с смыслом (не пустой хайп).
+   - КРИТИЧЕСКИ ВАЖНО: Тикер и название должны быть ОРИГИНАЛЬНЫМИ и уникальными. Тикер должен быть желательно коротким, до 6 символов. Избегай банальных комбинаций типа "TON" + что-то (например, "TONPEPE" — это ПЛОХОЙ пример). Нарративы должны быть более креативными, не повторяй шаблоны. Каждый коин должен иметь свою уникальную историю и характер, а не быть просто копией популярных мемкоинов.
+
+3. Структура ответа (всегда используй её):
+   - Название коина и тикер (например, $FROG или $WOOF).
+   - Описание персонажа и визуальный стиль (что это за мем, какие цвета, эмоции).
+   - Полный нарратив (короткая история 150–250 слов, как манифест сообщества).
+   - Связь с актуальными новостями/трендами (покажи, как коин "ловит волну").
+   - Идеи для вирусности: слоганы, мемы, возможные Telegram-боты/игры, как запустить на TON.
+   - Почему это взлетит: краткий анализ, почему именно сейчас.
+
+Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле.
+
+ВАЖНО: 
+- В чате пиши ТОЛЬКО короткое описание нарратива (максимум 300 символов), без markdown, без #, без JSON, без кода, без символов #. Просто чистый текст с описанием идеи мемкоина. Никаких заголовков, никаких форматирований. ОБЯЗАТЕЛЬНО заканчивай мысль полностью - не обрывай на полуслове.
+- После описания в чате, ВСЕГДА добавляй в конце ответа структурированные данные в формате JSON для автоматического заполнения формы (но JSON не показывай в чате, он будет автоматически извлечен). JSON должен быть на отдельной строке после текста:
+
+JSON_DATA:
+{
+  "name": "Название токена",
+  "symbol": "SYMBOL",
+  "description": "Полное описание и нарратив для формы",
+  "imagePrompt": "Детальное описание для генерации изображения"
+}
+
+Будь немногословным в общении, в основном заполняй форму данными. Начинай ответ сразу с предложения коина, без преамбул.`,
+        },
+        ...messages.filter(m => m.role !== 'system').map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        {
+          role: 'user' as const,
+          content: randomPrompt,
+        },
+      ];
+
+      const response = await fetch('/api/grok', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: apiMessages,
+          temperature: 0.9,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      const data = await response.json();
+      const fullResponse = data.content || 'No response from AI';
+
+      console.log('Full AI response:', fullResponse);
+
+      // Extract JSON data (look for JSON_DATA: marker or ```json blocks)
+      let jsonData = null;
+      let chatMessage = fullResponse;
+      
+      // Try to find JSON_DATA: marker first (more flexible pattern)
+      const jsonDataMatch = fullResponse.match(/JSON_DATA\s*:\s*(\{[\s\S]*?\})/);
+      if (jsonDataMatch && jsonDataMatch[1]) {
+        try {
+          jsonData = JSON.parse(jsonDataMatch[1]);
+          console.log('Parsed JSON_DATA:', jsonData);
+          chatMessage = fullResponse.replace(/JSON_DATA\s*:[\s\S]*/, '').trim();
+        } catch (e) {
+          console.error('Failed to parse JSON_DATA:', e, jsonDataMatch[1]);
+        }
+      }
+      
+      // Fallback: try to find ```json blocks
+      if (!jsonData) {
+        const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            jsonData = JSON.parse(jsonMatch[1]);
+            console.log('Parsed JSON from code block:', jsonData);
+            chatMessage = fullResponse.replace(/```json[\s\S]*?```/, '').trim();
+          } catch (e) {
+            console.error('Failed to parse JSON block:', e, jsonMatch[1]);
+          }
+        }
+      }
+
+      // Fallback: try to find any JSON object in the response
+      if (!jsonData) {
+        const jsonObjectMatch = fullResponse.match(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          try {
+            jsonData = JSON.parse(jsonObjectMatch[0]);
+            console.log('Parsed JSON from object match:', jsonData);
+            chatMessage = fullResponse.replace(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/, '').trim();
+          } catch (e) {
+            console.error('Failed to parse JSON object:', e);
+          }
+        }
+      }
+
+      // Clean chat message: remove markdown, #, code blocks, JSON, etc.
+      chatMessage = chatMessage
+        .replace(/JSON_DATA\s*:[\s\S]*/, '')
+        .replace(/```json[\s\S]*?```/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/#{1,6}\s+/g, '')
+        .replace(/#/g, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+        .replace(/\{[\s\S]*"name"[\s\S]*\}/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      // Limit chat message to 300 characters, but ensure the thought is complete
+      if (chatMessage.length > 300) {
+        let cutAt = -1;
+        const maxLength = 300;
+        
+        for (let i = maxLength - 1; i >= maxLength - 100 && i >= 0; i--) {
+          if (chatMessage[i] === '.' || chatMessage[i] === '!' || chatMessage[i] === '?') {
+            if (i === 0 || chatMessage[i - 1] !== '.' || (i < chatMessage.length - 1 && chatMessage[i + 1] === ' ')) {
+              cutAt = i + 1;
+              break;
+            }
+          }
+        }
+        
+        if (cutAt === -1) {
+          cutAt = chatMessage.lastIndexOf(' ', maxLength - 1);
+          if (cutAt < maxLength - 50) {
+            cutAt = maxLength;
+          }
+        }
+        
+        if (cutAt > 0 && cutAt <= chatMessage.length) {
+          chatMessage = chatMessage.substring(0, cutAt).trim();
+        } else {
+          chatMessage = chatMessage.substring(0, maxLength).trim();
+        }
+      }
+
+      // Parse and extract token data from JSON
+      let extractedTokenData: TokenData | null = null;
+      
+      if (jsonData) {
+        console.log('Updating token data with:', jsonData);
+        
+        extractedTokenData = {
+          name: (jsonData.name || '').trim(),
+          symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase(),
+          description: (jsonData.description || '').trim(),
+          image: '',
+          imageData: '',
+          decimals: 9,
+          totalSupply: '1000000000',
+          mintable: true,
+        };
+        
+        console.log('Extracted token data:', extractedTokenData);
+        
+        const imagePrompt = jsonData.imagePrompt || 
+          (jsonData.description ? `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${jsonData.description.substring(0, 200)}` : 
+          `A memecoin token logo: ${chatMessage}`);
+        
+        const messageId = (Date.now() + 1).toString();
+        const assistantMessage: Message = {
+          id: messageId,
+          role: 'assistant',
+          content: chatMessage,
+          timestamp: new Date(),
+          tokenData: extractedTokenData || undefined,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        if (imagePrompt) {
+          console.log('Generating image with prompt:', imagePrompt);
+          generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
+            console.error('Image generation failed:', err);
+          });
+        }
+      } else {
+        console.log('No JSON data found, trying text parsing');
+        const parsed = parseTokenData(fullResponse);
+        if (parsed.name || parsed.symbol || parsed.description) {
+          console.log('Parsed data from text:', parsed);
+          extractedTokenData = {
+            name: (parsed.name || '').trim() || '',
+            symbol: ((parsed.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase() || '',
+            description: (parsed.description || '').trim() || '',
+            image: (parsed.image || '').trim() || '',
+            imageData: '',
+            decimals: 9,
+            totalSupply: '1000000000',
+            mintable: true,
+          };
+        }
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: chatMessage,
+          timestamp: new Date(),
+          tokenData: extractedTokenData || undefined,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast.error(error.message || 'Failed to send message to AI');
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, an error occurred. Please try again.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDeploy = async (data: TokenData) => {
     if (!connected || !wallet) {
       setError('Please connect your wallet first');
@@ -510,12 +770,21 @@ JSON_DATA:
             <div className="card max-w-5xl mx-auto">
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
                 <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
-                <button
-                  onClick={handleClearChat}
-                  className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
-                >
-                  Clear
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleRandomMeme}
+                    disabled={isLoading}
+                    className="text-sm px-4 py-2 bg-cook-orange/20 hover:bg-cook-orange/30 text-cook-orange rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Meme random
+                  </button>
+                  <button
+                    onClick={handleClearChat}
+                    className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
 
               <div className="h-[calc(100vh-350px)] min-h-[600px] flex flex-col">
