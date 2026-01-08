@@ -134,8 +134,8 @@ export default function CookonPage() {
 Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле.
 
 ВАЖНО: 
-- В чате пиши ТОЛЬКО короткое описание нарратива (максимум 200 символов), без markdown, без #, без JSON, без кода, без символов #. Просто чистый текст с описанием идеи мемкоина. Никаких заголовков, никаких форматирований.
-- После описания в чате, ВСЕГДА добавляй в конце ответа структурированные данные в формате JSON для автоматического заполнения формы (но JSON не показывай в чате, он будет автоматически извлечен):
+- В чате пиши ТОЛЬКО короткое описание нарратива (максимум 300 символов), без markdown, без #, без JSON, без кода, без символов #. Просто чистый текст с описанием идеи мемкоина. Никаких заголовков, никаких форматирований. ОБЯЗАТЕЛЬНО заканчивай мысль полностью - не обрывай на полуслове.
+- После описания в чате, ВСЕГДА добавляй в конце ответа структурированные данные в формате JSON для автоматического заполнения формы (но JSON не показывай в чате, он будет автоматически извлечен). JSON должен быть на отдельной строке после текста:
 
 JSON_DATA:
 {
@@ -176,39 +176,57 @@ JSON_DATA:
       const data = await response.json();
       const fullResponse = data.content || 'No response from AI';
 
+      console.log('Full AI response:', fullResponse); // Debug log
+
       // Extract JSON data (look for JSON_DATA: marker or ```json blocks)
       let jsonData = null;
       let chatMessage = fullResponse;
       
-      // Try to find JSON_DATA: marker first
-      const jsonDataMatch = fullResponse.match(/JSON_DATA:\s*\{[\s\S]*\}/);
-      if (jsonDataMatch) {
+      // Try to find JSON_DATA: marker first (more flexible pattern)
+      const jsonDataMatch = fullResponse.match(/JSON_DATA\s*:\s*(\{[\s\S]*?\})/);
+      if (jsonDataMatch && jsonDataMatch[1]) {
         try {
-          jsonData = JSON.parse(jsonDataMatch[0].replace('JSON_DATA:', '').trim());
+          jsonData = JSON.parse(jsonDataMatch[1]);
+          console.log('Parsed JSON_DATA:', jsonData); // Debug log
           // Remove JSON from chat message
-          chatMessage = fullResponse.replace(/JSON_DATA:[\s\S]*/, '').trim();
+          chatMessage = fullResponse.replace(/JSON_DATA\s*:[\s\S]*/, '').trim();
         } catch (e) {
-          console.error('Failed to parse JSON_DATA:', e);
+          console.error('Failed to parse JSON_DATA:', e, jsonDataMatch[1]);
         }
       }
       
       // Fallback: try to find ```json blocks
       if (!jsonData) {
         const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
+        if (jsonMatch && jsonMatch[1]) {
           try {
             jsonData = JSON.parse(jsonMatch[1]);
+            console.log('Parsed JSON from code block:', jsonData); // Debug log
             // Remove JSON block from chat message
             chatMessage = fullResponse.replace(/```json[\s\S]*?```/, '').trim();
           } catch (e) {
-            console.error('Failed to parse JSON block:', e);
+            console.error('Failed to parse JSON block:', e, jsonMatch[1]);
+          }
+        }
+      }
+
+      // Fallback: try to find any JSON object in the response
+      if (!jsonData) {
+        const jsonObjectMatch = fullResponse.match(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          try {
+            jsonData = JSON.parse(jsonObjectMatch[0]);
+            console.log('Parsed JSON from object match:', jsonData); // Debug log
+            chatMessage = fullResponse.replace(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/, '').trim();
+          } catch (e) {
+            console.error('Failed to parse JSON object:', e);
           }
         }
       }
 
       // Clean chat message: remove markdown, #, code blocks, JSON, etc.
       chatMessage = chatMessage
-        .replace(/JSON_DATA:[\s\S]*/, '') // Remove JSON_DATA section first
+        .replace(/JSON_DATA\s*:[\s\S]*/, '') // Remove JSON_DATA section first
         .replace(/```json[\s\S]*?```/g, '') // Remove JSON code blocks
         .replace(/```[\s\S]*?```/g, '') // Remove all code blocks
         .replace(/#{1,6}\s+/g, '') // Remove headers
@@ -217,50 +235,79 @@ JSON_DATA:
         .replace(/\*([^*]+)\*/g, '$1') // Remove italic
         .replace(/`([^`]+)`/g, '$1') // Remove inline code
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links
-        .replace(/\{[\s\S]*\}/g, '') // Remove any remaining JSON-like structures
+        .replace(/\{[\s\S]*"name"[\s\S]*\}/g, '') // Remove any remaining JSON objects
         .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newline
         .trim();
 
-      // Limit chat message to 200 characters (only narrative description)
-      if (chatMessage.length > 200) {
-        // Try to cut at sentence boundary
-        const cutAt = chatMessage.lastIndexOf('.', 197);
-        if (cutAt > 100) {
-          chatMessage = chatMessage.substring(0, cutAt + 1);
+      // Limit chat message to 300 characters, but ensure the thought is complete
+      if (chatMessage.length > 300) {
+        // Try to cut at sentence boundary (., !, ?)
+        let cutAt = -1;
+        const maxLength = 300;
+        
+        // Try to find sentence end within the limit
+        for (let i = maxLength - 1; i >= maxLength - 100 && i >= 0; i--) {
+          if (chatMessage[i] === '.' || chatMessage[i] === '!' || chatMessage[i] === '?') {
+            // Check if it's not part of a number or abbreviation
+            if (i === 0 || chatMessage[i - 1] !== '.' || (i < chatMessage.length - 1 && chatMessage[i + 1] === ' ')) {
+              cutAt = i + 1;
+              break;
+            }
+          }
+        }
+        
+        // If no sentence boundary found, try to cut at word boundary
+        if (cutAt === -1) {
+          cutAt = chatMessage.lastIndexOf(' ', maxLength - 1);
+          if (cutAt < maxLength - 50) {
+            // If word boundary is too early, just cut at maxLength
+            cutAt = maxLength;
+          }
+        }
+        
+        if (cutAt > 0 && cutAt <= chatMessage.length) {
+          chatMessage = chatMessage.substring(0, cutAt).trim();
         } else {
-          chatMessage = chatMessage.substring(0, 197) + '...';
+          chatMessage = chatMessage.substring(0, maxLength).trim();
         }
       }
 
       // Parse and update token data from JSON
       if (jsonData) {
+        console.log('Updating token data with:', jsonData); // Debug log
+        
         const updatedData: TokenData = {
-          name: jsonData.name || tokenData.name || '',
-          symbol: (jsonData.symbol || tokenData.symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
-          description: jsonData.description || tokenData.description || '',
+          name: (jsonData.name || '').trim() || tokenData.name || '',
+          symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '') || tokenData.symbol || '').toUpperCase(),
+          description: (jsonData.description || '').trim() || tokenData.description || '',
           image: tokenData.image || '',
           imageData: tokenData.imageData || '',
           decimals: tokenData.decimals || 9,
           totalSupply: tokenData.totalSupply || '1000000000',
           mintable: tokenData.mintable !== undefined ? tokenData.mintable : true,
         };
+        
+        console.log('Updated token data:', updatedData); // Debug log
         setTokenData(updatedData);
         
         // Generate image if prompt provided
         if (jsonData.imagePrompt) {
+          console.log('Generating image with prompt:', jsonData.imagePrompt); // Debug log
           generateImage(jsonData.imagePrompt);
         }
         
         toast.success('Token form automatically filled!');
       } else {
+        console.log('No JSON data found, trying text parsing'); // Debug log
         // Fallback: try to parse from text
         const parsed = parseTokenData(fullResponse);
         if (parsed.name || parsed.symbol || parsed.description) {
+          console.log('Parsed data from text:', parsed); // Debug log
           const updatedData: TokenData = {
-            name: parsed.name || tokenData.name || '',
-            symbol: (parsed.symbol || tokenData.symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
-            description: parsed.description || tokenData.description || '',
-            image: parsed.image || tokenData.image || '',
+            name: (parsed.name || '').trim() || tokenData.name || '',
+            symbol: ((parsed.symbol || '').trim().replace(/[^A-Z0-9]/g, '') || tokenData.symbol || '').toUpperCase(),
+            description: (parsed.description || '').trim() || tokenData.description || '',
+            image: (parsed.image || '').trim() || tokenData.image || '',
             imageData: tokenData.imageData || '',
             decimals: tokenData.decimals || 9,
             totalSupply: tokenData.totalSupply || '1000000000',
@@ -268,6 +315,8 @@ JSON_DATA:
           };
           setTokenData(updatedData);
           toast.success('Data extracted from response!');
+        } else {
+          console.log('No data could be extracted from response'); // Debug log
         }
       }
 
