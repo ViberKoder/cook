@@ -14,6 +14,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  tokenData?: TokenData; // Token data extracted from AI response
 }
 
 export default function CookonPage() {
@@ -272,33 +273,30 @@ JSON_DATA:
         }
       }
 
-      // Parse and update token data from JSON
+      // Parse and extract token data from JSON
+      let extractedTokenData: TokenData | null = null;
+      
       if (jsonData) {
         console.log('Updating token data with:', jsonData); // Debug log
         
-        const updatedData: TokenData = {
+        extractedTokenData = {
           name: (jsonData.name || '').trim(),
           symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase(),
           description: (jsonData.description || '').trim(),
-          image: tokenData.image || '', // Will be updated when image is generated
-          imageData: tokenData.imageData || '',
-          decimals: tokenData.decimals || 9,
-          totalSupply: tokenData.totalSupply || '1000000000',
-          mintable: tokenData.mintable !== undefined ? tokenData.mintable : true,
+          image: '', // Will be updated when image is generated
+          imageData: '',
+          decimals: 9,
+          totalSupply: '1000000000',
+          mintable: true,
         };
         
-        console.log('Updated token data:', updatedData); // Debug log
-        
-        // Force update by creating a new object reference
-        setTokenData({ ...updatedData });
+        console.log('Extracted token data:', extractedTokenData); // Debug log
         
         // Generate image if prompt provided
         if (jsonData.imagePrompt) {
           console.log('Generating image with prompt:', jsonData.imagePrompt); // Debug log
-          // Pass updatedData to image generation so it can update the form
-          generateImage(jsonData.imagePrompt, updatedData);
-        } else {
-          toast.success('Token form automatically filled!');
+          // Generate image and update the token data in the message
+          generateImageForMessage(jsonData.imagePrompt, extractedTokenData, (Date.now() + 1).toString());
         }
       } else {
         console.log('No JSON data found, trying text parsing'); // Debug log
@@ -306,20 +304,16 @@ JSON_DATA:
         const parsed = parseTokenData(fullResponse);
         if (parsed.name || parsed.symbol || parsed.description) {
           console.log('Parsed data from text:', parsed); // Debug log
-          const updatedData: TokenData = {
-            name: (parsed.name || '').trim() || tokenData.name || '',
-            symbol: ((parsed.symbol || '').trim().replace(/[^A-Z0-9]/g, '') || tokenData.symbol || '').toUpperCase(),
-            description: (parsed.description || '').trim() || tokenData.description || '',
-            image: (parsed.image || '').trim() || tokenData.image || '',
-            imageData: tokenData.imageData || '',
-            decimals: tokenData.decimals || 9,
-            totalSupply: tokenData.totalSupply || '1000000000',
-            mintable: tokenData.mintable !== undefined ? tokenData.mintable : true,
+          extractedTokenData = {
+            name: (parsed.name || '').trim() || '',
+            symbol: ((parsed.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase() || '',
+            description: (parsed.description || '').trim() || '',
+            image: (parsed.image || '').trim() || '',
+            imageData: '',
+            decimals: 9,
+            totalSupply: '1000000000',
+            mintable: true,
           };
-          setTokenData(updatedData);
-          toast.success('Data extracted from response!');
-        } else {
-          console.log('No data could be extracted from response'); // Debug log
         }
       }
 
@@ -328,6 +322,7 @@ JSON_DATA:
         role: 'assistant',
         content: chatMessage,
         timestamp: new Date(),
+        tokenData: extractedTokenData || undefined,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -347,9 +342,8 @@ JSON_DATA:
     }
   };
 
-  const generateImage = async (prompt: string, currentData?: TokenData) => {
+  const generateImageForMessage = async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
-      setIsLoading(true);
       // Use image generation API
       const response = await fetch('/api/generate-image', {
         method: 'POST',
@@ -362,23 +356,24 @@ JSON_DATA:
       if (response.ok) {
         const data = await response.json();
         if (data.imageUrl) {
-          setTokenData(prev => {
-            const updated = {
-              ...prev,
-              ...(currentData || {}),
-              image: data.imageUrl,
-            };
-            console.log('Token data after image generation:', updated);
-            return updated;
-          });
-          toast.success('Image generated and form updated!');
+          // Update the message with the generated image
+          setMessages(prev => prev.map(msg => 
+            msg.id === messageId && msg.tokenData
+              ? {
+                  ...msg,
+                  tokenData: {
+                    ...msg.tokenData,
+                    image: data.imageUrl,
+                  }
+                }
+              : msg
+          ));
+          toast.success('Image generated!');
         }
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
       toast.error('Failed to generate image');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -483,24 +478,22 @@ JSON_DATA:
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Chat Section - Left */}
-              <div className="card">
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
-                  <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
-                  <button
-                    onClick={handleClearChat}
-                    className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
-                  >
-                    Clear
-                  </button>
-                </div>
+            <div className="card max-w-4xl mx-auto">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
+                <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
+                <button
+                  onClick={handleClearChat}
+                  className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
 
-                <div className="h-[calc(100vh-280px)] min-h-[600px] flex flex-col">
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
-                    {messages.map((message) => (
+              <div className="h-[calc(100vh-280px)] min-h-[600px] flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
+                  {messages.map((message) => (
+                    <div key={message.id} className="space-y-3">
                       <div
-                        key={message.id}
                         className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
@@ -516,22 +509,76 @@ JSON_DATA:
                           </p>
                         </div>
                       </div>
-                    ))}
-                    {isLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-cook-bg-secondary rounded-xl p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="spinner w-4 h-4" />
-                            <span className="text-cook-text-secondary text-sm">Cookon AI is thinking...</span>
+                      
+                      {/* Mini token form for assistant messages with token data */}
+                      {message.role === 'assistant' && message.tokenData && (
+                        <div className="bg-cook-bg-secondary rounded-xl p-4 border border-cook-border">
+                          <h3 className="text-sm font-semibold text-cook-text mb-3">Token Details</h3>
+                          <div className="space-y-2 text-sm">
+                            <div>
+                              <span className="text-cook-text-secondary">Name:</span>
+                              <span className="text-cook-text ml-2 font-medium">{message.tokenData.name || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-cook-text-secondary">Symbol:</span>
+                              <span className="text-cook-text ml-2 font-medium">${message.tokenData.symbol || 'N/A'}</span>
+                            </div>
+                            {message.tokenData.description && (
+                              <div>
+                                <span className="text-cook-text-secondary">Description:</span>
+                                <p className="text-cook-text mt-1 text-xs line-clamp-2">{message.tokenData.description}</p>
+                              </div>
+                            )}
+                            {message.tokenData.image && (
+                              <div className="mt-2">
+                                <img 
+                                  src={message.tokenData.image} 
+                                  alt="Token preview" 
+                                  className="w-16 h-16 rounded-lg object-cover"
+                                />
+                              </div>
+                            )}
                           </div>
+                          <button
+                            onClick={() => handleDeploy(message.tokenData!)}
+                            disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
+                            className="btn-cook w-full mt-4"
+                          >
+                            {!connected ? (
+                              'Connect Wallet'
+                            ) : (
+                              <>
+                                <Image 
+                                  src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                                  alt="" 
+                                  width={20}
+                                  height={20}
+                                  className="mr-2"
+                                  unoptimized
+                                />
+                                Cook it!
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-cook-bg-secondary rounded-xl p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="spinner w-4 h-4" />
+                          <span className="text-cook-text-secondary text-sm">Cookon AI is thinking...</span>
                         </div>
                       </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
 
-                  <div className="border-t border-cook-border p-4">
-                    <div className="flex gap-2">
+                <div className="border-t border-cook-border p-4">
+                  <div className="flex gap-2">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
@@ -552,23 +599,8 @@ JSON_DATA:
                         'Send'
                       )}
                     </button>
-                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Token Form Section - Right */}
-              <div className="card">
-                <h2 className="text-xl font-bold text-cook-text mb-6">Token Form</h2>
-                <TokenForm 
-                  onDeploy={handleDeploy} 
-                  isConnected={connected}
-                  error={error}
-                  {...({
-                    initialData: tokenData,
-                    onDataChange: (data: TokenData) => setTokenData(data),
-                  } as Partial<{ initialData: TokenData; onDataChange: (data: TokenData) => void }>)}
-                />
               </div>
             </div>
           ) : (
