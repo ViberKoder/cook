@@ -22,7 +22,7 @@ export default function CookonPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Привет! Я Memelord TON 🐸\n\nЯ помогу тебе создать вирусный мемкоин на блокчейне TON. Просто расскажи мне свою идею или попроси придумать что-то новое!',
+      content: 'Hello! I\'m Cookon AI 🐸\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
       timestamp: new Date(),
     },
   ]);
@@ -133,16 +133,17 @@ export default function CookonPage() {
 
 Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле.
 
-ВАЖНО: После описания мемкоина, всегда добавляй в конце ответа структурированные данные в формате JSON для автоматического заполнения формы:
+ВАЖНО: 
+- В чате пиши ТОЛЬКО короткое описание нарратива (максимум 200 символов), без markdown, без #, без JSON, без кода, без символов #. Просто чистый текст с описанием идеи мемкоина. Никаких заголовков, никаких форматирований.
+- После описания в чате, ВСЕГДА добавляй в конце ответа структурированные данные в формате JSON для автоматического заполнения формы (но JSON не показывай в чате, он будет автоматически извлечен):
 
-\`\`\`json
+JSON_DATA:
 {
   "name": "Название токена",
   "symbol": "SYMBOL",
-  "description": "Полное описание и нарратив",
+  "description": "Полное описание и нарратив для формы",
   "imagePrompt": "Детальное описание для генерации изображения"
 }
-\`\`\`
 
 Будь немногословным в общении, в основном заполняй форму данными. Начинай ответ сразу с предложения коина, без преамбул.`,
         },
@@ -173,46 +174,107 @@ export default function CookonPage() {
       }
 
       const data = await response.json();
-      const aiResponse = data.content || 'No response from AI';
+      const fullResponse = data.content || 'No response from AI';
 
-      // Try to parse JSON from response
-      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
+      // Extract JSON data (look for JSON_DATA: marker or ```json blocks)
+      let jsonData = null;
+      let chatMessage = fullResponse;
+      
+      // Try to find JSON_DATA: marker first
+      const jsonDataMatch = fullResponse.match(/JSON_DATA:\s*\{[\s\S]*\}/);
+      if (jsonDataMatch) {
         try {
-          const parsedData = JSON.parse(jsonMatch[1]);
-          const updatedData: TokenData = {
-            ...tokenData,
-            name: parsedData.name || tokenData.name,
-            symbol: parsedData.symbol || tokenData.symbol,
-            description: parsedData.description || tokenData.description,
-          };
-          setTokenData(updatedData);
-          
-          // Generate image if prompt provided
-          if (parsedData.imagePrompt) {
-            generateImage(parsedData.imagePrompt);
-          }
-          
-          toast.success('Форма автоматически заполнена!');
+          jsonData = JSON.parse(jsonDataMatch[0].replace('JSON_DATA:', '').trim());
+          // Remove JSON from chat message
+          chatMessage = fullResponse.replace(/JSON_DATA:[\s\S]*/, '').trim();
         } catch (e) {
-          console.error('Failed to parse JSON:', e);
+          console.error('Failed to parse JSON_DATA:', e);
         }
+      }
+      
+      // Fallback: try to find ```json blocks
+      if (!jsonData) {
+        const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          try {
+            jsonData = JSON.parse(jsonMatch[1]);
+            // Remove JSON block from chat message
+            chatMessage = fullResponse.replace(/```json[\s\S]*?```/, '').trim();
+          } catch (e) {
+            console.error('Failed to parse JSON block:', e);
+          }
+        }
+      }
+
+      // Clean chat message: remove markdown, #, code blocks, JSON, etc.
+      chatMessage = chatMessage
+        .replace(/JSON_DATA:[\s\S]*/, '') // Remove JSON_DATA section first
+        .replace(/```json[\s\S]*?```/g, '') // Remove JSON code blocks
+        .replace(/```[\s\S]*?```/g, '') // Remove all code blocks
+        .replace(/#{1,6}\s+/g, '') // Remove headers
+        .replace(/#/g, '') // Remove all # symbols
+        .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+        .replace(/\*([^*]+)\*/g, '$1') // Remove italic
+        .replace(/`([^`]+)`/g, '$1') // Remove inline code
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links
+        .replace(/\{[\s\S]*\}/g, '') // Remove any remaining JSON-like structures
+        .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newline
+        .trim();
+
+      // Limit chat message to 200 characters (only narrative description)
+      if (chatMessage.length > 200) {
+        // Try to cut at sentence boundary
+        const cutAt = chatMessage.lastIndexOf('.', 197);
+        if (cutAt > 100) {
+          chatMessage = chatMessage.substring(0, cutAt + 1);
+        } else {
+          chatMessage = chatMessage.substring(0, 197) + '...';
+        }
+      }
+
+      // Parse and update token data from JSON
+      if (jsonData) {
+        const updatedData: TokenData = {
+          name: jsonData.name || tokenData.name || '',
+          symbol: (jsonData.symbol || tokenData.symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          description: jsonData.description || tokenData.description || '',
+          image: tokenData.image || '',
+          imageData: tokenData.imageData || '',
+          decimals: tokenData.decimals || 9,
+          totalSupply: tokenData.totalSupply || '1000000000',
+          mintable: tokenData.mintable !== undefined ? tokenData.mintable : true,
+        };
+        setTokenData(updatedData);
+        
+        // Generate image if prompt provided
+        if (jsonData.imagePrompt) {
+          generateImage(jsonData.imagePrompt);
+        }
+        
+        toast.success('Token form automatically filled!');
       } else {
         // Fallback: try to parse from text
-        const parsed = parseTokenData(aiResponse);
+        const parsed = parseTokenData(fullResponse);
         if (parsed.name || parsed.symbol || parsed.description) {
-          setTokenData(prev => ({
-            ...prev,
-            ...parsed,
-          }));
-          toast.success('Данные извлечены из ответа!');
+          const updatedData: TokenData = {
+            name: parsed.name || tokenData.name || '',
+            symbol: (parsed.symbol || tokenData.symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
+            description: parsed.description || tokenData.description || '',
+            image: parsed.image || tokenData.image || '',
+            imageData: tokenData.imageData || '',
+            decimals: tokenData.decimals || 9,
+            totalSupply: tokenData.totalSupply || '1000000000',
+            mintable: tokenData.mintable !== undefined ? tokenData.mintable : true,
+          };
+          setTokenData(updatedData);
+          toast.success('Data extracted from response!');
         }
       }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: aiResponse,
+        content: chatMessage,
         timestamp: new Date(),
       };
 
@@ -224,7 +286,7 @@ export default function CookonPage() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Извини, произошла ошибка. Попробуй ещё раз.',
+        content: 'Sorry, an error occurred. Please try again.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
@@ -252,12 +314,12 @@ export default function CookonPage() {
             ...prev,
             image: data.imageUrl,
           }));
-          toast.success('Изображение сгенерировано!');
+          toast.success('Image generated!');
         }
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
-      toast.error('Не удалось сгенерировать изображение');
+      toast.error('Failed to generate image');
     } finally {
       setIsLoading(false);
     }
@@ -275,11 +337,11 @@ export default function CookonPage() {
       {
         id: '1',
         role: 'assistant',
-        content: 'Привет! Я Memelord TON 🐸\n\nЯ помогу тебе создать вирусный мемкоин на блокчейне TON. Просто расскажи мне свою идею или попроси придумать что-то новое!',
+        content: 'Hello! I\'m Cookon AI 🐸\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
         timestamp: new Date(),
       },
     ]);
-    setTokenData({
+    const emptyData: TokenData = {
       name: '',
       symbol: '',
       description: '',
@@ -288,12 +350,13 @@ export default function CookonPage() {
       decimals: 9,
       totalSupply: '1000000000',
       mintable: true,
-    });
+    };
+    setTokenData(emptyData);
   };
 
   const handleDeploy = async (data: TokenData) => {
     if (!connected || !wallet) {
-      setError('Пожалуйста, подключи кошелёк');
+      setError('Please connect your wallet first');
       return;
     }
 
@@ -358,7 +421,7 @@ export default function CookonPage() {
               <span className="gradient-text-cook">Cookon</span>
             </h1>
             <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
-              Memelord TON — создай вирусный мемкоин с помощью AI! 🐸🚀
+              Cookon AI — create a viral memecoin with AI! 🐸🚀
             </p>
           </div>
 
@@ -367,12 +430,12 @@ export default function CookonPage() {
               {/* Chat Section - Left */}
               <div className="card">
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
-                  <h2 className="text-xl font-bold text-cook-text">Чат с Memelord TON</h2>
+                  <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
                   <button
                     onClick={handleClearChat}
                     className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
                   >
-                    Очистить
+                    Clear
                   </button>
                 </div>
 
@@ -402,7 +465,7 @@ export default function CookonPage() {
                         <div className="bg-cook-bg-secondary rounded-xl p-4">
                           <div className="flex items-center gap-2">
                             <div className="spinner w-4 h-4" />
-                            <span className="text-cook-text-secondary text-sm">Memelord думает...</span>
+                            <span className="text-cook-text-secondary text-sm">Cookon AI is thinking...</span>
                           </div>
                         </div>
                       </div>
@@ -412,26 +475,26 @@ export default function CookonPage() {
 
                   <div className="border-t border-cook-border p-4">
                     <div className="flex gap-2">
-                      <textarea
-                        value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Расскажи идею для мемкоина или попроси придумать что-то новое..."
-                        className="flex-1 input-ton resize-none text-sm"
-                        rows={2}
-                        disabled={isLoading}
-                      />
-                      <button
-                        onClick={handleSendMessage}
-                        disabled={!inputMessage.trim() || isLoading}
-                        className="btn-cook px-6"
-                      >
-                        {isLoading ? (
-                          <div className="spinner w-5 h-5" />
-                        ) : (
-                          'Отправить'
-                        )}
-                      </button>
+                    <textarea
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Tell me your memecoin idea or ask me to come up with something new..."
+                      className="flex-1 input-ton resize-none text-sm"
+                      rows={2}
+                      disabled={isLoading}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!inputMessage.trim() || isLoading}
+                      className="btn-cook px-6"
+                    >
+                      {isLoading ? (
+                        <div className="spinner w-5 h-5" />
+                      ) : (
+                        'Send'
+                      )}
+                    </button>
                     </div>
                   </div>
                 </div>
@@ -439,7 +502,7 @@ export default function CookonPage() {
 
               {/* Token Form Section - Right */}
               <div className="card">
-                <h2 className="text-xl font-bold text-cook-text mb-6">Форма токена</h2>
+                <h2 className="text-xl font-bold text-cook-text mb-6">Token Form</h2>
                 <TokenForm 
                   onDeploy={handleDeploy} 
                   isConnected={connected}
