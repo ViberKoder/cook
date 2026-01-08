@@ -518,7 +518,7 @@ JSON_DATA:
                 </button>
               </div>
 
-              <div className="h-[calc(100vh-400px)] min-h-[500px] flex flex-col">
+              <div className="h-[calc(100vh-350px)] min-h-[600px] flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-3">
@@ -585,7 +585,7 @@ JSON_DATA:
                           <button
                             onClick={() => handleDeploy(message.tokenData!)}
                             disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                            className="btn-cook w-2/5 mx-auto mt-1.5 py-0.5 flex items-center justify-center text-4xl"
+                            className="btn-cook w-1/3 mx-auto mt-1.5 py-0 flex items-center justify-center text-4xl"
                           >
                             {!connected ? (
                               'Connect Wallet'
