@@ -38,3 +38,4 @@ slice calculate_user_jetton_wallet_address_from_init(cell state_init) inline {
 
 
 
+
