@@ -556,7 +556,7 @@ JSON_DATA:
             Confidential Compute Open Network
           </h2>
           <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto">
-            Cookon connects AI, GPU power, and Telegram's vast ecosystem – all built on privacy and blockchain.
+            Cookon connects AI, GPU power, and Telegram&apos;s vast ecosystem – all built on privacy and blockchain.
           </p>
           
           {!connected ? (
@@ -572,7 +572,7 @@ JSON_DATA:
           ) : (
             <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-800">
               <p className="text-gray-300 mb-2">Initial access fee: <span className="text-white font-semibold">{INITIAL_PAYMENT} TON</span></p>
-              <p className="text-sm text-gray-400 mb-6">After payment, you'll be charged {PERIODIC_PAYMENT} TON for every {REQUESTS_PER_PAYMENT} AI requests</p>
+              <p className="text-sm text-gray-400 mb-6">After payment, you&apos;ll be charged {PERIODIC_PAYMENT} TON for every {REQUESTS_PER_PAYMENT} AI requests</p>
               <button
                 onClick={handleInitialPayment}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors w-full"
