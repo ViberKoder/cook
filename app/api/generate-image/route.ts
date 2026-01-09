@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Get API key from environment variables - using XAI_API_KEY for xAI API
 const getApiKey = () => {

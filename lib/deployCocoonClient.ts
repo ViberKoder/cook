@@ -192,7 +192,7 @@ export async function deployCocoonClientContract(
     
     // Check if client code is valid (not empty)
     // A valid code cell should have at least some bits or refs
-    const isEmpty = !clientCode || 
+    const isEmpty = !clientCode ||
       (clientCode.bits.length === 0 && clientCode.refs.length === 0) ||
       (clientCode.bits.length === 1 && !clientCode.bits.at(0) && clientCode.refs.length === 0);
     
@@ -269,8 +269,7 @@ export async function deployCocoonClientContract(
 
     // Use storeStateInit helper for proper serialization
     // storeStateInit correctly serializes stateInit: split_depth + special + code + data
-    // Note: storeStateInit returns a Cell, so we can use it directly
-    // storeStateInit already formats the stateInit correctly, no need to wrap in beginCell
+    // storeStateInit returns a function for builder, so we need to wrap it in beginCell().store().endCell()
     const stateInitCell = beginCell()
       .store(storeStateInit(stateInit))
       .endCell();

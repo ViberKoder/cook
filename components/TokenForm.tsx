@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
 export interface TokenData {
@@ -12,14 +12,16 @@ export interface TokenData {
   mintable: boolean;
 }
 
-interface TokenFormProps {
+export interface TokenFormProps {
   onDeploy: (data: TokenData) => void;
   isConnected: boolean;
   error?: string;
+  initialData?: TokenData;
+  onDataChange?: (data: TokenData) => void;
 }
 
-export default function TokenForm({ onDeploy, isConnected, error }: TokenFormProps) {
-  const [formData, setFormData] = useState<TokenData>({
+export default function TokenForm({ onDeploy, isConnected, error, initialData, onDataChange }: TokenFormProps) {
+  const [formData, setFormData] = useState<TokenData>(initialData || {
     name: '',
     symbol: '',
     description: '',
@@ -30,6 +32,29 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
     mintable: true,
   });
 
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      // Only update if there are actual values to set
+      if (initialData.name || initialData.symbol || initialData.description || initialData.image) {
+        setFormData(prev => ({
+          ...prev,
+          ...initialData,
+          // Preserve existing values if new ones are empty
+          name: initialData.name || prev.name,
+          symbol: initialData.symbol || prev.symbol,
+          description: initialData.description || prev.description,
+          image: initialData.image || prev.image,
+        }));
+        
+        // Update image preview if image URL is provided
+        if (initialData.image && !initialData.imageData) {
+          setImagePreview(initialData.image);
+        }
+      }
+    }
+  }, [initialData?.name, initialData?.symbol, initialData?.description, initialData?.image]);
+
   const [imagePreview, setImagePreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
@@ -37,28 +62,34 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    let newData: TokenData;
     
     if (type === 'checkbox') {
-      setFormData(prev => ({
-        ...prev,
+      newData = {
+        ...formData,
         [name]: (e.target as HTMLInputElement).checked,
-      }));
+      };
     } else if (name === 'decimals') {
       const num = parseInt(value) || 0;
-      setFormData(prev => ({
-        ...prev,
+      newData = {
+        ...formData,
         [name]: Math.min(Math.max(num, 0), 18),
-      }));
+      };
     } else {
-      setFormData(prev => ({
-        ...prev,
+      newData = {
+        ...formData,
         [name]: value,
-      }));
+      };
     }
 
     if (name === 'image' && value) {
       setImagePreview(value);
-      setFormData(prev => ({ ...prev, imageData: '' }));
+      newData.imageData = '';
+    }
+
+    setFormData(newData);
+    if (onDataChange) {
+      onDataChange(newData);
     }
   };
 
@@ -76,12 +107,16 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
       const base64 = reader.result as string;
       const base64Data = base64.split(',')[1];
       
-      setFormData(prev => ({
-        ...prev,
+      const newData = {
+        ...formData,
         imageData: base64Data,
         image: '',
-      }));
+      };
+      setFormData(newData);
       setImagePreview(base64);
+      if (onDataChange) {
+        onDataChange(newData);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -94,12 +129,23 @@ export default function TokenForm({ onDeploy, isConnected, error }: TokenFormPro
   const isValid = formData.name.trim() && formData.symbol.trim() && formData.totalSupply;
 
   const clearImage = () => {
-    setFormData(prev => ({ ...prev, image: '', imageData: '' }));
+    const newData = { ...formData, image: '', imageData: '' };
+    setFormData(newData);
     setImagePreview('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    if (onDataChange) {
+      onDataChange(newData);
+    }
   };
+
+  // Update image preview when image URL changes externally
+  useEffect(() => {
+    if (formData.image && !formData.imageData) {
+      setImagePreview(formData.image);
+    }
+  }, [formData.image, formData.imageData]);
 
   return (
     <form onSubmit={handleSubmit} className="card">
