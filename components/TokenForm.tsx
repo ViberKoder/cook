@@ -53,7 +53,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
         }
       }
     }
-  }, [initialData?.name, initialData?.symbol, initialData?.description, initialData?.image]);
+  }, [initialData]);
 
   const [imagePreview, setImagePreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
