@@ -2,23 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import toast from 'react-hot-toast';
 import TokenForm, { TokenData } from '@/components/TokenForm';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import DeploymentStatus, { DeploymentStep } from '@/components/DeploymentStatus';
+import { Address, beginCell, toNano } from '@ton/core';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
-  tokenData?: TokenData; // Token data extracted from AI response
+  tokenData?: TokenData;
 }
 
+// Payment configuration
+const PAYMENT_WALLET = process.env.NEXT_PUBLIC_PAYMENT_WALLET || 'UQDjQOdWTP1bPpGpYExAsCcVLGPN_pzGvdno3aCk565ZnQIz';
+const INITIAL_PAYMENT = 0.3; // TON
+const PERIODIC_PAYMENT = 0.25; // TON
+const REQUESTS_PER_PAYMENT = 10;
+
 export default function CookonPage() {
-  const { connected, wallet, sendTransaction, sendMultipleMessages } = useTonConnect();
+  const { connected, wallet, sendTransaction, sendMultipleMessages, tonConnectUI } = useTonConnect();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -29,6 +34,8 @@ export default function CookonPage() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasPaidInitial, setHasPaidInitial] = useState(false);
+  const [requestCount, setRequestCount] = useState(0);
   const [tokenData, setTokenData] = useState<TokenData>({
     name: '',
     symbol: '',
@@ -45,37 +52,126 @@ export default function CookonPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Removed automatic scrolling
+  // Check payment status on mount and apply dark theme
+  useEffect(() => {
+    const paid = localStorage.getItem('cookon_initial_payment');
+    if (paid === 'true') {
+      setHasPaidInitial(true);
+    }
+    const count = localStorage.getItem('cookon_request_count');
+    if (count) {
+      setRequestCount(parseInt(count, 10));
+    }
+
+    // Apply dark theme to body
+    document.body.style.backgroundColor = '#000000';
+    document.body.style.color = '#ffffff';
+    document.documentElement.style.backgroundColor = '#000000';
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.backgroundColor = '';
+      document.body.style.color = '';
+      document.documentElement.style.backgroundColor = '';
+    };
+  }, []);
+
+  // Send payment transaction
+  const sendPayment = async (amount: number, comment: string): Promise<boolean> => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your wallet first');
+      return false;
+    }
+
+    if (!tonConnectUI) {
+      toast.error('TON Connect is not initialized');
+      return false;
+    }
+
+    try {
+      const paymentAddress = Address.parse(PAYMENT_WALLET);
+      const transaction = {
+        validUntil: Math.floor(Date.now() / 1000) + 360,
+        messages: [
+          {
+            address: paymentAddress.toString(),
+            amount: toNano(amount).toString(),
+            payload: beginCell()
+              .storeUint(0, 32)
+              .storeStringTail(comment)
+              .endCell()
+              .toBoc()
+              .toString('base64'),
+          },
+        ],
+      };
+
+      await tonConnectUI.sendTransaction(transaction);
+      toast.success(`Payment of ${amount} TON sent successfully`);
+      return true;
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast.error(error.message || 'Payment failed');
+      return false;
+    }
+  };
+
+  // Handle initial payment
+  const handleInitialPayment = async () => {
+    if (!connected || !wallet) {
+      toast.error('Please connect your TON wallet first');
+      return;
+    }
+
+    const success = await sendPayment(INITIAL_PAYMENT, 'Cookon initial access payment');
+    if (success) {
+      setHasPaidInitial(true);
+      localStorage.setItem('cookon_initial_payment', 'true');
+      toast.success('Access granted! You can now use Cookon.');
+    }
+  };
+
+  // Check and process periodic payment
+  const checkAndProcessPeriodicPayment = async (): Promise<boolean> => {
+    const newCount = requestCount + 1;
+    setRequestCount(newCount);
+    localStorage.setItem('cookon_request_count', newCount.toString());
+
+    if (newCount % REQUESTS_PER_PAYMENT === 0) {
+      const success = await sendPayment(PERIODIC_PAYMENT, `Cookon periodic payment - ${newCount} requests`);
+      if (!success) {
+        setRequestCount(newCount - 1);
+        localStorage.setItem('cookon_request_count', (newCount - 1).toString());
+        return false;
+      }
+    }
+    return true;
+  };
 
   // Parse AI response to extract token data
   const parseTokenData = (content: string): Partial<TokenData> => {
     const parsed: Partial<TokenData> = {};
     
-    // Extract name (look for patterns like "Название:", "Name:", or in quotes)
     const nameMatch = content.match(/(?:Название|Name|Token Name)[:：]\s*([^\n]+)|"([^"]+)"|'([^']+)'/i);
     if (nameMatch) {
       parsed.name = (nameMatch[1] || nameMatch[2] || nameMatch[3] || '').trim();
     }
     
-    // Extract symbol (look for $SYMBOL pattern or "Symbol:", "Тикер:")
     const symbolMatch = content.match(/\$([A-Z0-9]{2,10})|(?:Symbol|Тикер|Ticker)[:：]\s*([A-Z0-9]{2,10})/i);
     if (symbolMatch) {
       parsed.symbol = (symbolMatch[1] || symbolMatch[2] || symbolMatch[3] || '').toUpperCase().trim();
     }
     
-    // Extract description (usually a longer text block)
     const descMatch = content.match(/(?:Описание|Description|Нарратив)[:：]\s*([^\n]+(?:\n[^\n]+){0,10})/i);
     if (descMatch) {
       parsed.description = descMatch[1].trim();
     } else {
-      // Try to get description from narrative section
       const narrativeMatch = content.match(/(?:Нарратив|Narrative|История)[:：]?\s*([^\n]+(?:\n[^\n]+){2,15})/i);
       if (narrativeMatch) {
         parsed.description = narrativeMatch[1].trim();
       }
     }
     
-    // Extract image URL if mentioned
     const imageMatch = content.match(/(?:Image|Картинка|Изображение|URL)[:：]\s*(https?:\/\/[^\s]+)/i);
     if (imageMatch) {
       parsed.image = imageMatch[1].trim();
@@ -86,6 +182,25 @@ export default function CookonPage() {
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
+
+    // Check wallet connection
+    if (!connected || !wallet) {
+      toast.error('Please connect your TON wallet to use Cookon');
+      return;
+    }
+
+    // Check initial payment
+    if (!hasPaidInitial) {
+      toast.error('Please pay the initial access fee of 0.3 TON to use Cookon');
+      return;
+    }
+
+    // Check and process periodic payment
+    const canProceed = await checkAndProcessPeriodicPayment();
+    if (!canProceed) {
+      toast.error('Payment required. Please complete the payment to continue.');
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -171,79 +286,54 @@ JSON_DATA:
       const data = await response.json();
       const fullResponse = data.content || 'No response from AI';
 
-      console.log('Full AI response:', fullResponse); // Debug log
-
-      // Extract JSON data (look for JSON_DATA: marker or ```json blocks)
+      // Extract JSON data
       let jsonData = null;
       let chatMessage = fullResponse;
       
-      // Try to find JSON_DATA: marker first (more flexible pattern)
       const jsonDataMatch = fullResponse.match(/JSON_DATA\s*:\s*(\{[\s\S]*?\})/);
       if (jsonDataMatch && jsonDataMatch[1]) {
         try {
           jsonData = JSON.parse(jsonDataMatch[1]);
-          console.log('Parsed JSON_DATA:', jsonData); // Debug log
-          // Remove JSON from chat message
           chatMessage = fullResponse.replace(/JSON_DATA\s*:[\s\S]*/, '').trim();
         } catch (e) {
-          console.error('Failed to parse JSON_DATA:', e, jsonDataMatch[1]);
+          console.error('Failed to parse JSON_DATA:', e);
         }
       }
       
-      // Fallback: try to find ```json blocks
       if (!jsonData) {
         const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
           try {
             jsonData = JSON.parse(jsonMatch[1]);
-            console.log('Parsed JSON from code block:', jsonData); // Debug log
-            // Remove JSON block from chat message
             chatMessage = fullResponse.replace(/```json[\s\S]*?```/, '').trim();
           } catch (e) {
-            console.error('Failed to parse JSON block:', e, jsonMatch[1]);
+            console.error('Failed to parse JSON block:', e);
           }
         }
       }
 
-      // Fallback: try to find any JSON object in the response
-      if (!jsonData) {
-        const jsonObjectMatch = fullResponse.match(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/);
-        if (jsonObjectMatch) {
-          try {
-            jsonData = JSON.parse(jsonObjectMatch[0]);
-            console.log('Parsed JSON from object match:', jsonData); // Debug log
-            chatMessage = fullResponse.replace(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*\}/, '').trim();
-          } catch (e) {
-            console.error('Failed to parse JSON object:', e);
-          }
-        }
-      }
-
-      // Clean chat message: remove markdown, #, code blocks, JSON, etc.
+      // Clean chat message
       chatMessage = chatMessage
-        .replace(/JSON_DATA\s*:[\s\S]*/, '') // Remove JSON_DATA section first
-        .replace(/```json[\s\S]*?```/g, '') // Remove JSON code blocks
-        .replace(/```[\s\S]*?```/g, '') // Remove all code blocks
-        .replace(/#{1,6}\s+/g, '') // Remove headers
-        .replace(/#/g, '') // Remove all # symbols
-        .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
-        .replace(/\*([^*]+)\*/g, '$1') // Remove italic
-        .replace(/`([^`]+)`/g, '$1') // Remove inline code
-        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links
-        .replace(/\{[\s\S]*"name"[\s\S]*\}/g, '') // Remove any remaining JSON objects
-        .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newline
+        .replace(/JSON_DATA\s*:[\s\S]*/, '')
+        .replace(/```json[\s\S]*?```/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/#{1,6}\s+/g, '')
+        .replace(/#/g, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+        .replace(/\{[\s\S]*"name"[\s\S]*\}/g, '')
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-      // Limit chat message to 300 characters, but ensure the thought is complete
+      // Limit chat message to 300 characters
       if (chatMessage.length > 300) {
-        // Try to cut at sentence boundary (., !, ?)
         let cutAt = -1;
         const maxLength = 300;
         
-        // Try to find sentence end within the limit
         for (let i = maxLength - 1; i >= maxLength - 100 && i >= 0; i--) {
           if (chatMessage[i] === '.' || chatMessage[i] === '!' || chatMessage[i] === '?') {
-            // Check if it's not part of a number or abbreviation
             if (i === 0 || chatMessage[i - 1] !== '.' || (i < chatMessage.length - 1 && chatMessage[i + 1] === ' ')) {
               cutAt = i + 1;
               break;
@@ -251,11 +341,9 @@ JSON_DATA:
           }
         }
         
-        // If no sentence boundary found, try to cut at word boundary
         if (cutAt === -1) {
           cutAt = chatMessage.lastIndexOf(' ', maxLength - 1);
           if (cutAt < maxLength - 50) {
-            // If word boundary is too early, just cut at maxLength
             cutAt = maxLength;
           }
         }
@@ -271,27 +359,21 @@ JSON_DATA:
       let extractedTokenData: TokenData | null = null;
       
       if (jsonData) {
-        console.log('Updating token data with:', jsonData); // Debug log
-        
         extractedTokenData = {
           name: (jsonData.name || '').trim(),
           symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase(),
           description: (jsonData.description || '').trim(),
-          image: '', // Will be updated when image is generated
+          image: '',
           imageData: '',
           decimals: 9,
           totalSupply: '1000000000',
           mintable: true,
         };
         
-        console.log('Extracted token data:', extractedTokenData); // Debug log
-        
-        // Always generate image - use imagePrompt if provided, otherwise create prompt from description
         const imagePrompt = jsonData.imagePrompt || 
           (jsonData.description ? `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${jsonData.description.substring(0, 200)}` : 
           `A memecoin token logo: ${chatMessage}`);
         
-        // Create message first to get the ID
         const messageId = (Date.now() + 1).toString();
         const assistantMessage: Message = {
           id: messageId,
@@ -303,20 +385,14 @@ JSON_DATA:
 
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Generate image after message is added
         if (imagePrompt) {
-          console.log('Generating image with prompt:', imagePrompt); // Debug log
-          // Don't await, let it generate in background
           generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
             console.error('Image generation failed:', err);
           });
         }
       } else {
-        console.log('No JSON data found, trying text parsing'); // Debug log
-        // Fallback: try to parse from text
         const parsed = parseTokenData(fullResponse);
         if (parsed.name || parsed.symbol || parsed.description) {
-          console.log('Parsed data from text:', parsed); // Debug log
           extractedTokenData = {
             name: (parsed.name || '').trim() || '',
             symbol: ((parsed.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase() || '',
@@ -357,8 +433,6 @@ JSON_DATA:
 
   const generateImageForMessage = async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
-      console.log('Starting image generation for message:', messageId, 'with prompt:', prompt);
-      // Use image generation API
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -367,15 +441,11 @@ JSON_DATA:
         body: JSON.stringify({ prompt }),
       });
 
-      console.log('Image generation response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Image generation response data:', data);
         if (data.imageUrl) {
-          // Update the message with the generated image
           setMessages(prev => {
-            const updated = prev.map(msg => 
+            return prev.map(msg => 
               msg.id === messageId && msg.tokenData
                 ? {
                     ...msg,
@@ -386,22 +456,12 @@ JSON_DATA:
                   }
                 : msg
             );
-            console.log('Updated messages with image:', updated);
-            return updated;
           });
           toast.success('Image generated!');
-        } else {
-          console.error('No imageUrl in response:', data);
-          toast.error('Image generation failed - no image URL');
         }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Image generation failed:', response.status, errorData);
-        toast.error(`Image generation failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
-      toast.error('Failed to generate image');
     }
   };
 
@@ -474,44 +534,91 @@ JSON_DATA:
     setError('');
   };
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/30 to-yellow-500/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-orange-400/25 to-amber-500/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/3 w-[550px] h-[550px] bg-gradient-to-br from-yellow-500/20 to-orange-400/25 rounded-full blur-3xl" />
+  // Payment gate - show payment screen if not paid
+  if (!connected || !hasPaidInitial) {
+    return (
+      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4" style={{ backgroundColor: '#000000' }}>
+        <div className="max-w-2xl w-full text-center">
+          <div className="mb-8">
+            <Image 
+              src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
+              alt="Cookon" 
+              width={300}
+              height={300}
+              className="mx-auto mb-8"
+              unoptimized
+            />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white">
+            Cookon
+          </h1>
+          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300">
+            Confidential Compute Open Network
+          </h2>
+          <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto">
+            Cookon connects AI, GPU power, and Telegram's vast ecosystem – all built on privacy and blockchain.
+          </p>
+          
+          {!connected ? (
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-800">
+              <p className="text-gray-300 mb-6">Please connect your TON wallet to access Cookon</p>
+              <button
+                onClick={() => tonConnectUI?.openModal()}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors"
+              >
+                Connect Wallet
+              </button>
+            </div>
+          ) : (
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-800">
+              <p className="text-gray-300 mb-2">Initial access fee: <span className="text-white font-semibold">{INITIAL_PAYMENT} TON</span></p>
+              <p className="text-sm text-gray-400 mb-6">After payment, you'll be charged {PERIODIC_PAYMENT} TON for every {REQUESTS_PER_PAYMENT} AI requests</p>
+              <button
+                onClick={handleInitialPayment}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors w-full"
+              >
+                Pay {INITIAL_PAYMENT} TON to Access
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+    );
+  }
 
-      <Header />
-
-      <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
+  return (
+    <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ backgroundColor: '#000000', minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
+      <main className="flex-grow relative z-10 pt-12 pb-12 px-4" style={{ backgroundColor: '#000000' }}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-6">
               <Image 
-                src="https://em-content.zobj.net/source/telegram/386/light-bulb_1f4a1.webp" 
+                src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
                 alt="Cookon" 
-                width={180}
-                height={180}
-                className="drop-shadow-lg"
+                width={200}
+                height={200}
+                className="drop-shadow-2xl"
                 unoptimized
               />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              <span className="gradient-text-cook">Cookon</span>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white">
+              Cookon
             </h1>
-            <p className="text-lg text-cook-text-secondary max-w-2xl mx-auto">
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-4">
               Cookon AI — create your own viral memecoin, in chat with AI!💬🧠
+            </p>
+            <p className="text-sm text-gray-500">
+              Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
             </p>
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="card max-w-4xl mx-auto">
-              <div className="flex justify-between items-center mb-4 pb-4 border-b border-cook-border">
-                <h2 className="text-xl font-bold text-cook-text">Chat with Cookon AI</h2>
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
+                <h2 className="text-xl font-semibold text-white">Chat with Cookon AI</h2>
                 <button
                   onClick={handleClearChat}
-                  className="text-sm text-cook-text-secondary hover:text-cook-orange transition-colors"
+                  className="text-sm text-gray-400 hover:text-white transition-colors"
                 >
                   Clear
                 </button>
@@ -527,8 +634,8 @@ JSON_DATA:
                         <div
                           className={`max-w-[85%] rounded-xl p-4 ${
                             message.role === 'user'
-                              ? 'bg-cook-orange text-white'
-                              : 'bg-cook-bg-secondary text-cook-text'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-800 text-gray-100'
                           }`}
                         >
                           <p className="whitespace-pre-wrap text-sm">{message.content}</p>
@@ -538,44 +645,43 @@ JSON_DATA:
                         </div>
                       </div>
                       
-                      {/* Mini token form for assistant messages with token data */}
                       {message.role === 'assistant' && message.tokenData && (
-                        <div className="bg-cook-bg-secondary rounded-xl p-5 border border-cook-border">
-                          <h3 className="text-base font-bold text-cook-text mb-4">Token Details</h3>
+                        <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700">
+                          <h3 className="text-base font-semibold text-white mb-4">Token Details</h3>
                           <div className="space-y-3">
                             {message.tokenData.image && (
                               <div className="flex justify-center mb-3">
                                 <img 
                                   src={message.tokenData.image} 
                                   alt="Token preview" 
-                                  className="w-32 h-32 rounded-xl object-cover border-2 border-cook-border"
+                                  className="w-32 h-32 rounded-xl object-cover border-2 border-gray-700"
                                 />
                               </div>
                             )}
-                            <div className="bg-cook-bg rounded-lg p-3">
+                            <div className="bg-gray-900/50 rounded-lg p-3">
                               <div className="space-y-2">
                                 <div>
-                                  <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Token Name</span>
-                                  <p className="text-lg font-bold text-cook-text mt-1">{message.tokenData.name || 'N/A'}</p>
+                                  <span className="text-xs text-gray-400 uppercase tracking-wide">Token Name</span>
+                                  <p className="text-lg font-semibold text-white mt-1">{message.tokenData.name || 'N/A'}</p>
                                 </div>
                                 <div>
-                                  <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Symbol</span>
-                                  <p className="text-xl font-bold text-cook-orange mt-1">${message.tokenData.symbol || 'N/A'}</p>
+                                  <span className="text-xs text-gray-400 uppercase tracking-wide">Symbol</span>
+                                  <p className="text-xl font-bold text-blue-400 mt-1">${message.tokenData.symbol || 'N/A'}</p>
                                 </div>
                                 {message.tokenData.description && (
                                   <div>
-                                    <span className="text-xs text-cook-text-secondary uppercase tracking-wide">Description</span>
-                                    <p className="text-sm text-cook-text mt-1 leading-relaxed">{message.tokenData.description}</p>
+                                    <span className="text-xs text-gray-400 uppercase tracking-wide">Description</span>
+                                    <p className="text-sm text-gray-300 mt-1 leading-relaxed">{message.tokenData.description}</p>
                                   </div>
                                 )}
-                                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-cook-border">
+                                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-700">
                                   <div>
-                                    <span className="text-xs text-cook-text-secondary">Supply</span>
-                                    <p className="text-sm font-medium text-cook-text">{message.tokenData.totalSupply || '1,000,000,000'}</p>
+                                    <span className="text-xs text-gray-400">Supply</span>
+                                    <p className="text-sm font-medium text-gray-300">{message.tokenData.totalSupply || '1,000,000,000'}</p>
                                   </div>
                                   <div>
-                                    <span className="text-xs text-cook-text-secondary">Decimals</span>
-                                    <p className="text-sm font-medium text-cook-text">{message.tokenData.decimals || 9}</p>
+                                    <span className="text-xs text-gray-400">Decimals</span>
+                                    <p className="text-sm font-medium text-gray-300">{message.tokenData.decimals || 9}</p>
                                   </div>
                                 </div>
                               </div>
@@ -585,23 +691,12 @@ JSON_DATA:
                             <button
                               onClick={() => handleDeploy(message.tokenData!)}
                               disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                              className="btn-cook py-2 px-4"
-                              style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}
+                              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-xl transition-colors"
                             >
                               {!connected ? (
-                                <span className="text-xs">Connect Wallet</span>
+                                <span>Connect Wallet</span>
                               ) : (
-                                <>
-                                  <Image 
-                                    src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
-                                    alt="" 
-                                    width={24}
-                                    height={24}
-                                    className="mr-1"
-                                    unoptimized
-                                  />
-                                  <span className="font-bold" style={{ fontSize: '4rem' }}>Cook it!</span>
-                                </>
+                                <span>Cook it! 🍗</span>
                               )}
                             </button>
                           </div>
@@ -611,10 +706,10 @@ JSON_DATA:
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-cook-bg-secondary rounded-xl p-4">
+                      <div className="bg-gray-800 rounded-xl p-4">
                         <div className="flex items-center gap-2">
-                          <div className="spinner w-4 h-4" />
-                          <span className="text-cook-text-secondary text-sm">Cookon AI is thinking...</span>
+                          <div className="spinner-dark w-4 h-4" />
+                          <span className="text-gray-400 text-sm">Cookon AI is thinking...</span>
                         </div>
                       </div>
                     </div>
@@ -622,24 +717,24 @@ JSON_DATA:
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className="border-t border-cook-border p-4">
+                <div className="border-t border-gray-800 p-4">
                   <div className="flex gap-2">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Tell me your memecoin idea or ask me to come up with something new..."
-                      className="flex-1 input-ton resize-none text-sm"
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-600 transition-colors resize-none text-sm"
                       rows={2}
                       disabled={isLoading}
                     />
                     <button
                       onClick={handleSendMessage}
                       disabled={!inputMessage.trim() || isLoading}
-                      className="btn-cook px-6"
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-colors"
                     >
                       {isLoading ? (
-                        <div className="spinner w-5 h-5" />
+                        <div className="spinner-dark w-5 h-5" />
                       ) : (
                         'Send'
                       )}
@@ -659,8 +754,6 @@ JSON_DATA:
           )}
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }
