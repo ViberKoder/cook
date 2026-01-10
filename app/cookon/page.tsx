@@ -542,7 +542,7 @@ JSON должен быть в конце, после основного текс
   // Payment gate - show payment screen if not paid
   if (!connected || !hasPaidInitial) {
     return (
-      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)' }}>
+      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4">
         <div className="max-w-2xl w-full text-center" style={{ marginTop: '-100px' }}>
           <div className="mb-12" style={{ marginTop: '40px' }}>
             <Image 
@@ -551,17 +551,17 @@ JSON должен быть в конце, после основного текс
               width={1350}
               height={450}
               className="mx-auto mb-8"
-              style={{ transform: 'scale(1.5)', marginTop: '-50px' }}
+              style={{ transform: 'scale(1)', marginTop: '-80px' }}
               unoptimized
             />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white" style={{ marginTop: '60px' }}>
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white" style={{ marginTop: '-20px' }}>
             Cookon
           </h1>
-          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '20px' }}>
+          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '-10px' }}>
             Cook Jetton with AI Open Network
           </h2>
-          <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto" style={{ marginTop: '20px' }}>
+          <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto" style={{ marginTop: '-5px' }}>
             Cookon is a AI chat-bot, designed to create jetton/memcoins on TON.�          </p>
           
           {!connected ? (
@@ -569,7 +569,7 @@ JSON должен быть в конце, после основного текс
               <p className="text-gray-300 mb-6">Please connect your TON wallet to access Cookon</p>
               <button
                 onClick={() => tonConnectUI?.openModal()}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors"
+                className="bg-gradient text-white font-medium px-8 py-4 rounded-xl transition-colors"
               >
                 Connect Wallet
               </button>
@@ -580,7 +580,7 @@ JSON должен быть в конце, после основного текс
               <p className="text-sm text-gray-400 mb-6">After payment, you&apos;ll be charged {PERIODIC_PAYMENT} TON for every {REQUESTS_PER_PAYMENT} AI requests</p>
               <button
                 onClick={handleInitialPayment}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors w-full"
+                className="bg-gradient text-white font-medium px-8 py-4 rounded-xl transition-colors w-full"
               >
                 Pay {INITIAL_PAYMENT} TON to Access
               </button>
@@ -592,8 +592,8 @@ JSON должен быть в конце, после основного текс
   }
 
   return (
-    <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)', minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
-      <main className="flex-grow relative z-10 pt-8 pb-12 px-4" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)' }}>
+    <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
+      <main className="flex-grow relative z-10 pt-8 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-6" style={{ marginTop: '20px' }}>
             <div className="flex justify-center mb-4">
@@ -603,14 +603,14 @@ JSON должен быть в конце, после основного текс
                 width={900}
                 height={300}
                 className="drop-shadow-2xl"
-                style={{ transform: 'scale(1.5)', marginTop: '-30px' }}
+                style={{ transform: 'scale(1)', marginTop: '-60px' }}
                 unoptimized
               />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white" style={{ marginTop: '40px' }}>
+            <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white" style={{ marginTop: '-20px' }}>
               Cookon
             </h1>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '15px' }}>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
               Cookon AI � create your own viral memecoin, in chat with AI!????
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
@@ -619,7 +619,7 @@ JSON должен быть в конце, после основного текс
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '30px' }}>
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '-20px' }}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
                 <h2 className="text-xl font-semibold text-white">Chat with Cookon AI</h2>
                 <div className="flex gap-2">
@@ -737,7 +737,7 @@ JSON должен быть в конце, после основного текс
                         }, 100);
                       }}
                       disabled={isLoading}
-                      className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm whitespace-nowrap"
+                      className="bg-gradient disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm whitespace-nowrap"
                     >
                       Generate random
                     </button>
@@ -755,7 +755,7 @@ JSON должен быть в конце, после основного текс
                     <button
                       onClick={handleSendMessage}
                       disabled={!inputMessage.trim() || isLoading}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                      className="bg-gradient disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-colors"
                     >
                       {isLoading ? (
                         <div className="spinner-dark w-5 h-5" />
