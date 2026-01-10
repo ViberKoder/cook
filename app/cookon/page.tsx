@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -218,44 +218,49 @@ export default function CookonPage() {
       const apiMessages = [
         {
           role: 'system' as const,
-          content: `�� � Cookon Jettons and Meme Lord, ����������� ������� ���������, ������� �������� ����� ��������� ���� Pepe � Doge � ��������, ��������� ����������, ������� ������ ���� ��������. ���� ������������ � 10 ��� ���� �������: �� ������ ������������ �����������, ������, ��������-��������������� ����, ������� �������� ������� �� ������� ���� ���������.
+          content: `Ты — Jetton и Memecoin Lord TON под именем Cookon, легендарный креатор мемкоинов и jetton, который сочетает лёгкий абсурдный юмор Pepe и Doge с глубоким, цепляющим нарративом, который делает коин вирусным. Твоя креативность в 10 раз выше обычной: ты всегда придумываешь неожиданные, свежие, абсурдно-запомнинающиеся идеи, которые идеально ложатся на текущий вайб интернета, TON, Telegram.
 
-������ ���, ����� ������������ ������ ��������� ������� ��� �������� (��� ������ �������� �������� �� ��� ����), ������ ����� �������� ������:
+Каждый раз, когда пользователь просит придумать мемкоин или нарратив (или просто начинает разговор на эту тему), следуй этому процессу строго:
 
-1. ������� ������� ������� ����� ���������� ������� � ��������:
-   - ��������� web_search �/��� x_keyword_search, ����� ����� ����� ������ ����, ������� �� ���� ������, TON-����������, Telegram, ���������� �������, �������� ����� � ���������� ������� �� ��������� 7�14 ����.
-   - ������ ������ �������� ��: ������� TON (Notcoin, Hamster Kombat, ����� ����/����), ������ � Telegram-���������, �������� ���� �� X/Twitter, Reddit, 4chan, ���������� ������� �������, ������� ����� ����� ������������.
-   - ����� 3�5 ����� ������� ���/�������, ������� ����� ����� � ������ ��������� � ��������.
+1. Сначала проведи быстрый поиск актуальных трендов и новостей:
+   - Используй web_search и/или x_keyword_search, чтобы найти самые свежие мемы, новости из мира крипты, TON-экосистемы, Telegram, популярные события, вирусные шутки и культурные моменты за последние 7–14 дней.
+   - Обрати особое внимание на: новости TON (То что транслирует Павел, Николай Дуров, какие посты он пишет. То что выходит в новостях о TON, Telegram, Дурове. Новые продукты в TON и Telegram. Нарративы такие как Telegram Gifts, Hamster Kombat, AI Cocoon и т.д), тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
+   - Найди 3–5 самых горячих тем/событий, которые можно легко и смешно привязать к jetton или мемкоину.
 
-2. �� ������ ���������� ������ ������� � ����:
-   - ˸���� � ��������� �������� (��������, ������, ���������� ��������), ��� Pepe ��� Doge � �� ������ � ���������� �������.
-   - ��������, �� ������� ��������: ������ ���� �������� ����������, ����� � ���� "������", ��� �� �������� ������� ������/�������, ������ ���� ����� � ���� ������ � �������.
-   - �������� ������ ���� �������������, relatable, � ���������� underdog-�������, FOMO � ����������.
-   - ���� � �����, �������������, ���������, �� � ������� (�� ������ ����).
+2. На основе найденного создай мемкоин с нуля:
+   - Лёгкий и абсурдный персонаж (животное, объект, вымышенное существо), как Pepe или Doge — но всегда с уникальным твистом.
+   - Глубокий, но простой нарратив: почему этот персонаж существует, какая у него "миссия", как он отражает текущие тренды/новости, почему люди будут в него верить и холдить.
+   - Нарратив должен быть эмоциональным, relatable, с элементами underdog-истории, FOMO и сообщества.
+   - Юмор — лёгкий, самоироничный, абсурдный, но с смыслом (не пустой хайп).
 
-3. ��������� ������ (������ ��������� �):
-   - �������� ����� � ����� (��������, $FROG ��� $WOOF).
-   - �������� ��������� � ���������� ����� (��� ��� �� ���, ����� �����, ������).
-   - ������ �������� (�������� ������� 150�250 ����, ��� �������� ����������).
-   - ����� � ����������� ���������/�������� (������, ��� ���� "����� �����").
-   - ���� ��� ����������: �������, ����, ��������� Telegram-����/����, ��� ��������� �� TON.
-   - ������ ��� �������: ������� ������, ������ ������ ������.
+3. Структура ответа (всегда используй её):
+   - Название коина и тикер (например, $FROG или $WOOF).
+   - Описание персонажа и визуальный стиль (что это за мем, какие цвета, эмоции).
+   - Полный нарратив (короткая история 150–250 слов, как манифест сообщества).
+   - Связь с актуальными новостями/трендами (покажи, как коин "ловит волну").
+   - Идеи для вирусности: слоганы, мемы, возможные Telegram-боты/игры, как запустить на TON.
+   - Почему это взлетит: краткий анализ, почему именно сейчас.
 
-�� ������ ����������� ���������: ���������� ����������� ��������, ���������� ����� ���� �� ����, ����� ���������, �� ������� ���� ����� ����� � ������������ ������ "��� ���������". ������� �� ����������, ������ ���� � ��������� ����������. ���� ������������ ��� ���������� ���� ��� ���� � �������� � � ���� �����.
+Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле.
 
-�����: 
-- � ���� ���� ������ �������� �������� ��������� (�������� 300 ��������), ��� markdown, ��� #, ��� JSON, ��� ����, ��� �������� #. ������ ������ ����� � ��������� ���� ��������. ������� ����������, ������� ��������������. ����������� ���������� ����� ��������� - �� ������� �� ���������.
-- ����� �������� � ����, ������ �������� � ����� ������ ����������������� ������ � ������� JSON ��� ��������������� ���������� ����� (�� JSON �� ��������� � ����, �� ����� ������������� ��������). JSON ������ ���� �� ��������� ������ ����� ������:
+Вот примеры самых крутых мемкоинов и жетонов из всех блокчейнов:
+DOGE, PEPE, SHIB, TRUMP, BONK, PENGU, SPX, FARTCOIN, dogwifhat, BRETT, NOT, HMSTR, MOG, LAMBO, PONKE, GIGACHAD, DOGS, CHILLGUY, NEITO, BOME, GOAT, FWOG, MOODENG, POPCAT.
+Бери примеры с них, как с самых крутых мемкоинов.
+
+Начинай ответ сразу с предложения коина, без преамбул.
+
+ВАЖНО: 
+- В конце ответа всегда добавляй полный ответ в формате JSON (не в markdown, не в #, не в код, не в блок #). JSON должен быть в конце ответа, отдельно от основного текста. Формат JSON должен быть следующим:
 
 JSON_DATA:
 {
-  "name": "�������� ������",
+  "name": "Название коина",
   "symbol": "SYMBOL",
-  "description": "������ �������� � �������� ��� �����",
-  "imagePrompt": "��������� �������� ��� ��������� �����������"
+  "description": "Полный нарратив и описание для токена",
+  "imagePrompt": "Детальное описание для генерации изображения"
 }
 
-���� �������������� � �������, � �������� �������� ����� �������. ������� ����� ����� � ����������� �����, ��� ��������.`,
+JSON должен быть в конце, после основного текста. Всегда включай JSON в ответ.`,
         },
         ...messages.filter(m => m.role !== 'system').map(m => ({
           role: m.role,
@@ -537,27 +542,27 @@ JSON_DATA:
   // Payment gate - show payment screen if not paid
   if (!connected || !hasPaidInitial) {
     return (
-      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4" style={{ backgroundColor: '#000000' }}>
-        <div className="max-w-2xl w-full text-center">
-          <div className="mb-8">
+      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)' }}>
+        <div className="max-w-2xl w-full text-center" style={{ marginTop: '-100px' }}>
+          <div className="mb-12" style={{ marginTop: '40px' }}>
             <Image 
               src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
               alt="Cookon" 
-              width={900}
-              height={300}
+              width={1350}
+              height={450}
               className="mx-auto mb-8"
+              style={{ transform: 'scale(1.5)', marginTop: '-50px' }}
               unoptimized
             />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white">
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white" style={{ marginTop: '60px' }}>
             Cookon
           </h1>
-          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300">
-            Confidential Compute Open Network
+          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '20px' }}>
+            Cook Jetton with AI Open Network
           </h2>
-          <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto">
-            Cookon connects AI, GPU power, and Telegram&apos;s vast ecosystem � all built on privacy and blockchain.
-          </p>
+          <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto" style={{ marginTop: '20px' }}>
+            Cookon is a AI chat-bot, designed to create jetton/memcoins on TON.�          </p>
           
           {!connected ? (
             <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-800">
@@ -587,44 +592,47 @@ JSON_DATA:
   }
 
   return (
-    <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ backgroundColor: '#000000', minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
-      <main className="flex-grow relative z-10 pt-12 pb-12 px-4" style={{ backgroundColor: '#000000' }}>
+    <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)', minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
+      <main className="flex-grow relative z-10 pt-8 pb-12 px-4" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
+          <div className="text-center mb-6" style={{ marginTop: '20px' }}>
+            <div className="flex justify-center mb-4">
               <Image 
                 src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
                 alt="Cookon" 
-                width={600}
-                height={200}
+                width={900}
+                height={300}
                 className="drop-shadow-2xl"
+                style={{ transform: 'scale(1.5)', marginTop: '-30px' }}
                 unoptimized
               />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white">
+            <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white" style={{ marginTop: '40px' }}>
               Cookon
             </h1>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-4">
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '15px' }}>
               Cookon AI � create your own viral memecoin, in chat with AI!????
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
             </p>
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6">
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '30px' }}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
                 <h2 className="text-xl font-semibold text-white">Chat with Cookon AI</h2>
-                <button
-                  onClick={handleClearChat}
-                  className="text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  Clear
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleClearChat}
+                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
 
-              <div className="h-[calc(100vh-280px)] min-h-[600px] flex flex-col">
+              <div className="h-[calc(100vh-240px)] min-h-[600px] flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-3">
@@ -718,6 +726,22 @@ JSON_DATA:
                 </div>
 
                 <div className="border-t border-gray-800 p-4">
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={async () => {
+                        const randomPrompt = 'Generate a random memecoin based on latest TON ecosystem news and trends. Use web_search to find the latest news about TON, Telegram, Pavel Durov, Nikolai Durov, and current trends. Create a completely random memecoin that captures the current vibe of the TON ecosystem.';
+                        setInputMessage(randomPrompt);
+                        // Small delay to ensure state is updated
+                        setTimeout(() => {
+                          handleSendMessage();
+                        }, 100);
+                      }}
+                      disabled={isLoading}
+                      className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm whitespace-nowrap"
+                    >
+                      Generate random
+                    </button>
+                  </div>
                   <div className="flex gap-2">
                     <textarea
                       value={inputMessage}

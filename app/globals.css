@@ -1,21 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
-/* Product Sans Font from Cocoon */
-@font-face {
-  font-family: 'Product Sans';
-  src: url('https://cocoon.org/fonts/ProductSansRegular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Product Sans';
-  src: url('https://cocoon.org/fonts/ProductSansBold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=PT+Sans:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -288,15 +271,15 @@ a {
 
 /* Cookon Dark Theme - Cocoon Style */
 .cookon-dark-theme {
-  background: #000000 !important;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%) !important;
   background-color: #000000 !important;
   color: #ffffff !important;
-  font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
 .cookon-dark-theme,
 .cookon-dark-theme body {
-  background: #000000 !important;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%) !important;
   background-color: #000000 !important;
 }
 
@@ -310,7 +293,7 @@ a {
 .cookon-dark-theme h4,
 .cookon-dark-theme h5,
 .cookon-dark-theme h6 {
-  font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   font-weight: 400;
   letter-spacing: -0.02em;
   color: #ffffff !important;
@@ -328,17 +311,17 @@ a {
 .cookon-dark-theme span,
 .cookon-dark-theme div,
 .cookon-dark-theme label {
-  font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   color: #ffffff !important;
 }
 
 .cookon-dark-theme button {
-  font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
 .cookon-dark-theme input,
 .cookon-dark-theme textarea {
-  font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
 /* Dark theme spinner */
