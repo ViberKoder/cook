@@ -31,25 +31,61 @@ export async function POST(request: NextRequest) {
 
     console.log('Using Google Imagen model:', MODEL);
     
-    // Vercel AI Gateway doesn't seem to support image generation endpoints directly
-    // We need to use Google Cloud Vertex AI API directly
-    // However, we can try using AI_GATEWAY_API_KEY as a proxy if it supports it
+    // Vercel AI Gateway might not support image generation directly through standard endpoints
+    // Let's try using xAI for image generation instead, as it worked before
+    // We'll use the same AI_GATEWAY_API_KEY but with xAI's image generation endpoint
     
-    // Try using Google Cloud Vertex AI API with the model name
-    // The endpoint format for Vertex AI is different
-    // Since we don't have a Google Cloud project ID, we'll try using Vercel AI Gateway
-    // as a proxy, but it might not work for image generation
+    console.log('Trying xAI image generation with AI_GATEWAY_API_KEY as fallback...');
     
-    // Let's try a different approach: use the model identifier that Vercel AI Gateway might understand
-    // For now, return an error explaining that image generation through Vercel AI Gateway
-    // might not be supported for this model
-    
-    return NextResponse.json(
-      { 
-        error: 'Image generation through Vercel AI Gateway is not currently supported for google/imagen-4.0-generate-001. Please use a different image generation service or configure Google Cloud Vertex AI API directly.' 
-      },
-      { status: 501 }
-    );
+    try {
+      // Try xAI image generation API with AI_GATEWAY_API_KEY
+      // This might work if the key can be used as a proxy
+      const response = await fetch('https://api.x.ai/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'grok-2-image-1212',
+          prompt: prompt,
+          n: 1,
+        }),
+      });
+
+      console.log('xAI image API response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('xAI image API success, response keys:', Object.keys(data));
+        
+        const imageUrl = data.data?.[0]?.url;
+
+        if (!imageUrl) {
+          console.error('No imageUrl in xAI response, full data:', JSON.stringify(data));
+          throw new Error('No image URL in xAI response');
+        }
+
+        console.log('Image generated successfully via xAI, URL:', imageUrl.substring(0, 50));
+        return NextResponse.json({
+          imageUrl: imageUrl,
+        });
+      } else {
+        const errorText = await response.text();
+        console.error('xAI image API error response:', errorText);
+        throw new Error(`xAI API returned ${response.status}: ${errorText}`);
+      }
+    } catch (xaiError: any) {
+      console.error('xAI image generation failed:', xaiError.message);
+      
+      // If xAI doesn't work either, return a helpful error message
+      return NextResponse.json(
+        { 
+          error: `Image generation failed. Vercel AI Gateway might not support image generation for ${MODEL}. xAI fallback also failed: ${xaiError.message}. Please check your API key configuration.` 
+        },
+        { status: 500 }
+      );
+    }
 
       console.log('Vercel AI Gateway response status:', response.status);
 
