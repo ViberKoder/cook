@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 
 /**
- * Upload image from data URI to a temporary hosting service
+ * Upload image from data URI to Vercel Blob Storage
  * This endpoint is used when Google Imagen returns base64 data instead of URL
+ * Images are stored on your Vercel domain and can be cached via TON API imgproxy
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +24,7 @@ export async function POST(request: NextRequest) {
     // Check if it's a data URI
     let base64Data: string;
     let imageFormat = 'png';
+    let mimeType = 'image/png';
     
     if (imageData.startsWith('data:image/')) {
       // Extract base64 from data URI
@@ -34,6 +37,7 @@ export async function POST(request: NextRequest) {
       }
       imageFormat = match[1] || 'png';
       base64Data = match[2];
+      mimeType = `image/${imageFormat}`;
     } else {
       // Assume it's already base64
       base64Data = imageData;
@@ -42,70 +46,48 @@ export async function POST(request: NextRequest) {
     // Convert base64 to Buffer
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
-    // Upload to imgbb.com (free image hosting)
-    // Note: In production, you should use your own imgbb API key
-    // For now, we'll try without key (may have rate limits)
-    const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: `image/${imageFormat}` });
-    formData.append('image', blob, `image.${imageFormat}`);
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const filename = `jetton-images/${timestamp}-${randomId}.${imageFormat}`;
 
-    console.log('Uploading image to imgbb...');
+    console.log('Uploading image to Vercel Blob Storage...');
 
-    // Try imgbb API
-    // You can get a free API key from https://api.imgbb.com/
-    const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
-    
-    if (!IMGBB_API_KEY) {
-      console.warn('IMGBB_API_KEY not set, trying without key (may fail)');
-    }
+    // Upload to Vercel Blob Storage
+    const blob = await put(filename, imageBuffer, {
+      access: 'public',
+      contentType: mimeType,
+      addRandomSuffix: false,
+    });
 
-    const imgbbResponse = await fetch(
-      `https://api.imgbb.com/1/upload${IMGBB_API_KEY ? `?key=${IMGBB_API_KEY}` : ''}`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
+    console.log('Image uploaded to Vercel Blob, URL:', blob.url);
 
-    if (imgbbResponse.ok) {
-      const imgbbData = await imgbbResponse.json();
-      if (imgbbData.data && imgbbData.data.url) {
-        const imageUrl = imgbbData.data.url;
-        console.log('Image uploaded to imgbb, URL:', imageUrl);
-        
-        // Now use TON API imgproxy to cache it
-        try {
-          const encodedUrl = Buffer.from(imageUrl)
-            .toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-          
-          const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
-          
-          return NextResponse.json({
-            imageUrl: tonApiUrl,
-            originalUrl: imageUrl,
-          });
-        } catch (tonError: any) {
-          console.error('Error creating TON API URL:', tonError);
-          // Return imgbb URL as fallback
-          return NextResponse.json({
-            imageUrl: imageUrl,
-          });
-        }
-      } else {
-        throw new Error('Failed to get URL from imgbb');
-      }
-    } else {
-      const errorData = await imgbbResponse.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('imgbb upload failed:', imgbbResponse.status, errorData);
+    // Use TON API imgproxy to cache the image
+    try {
+      const encodedUrl = Buffer.from(blob.url)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
       
-      // Fallback: return error
-      return NextResponse.json(
-        { error: `Failed to upload image: ${errorData.error || 'Unknown error'}. Please configure IMGBB_API_KEY in environment variables.` },
-        { status: 500 }
-      );
+      const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
+      
+      console.log('Using TON API imgproxy URL:', tonApiUrl);
+      
+      return NextResponse.json({
+        imageUrl: tonApiUrl,
+        originalUrl: blob.url,
+        blobUrl: blob.url,
+      });
+    } catch (tonError: any) {
+      console.error('Error creating TON API URL:', tonError);
+      // Return Vercel Blob URL as fallback (still works for Jetton 2.0)
+      console.warn('Falling back to Vercel Blob URL');
+      return NextResponse.json({
+        imageUrl: blob.url,
+        originalUrl: blob.url,
+        blobUrl: blob.url,
+      });
     }
   } catch (error: any) {
     console.error('Image upload API error:', error);
