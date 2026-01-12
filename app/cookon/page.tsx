@@ -702,7 +702,7 @@ JSON должен быть в конце, после основного текс
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI вЂ” create your own viral memecoin, in chat with AI!
+              Cookon AI - create your own viral memecoin, in chat with AI!
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
