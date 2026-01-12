@@ -10,8 +10,6 @@ export interface TokenData {
   decimals: number;
   totalSupply: string;
   mintable: boolean;
-  useOffchainMetadata?: boolean; // Use off-chain metadata URL
-  offchainMetadataUrl?: string; // URL to off-chain metadata JSON
 }
 
 export interface TokenFormProps {
@@ -60,8 +58,6 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
   const [imagePreview, setImagePreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
-  const [useOffchainMetadata, setUseOffchainMetadata] = useState(false);
-  const [offchainMetadataUrl, setOffchainMetadataUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -129,8 +125,6 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
     e.preventDefault();
     const submitData = {
       ...formData,
-      useOffchainMetadata,
-      offchainMetadataUrl: useOffchainMetadata ? offchainMetadataUrl : undefined,
     };
     onDeploy(submitData);
   };

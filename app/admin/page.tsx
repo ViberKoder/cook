@@ -28,8 +28,6 @@ export default function AdminPage() {
   const [newDescription, setNewDescription] = useState('');
   const [newImage, setNewImage] = useState('');
   const [newDecimals, setNewDecimals] = useState('9');
-  const [useOffchainUrl, setUseOffchainUrl] = useState(false);
-  const [offchainUrl, setOffchainUrl] = useState('');
   
   // Admin fields
   const [newAdmin, setNewAdmin] = useState('');
@@ -170,9 +168,7 @@ export default function AdminPage() {
           image: newImage,
           decimals: newDecimals,
         },
-        useOffchainUrl,
-        sendTransaction,
-        offchainUrl
+        sendTransaction
       );
 
       toast.success('Metadata change transaction sent!');

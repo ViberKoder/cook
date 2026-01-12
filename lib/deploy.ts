@@ -13,8 +13,6 @@ export interface TokenData {
   decimals: number;
   totalSupply: string;
   mintable: boolean;
-  useOffchainMetadata?: boolean;
-  offchainMetadataUrl?: string;
 }
 
 // Monetization wallet address
@@ -197,16 +195,6 @@ export function buildOnchainMetadataCell(data: { [s: string]: string | undefined
     .endCell();
 }
 
-/**
- * Build off-chain metadata cell (URL)
- * For standard Jetton 2.0 contract, metadata_uri is stored as a snake-encoded string in a ref
- * This matches jettonContentToCell() from the official wrapper
- */
-export function buildOffchainMetadataCell(uri: string): Cell {
-  return beginCell()
-    .storeStringRefTail(uri)
-    .endCell();
-}
 
 export async function deployJettonMinter(
   tokenData: TokenData,
@@ -225,43 +213,33 @@ export async function deployJettonMinter(
 
     toast.loading('Preparing Jetton 2.0 contract...', { id: 'deploy' });
 
-    let contentCell: Cell;
-
-    // Build metadata (on-chain or off-chain)
-    if (tokenData.useOffchainMetadata && tokenData.offchainMetadataUrl) {
-      console.log('Building off-chain metadata from URL:', tokenData.offchainMetadataUrl);
-      if (!tokenData.offchainMetadataUrl.startsWith('http://') && !tokenData.offchainMetadataUrl.startsWith('https://')) {
-        throw new Error('Off-chain metadata URL must start with http:// or https://');
-      }
-      contentCell = buildOffchainMetadataCell(tokenData.offchainMetadataUrl);
-    } else {
-      console.log('Building on-chain metadata (TEP-64)...');
-      
-      // Handle image: Jetton 2.0 requires URL, not data URI
-      let imageUrl: string | undefined = tokenData.image;
-      
-      // Check if image is a data URI - Jetton 2.0 doesn't support data URIs
-      if (imageUrl && imageUrl.startsWith('data:image/')) {
-        console.error('Image is in data URI format, which is not supported by Jetton 2.0');
-        throw new Error('Image must be a URL (http:// or https://), not a data URI. The image generation API should return a URL.');
-      }
-      
-      // If no image URL but we have imageData, this shouldn't happen with TON API
-      // But we'll log a warning
-      if (!imageUrl && tokenData.imageData) {
-        console.warn('No image URL provided, but imageData exists. Image should be generated as URL by the API.');
-        // Don't throw error, just skip image
-        imageUrl = undefined;
-      }
-      
-      contentCell = buildOnchainMetadataCell({
-        name: tokenData.name,
-        symbol: tokenData.symbol.toUpperCase(),
-        description: tokenData.description || tokenData.name,
-        image: imageUrl || undefined,
-        decimals: tokenData.decimals.toString(),
-      });
+    // Build on-chain metadata (TEP-64)
+    console.log('Building on-chain metadata (TEP-64)...');
+    
+    // Handle image: Jetton 2.0 requires URL, not data URI
+    let imageUrl: string | undefined = tokenData.image;
+    
+    // Check if image is a data URI - Jetton 2.0 doesn't support data URIs
+    if (imageUrl && imageUrl.startsWith('data:image/')) {
+      console.error('Image is in data URI format, which is not supported by Jetton 2.0');
+      throw new Error('Image must be a URL (http:// or https://), not a data URI. The image generation API should return a URL.');
     }
+    
+    // If no image URL but we have imageData, this shouldn't happen with TON API
+    // But we'll log a warning
+    if (!imageUrl && tokenData.imageData) {
+      console.warn('No image URL provided, but imageData exists. Image should be generated as URL by the API.');
+      // Don't throw error, just skip image
+      imageUrl = undefined;
+    }
+    
+    const contentCell = buildOnchainMetadataCell({
+      name: tokenData.name,
+      symbol: tokenData.symbol.toUpperCase(),
+      description: tokenData.description || tokenData.name,
+      image: imageUrl || undefined,
+      decimals: tokenData.decimals.toString(),
+    });
 
     console.log('=== PROCESSED METADATA ===');
     console.log('Content cell created:', {
@@ -274,27 +252,23 @@ export async function deployJettonMinter(
     // Total supply with decimals
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
-    // Build initial data for Jetton 2.0 minter
-    // Structure from load_data():
+    // Build initial data for Jetton 2.0 minter with on-chain metadata (TEP-64)
+    // Structure:
     //   total_supply: Coins
     //   admin_address: MsgAddress
     //   next_admin_address: MsgAddress (null for no pending transfer)
     //   jetton_wallet_code: ^Cell
-    //   metadata_uri/content: ^Cell (TEP-64 dict for onchain, URL string for offchain)
+    //   content: ^Cell (TEP-64 dictionary)
     const minterData = beginCell()
       .storeCoins(0) // total_supply (starts at 0, updated after mint)
       .storeAddress(walletAddress) // admin_address
       .storeAddress(null) // next_admin_address (transfer_admin)
       .storeRef(getJettonWalletCodeCell()) // jetton_wallet_code
-      .storeRef(contentCell) // content (TEP-64 for onchain) or metadata_uri (for offchain)
+      .storeRef(contentCell) // content (TEP-64 on-chain metadata)
       .endCell();
 
-    // Choose contract code based on metadata type
-    // Standard contract for offchain (verified on tonviewer)
-    // Custom contract for onchain (TEP-64 support)
-    const minterCode = tokenData.useOffchainMetadata 
-      ? getJettonMinterStandardCode() 
-      : getJettonMinterOnchainCode();
+    // Use on-chain contract with TEP-64 support
+    const minterCode = getJettonMinterOnchainCode();
 
     // Create StateInit
     const stateInit = {

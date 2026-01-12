@@ -1,6 +1,6 @@
 import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { SendTransactionParams } from '@/hooks/useTonConnect';
-import { buildOnchainMetadataCell, buildOffchainMetadataCell, Op } from './deploy';
+import { buildOnchainMetadataCell, Op } from './deploy';
 
 export interface JettonInfo {
   totalSupply: string;
@@ -157,16 +157,9 @@ export async function sendChangeMetadataTransaction(
     image?: string;
     decimals?: string;
   },
-  useOffchainUrl: boolean,
-  sendTransaction: (params: SendTransactionParams) => Promise<any>,
-  offchainUrl?: string
+  sendTransaction: (params: SendTransactionParams) => Promise<any>
 ): Promise<void> {
-  let metadataCell: Cell;
-  
-  if (useOffchainUrl && offchainUrl) {
-    metadataCell = buildOffchainMetadataCell(offchainUrl);
-  } else {
-    metadataCell = buildOnchainMetadataCell({
+  const metadataCell = buildOnchainMetadataCell({
       name: metadata.name || '',
       symbol: metadata.symbol || '',
       description: metadata.description,
