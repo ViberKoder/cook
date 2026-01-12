@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
       console.log('Image uploaded successfully to Vercel Blob');
       console.log('Blob URL:', blob.url);
       console.log('Blob pathname:', blob.pathname);
-      console.log('Blob size:', blob.size);
 
       const imageUrl = blob.url;
 
