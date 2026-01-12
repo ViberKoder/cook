@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
-import { kv } from '@vercel/kv';
 
 /**
- * Upload image from data URI to Vercel Blob Storage or KV Storage
+ * Upload image from data URI to Vercel Blob Storage
  * This endpoint is used when Google Imagen returns base64 data instead of URL
  * Images are stored on your Vercel domain and can be cached via TON API imgproxy
  */
@@ -47,119 +46,90 @@ export async function POST(request: NextRequest) {
     // Convert base64 to Buffer
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
-    // Generate unique filename/ID
+    // Generate unique filename
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const imageId = `${timestamp}-${randomId}`;
-    const filename = `jetton-images/${imageId}.${imageFormat}`;
+    const filename = `jetton-images/${timestamp}-${randomId}.${imageFormat}`;
 
-    // Get base URL for API routes
-    const baseUrl = request.headers.get('origin') || request.nextUrl.origin;
-    
-    let imageUrl: string;
-
-    // Try Vercel Blob Storage first (if token is configured)
+    // Check for Blob token
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     
-    if (blobToken) {
-      try {
-        console.log('Uploading image to Vercel Blob Storage...');
-        
-        const blob = await put(filename, imageBuffer, {
-          access: 'public',
-          contentType: mimeType,
-          addRandomSuffix: false,
-          token: blobToken,
-        });
-
-        imageUrl = blob.url;
-        console.log('Image uploaded to Vercel Blob, URL:', imageUrl);
-      } catch (blobError: any) {
-        console.error('Vercel Blob upload failed:', blobError);
-        // Fall through to alternative method
-        imageUrl = '';
-      }
-    } else {
-      console.log('BLOB_READ_WRITE_TOKEN not configured, using KV storage as fallback');
-      imageUrl = '';
+    if (!blobToken) {
+      console.error('BLOB_READ_WRITE_TOKEN is not configured');
+      return NextResponse.json(
+        { 
+          error: 'BLOB_READ_WRITE_TOKEN is not configured. Please set it in Vercel Dashboard → Settings → Environment Variables, or create a Blob Store in Storage tab.' 
+        },
+        { status: 500 }
+      );
     }
 
-    // Fallback: Store in Vercel KV and serve via API route
-    if (!imageUrl) {
-      try {
-        console.log('Storing image in Vercel KV...');
-        
-        // Store image data in KV with the image ID
-        const kvKey = `jetton-image:${imageId}`;
-        await kv.set(kvKey, base64Data, { ex: 86400 * 30 }); // 30 days TTL
-        
-        // Create URL to API route that will serve the image
-        imageUrl = `${baseUrl}/api/images/${imageId}.${imageFormat}`;
-        console.log('Image stored in KV, serving via API route:', imageUrl);
-      } catch (kvError: any) {
-        console.error('KV storage failed:', kvError);
-        console.log('Trying fallback to external image hosting...');
-        
-        // Last resort: Use imgbb.com as fallback
-        try {
-          const formData = new FormData();
-          const blob = new Blob([imageBuffer], { type: mimeType });
-          formData.append('image', blob, `image.${imageFormat}`);
-          
-          // Try imgbb.com (free, no API key required for basic usage, but has rate limits)
-          const imgbbResponse = await fetch('https://api.imgbb.com/1/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (imgbbResponse.ok) {
-            const imgbbData = await imgbbResponse.json();
-            if (imgbbData.data && imgbbData.data.url) {
-              imageUrl = imgbbData.data.url;
-              console.log('Image uploaded to imgbb as fallback, URL:', imageUrl);
-            } else {
-              throw new Error('Failed to get URL from imgbb');
-            }
-          } else {
-            const errorData = await imgbbResponse.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(`imgbb upload failed: ${errorData.error || 'Unknown error'}`);
-          }
-        } catch (imgbbError: any) {
-          console.error('All storage methods failed:', imgbbError);
-          return NextResponse.json(
-            { 
-              error: 'Failed to store image. All storage methods failed. Please configure BLOB_READ_WRITE_TOKEN or Vercel KV in Vercel Dashboard.' 
-            },
-            { status: 500 }
-          );
-        }
-      }
-    }
-
-    // Use TON API imgproxy to cache the image
+    console.log('Uploading image to Vercel Blob Storage...');
+    console.log('Filename:', filename);
+    console.log('Content type:', mimeType);
+    console.log('Image size:', imageBuffer.length, 'bytes');
+    
     try {
-      const encodedUrl = Buffer.from(imageUrl)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-      
-      const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
-      
-      console.log('Using TON API imgproxy URL:', tonApiUrl);
-      
-      return NextResponse.json({
-        imageUrl: tonApiUrl,
-        originalUrl: imageUrl,
+      // Upload to Vercel Blob Storage
+      const blob = await put(filename, imageBuffer, {
+        access: 'public',
+        contentType: mimeType,
+        addRandomSuffix: false,
+        token: blobToken,
       });
-    } catch (tonError: any) {
-      console.error('Error creating TON API URL:', tonError);
-      // Return original URL as fallback (still works for Jetton 2.0)
-      console.warn('Falling back to original URL');
-      return NextResponse.json({
-        imageUrl: imageUrl,
-        originalUrl: imageUrl,
-      });
+
+      console.log('Image uploaded successfully to Vercel Blob');
+      console.log('Blob URL:', blob.url);
+      console.log('Blob pathname:', blob.pathname);
+      console.log('Blob size:', blob.size);
+
+      const imageUrl = blob.url;
+
+      // Use TON API imgproxy to cache the image
+      try {
+        const encodedUrl = Buffer.from(imageUrl)
+          .toString('base64')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+        
+        const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
+        
+        console.log('Using TON API imgproxy URL:', tonApiUrl);
+        
+        return NextResponse.json({
+          imageUrl: tonApiUrl,
+          originalUrl: imageUrl,
+        });
+      } catch (tonError: any) {
+        console.error('Error creating TON API URL:', tonError);
+        // Return original URL as fallback (still works for Jetton 2.0)
+        console.warn('Falling back to original Vercel Blob URL');
+        return NextResponse.json({
+          imageUrl: imageUrl,
+          originalUrl: imageUrl,
+        });
+      }
+    } catch (blobError: any) {
+      console.error('Vercel Blob upload error:', blobError);
+      console.error('Error message:', blobError.message);
+      console.error('Error stack:', blobError.stack);
+      
+      // Provide helpful error message
+      let errorMessage = 'Failed to upload image to Vercel Blob Storage';
+      
+      if (blobError.message?.includes('token')) {
+        errorMessage = 'Invalid or missing BLOB_READ_WRITE_TOKEN. Please check your Vercel environment variables.';
+      } else if (blobError.message?.includes('store')) {
+        errorMessage = 'Blob store not found. Please create a Blob Store in Vercel Dashboard → Storage.';
+      } else {
+        errorMessage = `Vercel Blob error: ${blobError.message || 'Unknown error'}`;
+      }
+      
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error('Image upload API error:', error);
