@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createVercelAI } from '@ai-sdk/vercel';
+import { createVercel } from '@ai-sdk/vercel';
 import { generateText } from 'ai';
 
 // Vercel AI SDK
 const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
-const vercelAI = createVercelAI({
+const vercelAI = createVercel({
   apiKey: VERCEL_API_KEY,
 });
 
