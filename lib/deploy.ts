@@ -57,7 +57,10 @@ function base64ToCell(base64: string): Cell {
   return Cell.fromBase64(base64);
 }
 
-const JETTON_MINTER_CODE = base64ToCell(JETTON_MINTER_CODE_BASE64);
+// Use standard contract for offchain metadata (verified on tonviewer)
+// Use custom contract for onchain metadata (TEP-64 support)
+const JETTON_MINTER_ONCHAIN_CODE = base64ToCell(JETTON_MINTER_ONCHAIN_CODE_BASE64);
+const JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
 const JETTON_WALLET_CODE = base64ToCell(JETTON_WALLET_CODE_BASE64);
 
 interface DeployResult {
@@ -240,9 +243,16 @@ export async function deployJettonMinter(
       .storeRef(contentCell) // content (TEP-64)
       .endCell();
 
+    // Choose contract code based on metadata type
+    // Standard contract for offchain (verified on tonviewer)
+    // Custom contract for onchain (TEP-64 support)
+    const minterCode = tokenData.useOffchainMetadata 
+      ? JETTON_MINTER_STANDARD_CODE 
+      : JETTON_MINTER_ONCHAIN_CODE;
+
     // Create StateInit
     const stateInit = {
-      code: JETTON_MINTER_CODE,
+      code: minterCode,
       data: minterData,
     };
 
