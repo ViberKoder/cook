@@ -2,19 +2,19 @@
 
 /* Product Sans Font */
 @font-face {
-  font-family: 'ProductSans';
-  src: url('https://cocoon.org/fonts/ProductSansRegular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
+  font-family: ProductSans;
   font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+  src: url(/fonts/ProductSansRegular.ttf);
 }
 
 @font-face {
-  font-family: 'ProductSans';
-  src: url('https://cocoon.org/fonts/ProductSansBold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
+  font-family: ProductSans;
   font-display: swap;
+  font-style: bold;
+  font-weight: 600;
+  src: url(/fonts/ProductSansBold.ttf);
 }
 
 @tailwind base;
@@ -288,21 +288,24 @@ a {
 
 /* Cookon Dark Theme - Cocoon Style */
 .cookon-dark-theme {
-  --bg-color: #111c40;
-  background: #111c40 linear-gradient(180deg, #020e33 0%, var(--bg-color) 25%, var(--bg-color) 84%, #111c40 100%) !important;
-  background-size: 100% calc(100% - 200px) !important;
-  background-color: #111c40 !important;
+  --bg-color: #0a0e1f;
+  background: #0a0e1f !important;
+  background-image: linear-gradient(180deg, #020e33 0%, #0a0e1f 25%, #0a0e1f 84%, #0a0e1f 100%) !important;
+  background-size: 100% 100% !important;
+  background-color: #0a0e1f !important;
   color: #ffffff !important;
   font-family: ProductSans, -apple-system, system-ui, sans-serif !important;
   font-variant-ligatures: none;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 .cookon-dark-theme,
 .cookon-dark-theme body {
-  background: #111c40 linear-gradient(180deg, #020e33 0%, var(--bg-color) 25%, var(--bg-color) 84%, #111c40 100%) !important;
-  background-size: 100% calc(100% - 200px) !important;
-  background-color: #111c40 !important;
+  background: #0a0e1f !important;
+  background-image: linear-gradient(180deg, #020e33 0%, #0a0e1f 25%, #0a0e1f 84%, #0a0e1f 100%) !important;
+  background-size: 100% 100% !important;
+  background-color: #0a0e1f !important;
 }
 
 .cookon-dark-theme * {
@@ -323,6 +326,10 @@ a {
 
 .cookon-dark-theme h1 {
   font-weight: 400;
+  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .cookon-dark-theme h2 {
@@ -346,22 +353,27 @@ a {
   font-family: ProductSans, -apple-system, system-ui, sans-serif !important;
 }
 
-/* Gradient button styles for Cocoon */
+/* Gradient button styles for Cocoon - Purple to Blue */
 .cookon-dark-theme .bg-gradient {
-  --fill-colors: #3B82F6;
-  --border-colors: #60A5FA;
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, var(--fill-colors)) padding-box,
-    linear-gradient(var(--bg-color), var(--bg-color)) padding-box,
-    linear-gradient(180deg, var(--border-colors)) border-box,
-    linear-gradient(180deg, var(--fill-colors)) border-box;
-  background-color: #3B82F6;
-  background-image: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
 }
 
 .cookon-dark-theme .bg-gradient:hover {
-  background-image: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
+  opacity: 0.9;
+}
+
+/* Cook it button with purple-blue gradient */
+.cookon-dark-theme .cook-it-button {
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.cookon-dark-theme .cook-it-button:hover {
+  background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
   opacity: 0.9;
 }
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -7,6 +7,9 @@ import TokenForm, { TokenData } from '@/components/TokenForm';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import DeploymentStatus, { DeploymentStep } from '@/components/DeploymentStatus';
 import { Address, beginCell, toNano } from '@ton/core';
+import Header from '@/components/Header';
+import Link from 'next/link';
+import { TonConnectButton } from '@tonconnect/ui-react';
 
 interface Message {
   id: string;
@@ -28,7 +31,7 @@ export default function CookonPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m Cookon AI ??\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
+      content: 'Hello! I\'m Cookon AI 🚀\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
       timestamp: new Date(),
     },
   ]);
@@ -220,32 +223,37 @@ export default function CookonPage() {
           role: 'system' as const,
           content: `Ты — Jetton и Memecoin Lord TON под именем Cookon, легендарный креатор мемкоинов и jetton, который сочетает лёгкий абсурдный юмор Pepe и Doge с глубоким, цепляющим нарративом, который делает коин вирусным. Твоя креативность в 10 раз выше обычной: ты всегда придумываешь неожиданные, свежие, абсурдно-запомнинающиеся идеи, которые идеально ложатся на текущий вайб интернета, TON, Telegram.
 
+КРИТИЧЕСКИ ВАЖНО: Избегай плоских, очевидных нарративов типа "TONPEPE", "TONDOGE" или простого добавления префикса "TON" к существующим мемам. Каждый коин должен быть уникальным, с оригинальной концепцией, которая не является простой комбинацией "TON + известный мем". Твоя задача — создавать абсолютно новые, неожиданные идеи, которые цепляют своей оригинальностью и глубиной.
+
 Каждый раз, когда пользователь просит придумать мемкоин или нарратив (или просто начинает разговор на эту тему), следуй этому процессу строго:
 
 1. Сначала проведи быстрый поиск актуальных трендов и новостей:
    - Используй web_search и/или x_keyword_search, чтобы найти самые свежие мемы, новости из мира крипты, TON-экосистемы, Telegram, популярные события, вирусные шутки и культурные моменты за последние 7–14 дней.
-   - Обрати особое внимание на: новости TON (То что транслирует Павел, Николай Дуров, какие посты он пишет. То что выходит в новостях о TON, Telegram, Дурове. Новые продукты в TON и Telegram. Нарративы такие как Telegram Gifts, Hamster Kombat, AI Cocoon и т.д), тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
+   - Обрати особое внимание на: новости TON (То что транслирует Павел, Николай Дуров, какие посты он пишет (но не о его задержании). То что выходит в новостях о TON, Telegram, Дурове. Новые продукты в TON и Telegram. Новые нарративы), тренды в Telegram-миниаппах, вирусные мемы на X/Twitter, Reddit, 4chan, актуальные мировые события, которые можно легко мемизировать.
    - Найди 3–5 самых горячих тем/событий, которые можно легко и смешно привязать к jetton или мемкоину.
 
 2. На основе найденного создай мемкоин с нуля:
-   - Лёгкий и абсурдный персонаж (животное, объект, вымышенное существо), как Pepe или Doge — но всегда с уникальным твистом.
+   - Лёгкий и абсурдный персонаж (животное, объект, вымышленное существо), как Pepe или Doge — но всегда с уникальным твистом, который делает его абсолютно оригинальным.
    - Глубокий, но простой нарратив: почему этот персонаж существует, какая у него "миссия", как он отражает текущие тренды/новости, почему люди будут в него верить и холдить.
    - Нарратив должен быть эмоциональным, relatable, с элементами underdog-истории, FOMO и сообщества.
    - Юмор — лёгкий, самоироничный, абсурдный, но с смыслом (не пустой хайп).
+   - ИЗБЕГАЙ: простых комбинаций типа "TON + известный мем", очевидных отсылок без оригинальности, плоских нарративов без глубины.
 
 3. Структура ответа (всегда используй её):
-   - Название коина и тикер (например, $FROG или $WOOF).
+   - Название коина и тикер (например, $FROG или $WOOF). Тикер должен быть не более 5 символов.
    - Описание персонажа и визуальный стиль (что это за мем, какие цвета, эмоции).
    - Полный нарратив (короткая история 150–250 слов, как манифест сообщества).
    - Связь с актуальными новостями/трендами (покажи, как коин "ловит волну").
    - Идеи для вирусности: слоганы, мемы, возможные Telegram-боты/игры, как запустить на TON.
    - Почему это взлетит: краткий анализ, почему именно сейчас.
 
-Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле.
+Ты всегда максимально креативен: комбинируй неожиданные элементы, придумывай новые мемы на лету, делай нарративы, от которых люди будут ржать и одновременно думать "это гениально". Никогда не повторяйся, каждый коин — абсолютно уникальный. Если пользователь даёт конкретную идею или тему — развивай её в этом стиле, но добавляй неожиданные твисты и оригинальность.
 
 Вот примеры самых крутых мемкоинов и жетонов из всех блокчейнов:
 DOGE, PEPE, SHIB, TRUMP, BONK, PENGU, SPX, FARTCOIN, dogwifhat, BRETT, NOT, HMSTR, MOG, LAMBO, PONKE, GIGACHAD, DOGS, CHILLGUY, NEITO, BOME, GOAT, FWOG, MOODENG, POPCAT.
 Бери примеры с них, как с самых крутых мемкоинов.
+И помни что это необязательно должен быть животное или персонаж (в большинстве случаев это так), это может быть просто сатира над каким-то событием или существующим активом.
+Тикер мемкоина должен быть не более 5 символов.
 
 Начинай ответ сразу с предложения коина, без преамбул.
 
@@ -482,7 +490,7 @@ JSON должен быть в конце, после основного текс
       {
         id: '1',
         role: 'assistant',
-        content: 'Hello! I\'m Cookon AI ??\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
+        content: 'Hello! I\'m Cookon AI 🚀\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
         timestamp: new Date(),
       },
     ]);
@@ -593,7 +601,66 @@ JSON должен быть в конце, после основного текс
 
   return (
     <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
-      <main className="flex-grow relative z-10 pt-8 pb-12 px-4">
+      {/* Header with dark theme styling */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/80 backdrop-blur-xl border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-2 group">
+              <Image 
+                src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                alt="Cook" 
+                width={40}
+                height={40}
+                className="group-hover:scale-110 transition-transform"
+                unoptimized
+              />
+              <span className="text-xl font-bold text-white">Cook</span>
+            </Link>
+
+            {/* Navigation */}
+            <nav className="flex items-center space-x-4 md:space-x-8">
+              <Link 
+                href="/"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              >
+                Jetton 2.0
+              </Link>
+              <Link 
+                href="/cooks"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              >
+                Cooks
+              </Link>
+              <Link 
+                href="/cookon"
+                className="text-white font-semibold transition-colors text-sm font-medium"
+              >
+                Cookon
+              </Link>
+              <Link 
+                href="/admin"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              >
+                Admin
+              </Link>
+              <Link 
+                href="https://tonviewer.com" 
+                target="_blank"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              >
+                Explorer
+              </Link>
+            </nav>
+
+            {/* Wallet Connect Button */}
+            <div className="flex items-center space-x-4">
+              <TonConnectButton />
+            </div>
+          </div>
+        </div>
+      </header>
+      <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-6" style={{ marginTop: '20px' }}>
             <div className="flex justify-center mb-4">
@@ -611,7 +678,7 @@ JSON должен быть в конце, после основного текс
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI � create your own viral memecoin, in chat with AI!????
+              Cookon AI вЂ” create your own viral memecoin, in chat with AI! рџЋЁ
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
@@ -699,12 +766,12 @@ JSON должен быть в конце, после основного текс
                             <button
                               onClick={() => handleDeploy(message.tokenData!)}
                               disabled={!connected || !message.tokenData?.name || !message.tokenData?.symbol}
-                              className="bg-white hover:opacity-90 disabled:bg-white/20 disabled:cursor-not-allowed text-black disabled:text-white/60 font-medium py-2 px-6 rounded-xl transition-opacity flex items-center gap-2 justify-center"
+                              className="cook-it-button hover:opacity-90 disabled:bg-white/20 disabled:cursor-not-allowed text-white disabled:text-white/60 font-medium py-2 px-6 rounded-xl transition-opacity flex items-center gap-2 justify-center"
                             >
                               {!connected ? (
                                 <span>Connect Wallet</span>
                               ) : (
-                                <span>Cook it! ??</span>
+                                <span>Cook it! 🚀</span>
                               )}
                             </button>
                           </div>
@@ -781,6 +848,7 @@ JSON должен быть в конце, после основного текс
     </div>
   );
 }
+
 
 
 
