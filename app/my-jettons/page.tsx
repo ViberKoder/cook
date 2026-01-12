@@ -62,13 +62,13 @@ const JettonCard = memo(({ jetton }: { jetton: JettonInfo }) => (
       )}
     </div>
 
-    <div className="flex flex-col gap-2">
-      <Link
-        href={`/admin?address=${jetton.address}`}
-        className="btn-cook text-center text-sm py-2"
-      >
-        Manage Token
-      </Link>
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href={`/admin?address=${encodeURIComponent(jetton.address)}`}
+                      className="btn-cook text-center text-sm py-2"
+                    >
+                      Manage Token
+                    </Link>
       <Link
         href={`https://tonviewer.com/${jetton.address}`}
         target="_blank"
