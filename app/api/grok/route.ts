@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateText } from 'ai';
 
-// Vercel AI API
-const VERCEL_API_KEY = process.env.VERCEL_AI_API_KEY || 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
+// Vercel AI Gateway - uses AI_GATEWAY_API_KEY from environment
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 export async function POST(request: NextRequest) {
@@ -16,37 +16,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Direct API call to Vercel AI with proper headers
-    const response = await fetch('https://api.vercel.com/v1/ai/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${VERCEL_API_KEY}`,
-        'x-vercel-ai-model': MODEL,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: messages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        temperature: temperature,
-        max_tokens: 2000,
-      }),
+    // Use AI SDK with Vercel AI Gateway
+    // The AI_GATEWAY_API_KEY should be set in environment variables
+    const result = await generateText({
+      model: MODEL,
+      messages: messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      temperature: temperature,
+      maxTokens: 2000,
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Vercel API error:', response.status, errorData);
-      throw new Error(`Vercel API error: ${response.status} ${errorData}`);
-    }
-
-    const data = await response.json();
-    const textContent = data.choices?.[0]?.message?.content || data.text || '';
-
     return NextResponse.json({
-      id: data.id || `chatcmpl-${Date.now()}`,
-      content: textContent,
+      id: `chatcmpl-${Date.now()}`,
+      content: result.text,
       role: 'assistant',
     });
   } catch (error: any) {
