@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { getUserTokens, getTokenDeployedAt } from '@/lib/cookTokens';
+import { getUserTokens, getTokenDeployedAt, addUserToken, setTokenDeployedAt } from '@/lib/cookTokens';
+import toast from 'react-hot-toast';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,6 +22,9 @@ export default function MyJettonsPage() {
   const { connected, wallet } = useTonConnect();
   const [jettons, setJettons] = useState<JettonInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddToken, setShowAddToken] = useState(false);
+  const [tokenAddress, setTokenAddress] = useState('');
+  const [addingToken, setAddingToken] = useState(false);
 
   useEffect(() => {
     if (connected && wallet) {
@@ -79,6 +83,47 @@ export default function MyJettonsPage() {
     }
   };
 
+  const handleAddToken = async () => {
+    if (!tokenAddress.trim() || !wallet) return;
+
+    try {
+      setAddingToken(true);
+      const address = tokenAddress.trim();
+      
+      // Validate address format
+      try {
+        Address.parse(address);
+      } catch {
+        toast.error('Invalid address format');
+        return;
+      }
+
+      // Check if token already exists
+      const walletAddress = wallet.toString();
+      const existingTokens = getUserTokens(walletAddress);
+      if (existingTokens.includes(address)) {
+        toast.error('Token already in your list');
+        return;
+      }
+
+      // Add token to user's list
+      addUserToken(walletAddress, address);
+      setTokenDeployedAt(address);
+      
+      toast.success('Token added successfully!');
+      setTokenAddress('');
+      setShowAddToken(false);
+      
+      // Reload tokens
+      await loadUserJettons();
+    } catch (error: any) {
+      console.error('Failed to add token:', error);
+      toast.error(error.message || 'Failed to add token');
+    } finally {
+      setAddingToken(false);
+    }
+  };
+
   if (!connected || !wallet) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-orange-50">
@@ -107,12 +152,45 @@ export default function MyJettonsPage() {
       <Header />
       <main className="pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold gradient-text-cook mb-2">My Jettons</h1>
-            <p className="text-cook-text-secondary">
-              Manage your created Jetton 2.0 tokens
-            </p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold gradient-text-cook mb-2">My Jettons</h1>
+              <p className="text-cook-text-secondary">
+                Manage your created Jetton 2.0 tokens
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddToken(!showAddToken)}
+              className="btn-cook"
+            >
+              {showAddToken ? 'Cancel' : '+ Add Token'}
+            </button>
           </div>
+
+          {showAddToken && (
+            <div className="card mb-6">
+              <h3 className="text-lg font-semibold text-cook-text mb-4">Add Token Manually</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tokenAddress}
+                  onChange={(e) => setTokenAddress(e.target.value)}
+                  placeholder="Enter token contract address (EQ...)"
+                  className="input-ton flex-1"
+                />
+                <button
+                  onClick={handleAddToken}
+                  disabled={!tokenAddress.trim() || addingToken}
+                  className="btn-cook"
+                >
+                  {addingToken ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+              <p className="text-xs text-cook-text-secondary mt-2">
+                Add a token by its contract address if it was created before this feature was added
+              </p>
+            </div>
+          )}
 
           {loading ? (
             <div className="card text-center py-12">
