@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { getUserTokens, getTokenDeployedAt } from '@/lib/cookTokens';
 import Header from '@/components/Header';
@@ -21,12 +21,14 @@ export default function MyJettonsPage() {
   const { connected, wallet } = useTonConnect();
   const [jettons, setJettons] = useState<JettonInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false);
 
   const loadUserJettons = useCallback(async (): Promise<void> => {
-    if (!wallet) {
+    if (!wallet || loadingRef.current) {
       return;
     }
 
+    loadingRef.current = true;
     try {
       const walletAddress = wallet.toString();
       const tokenAddresses = getUserTokens(walletAddress);
@@ -89,13 +91,17 @@ export default function MyJettonsPage() {
     } catch (error) {
       console.error('Failed to load user jettons:', error);
       setJettons([]);
+    } finally {
+      loadingRef.current = false;
     }
   }, [wallet]);
+
+  const walletAddress = useMemo(() => wallet?.toString(), [wallet]);
 
   useEffect(() => {
     let cancelled = false;
     
-    if (connected && wallet) {
+    if (connected && walletAddress) {
       setLoading(true);
       loadUserJettons().then(() => {
         if (!cancelled) {
@@ -110,7 +116,7 @@ export default function MyJettonsPage() {
     return () => {
       cancelled = true;
     };
-  }, [connected, wallet, loadUserJettons]);
+  }, [connected, walletAddress, loadUserJettons]);
 
 
   if (!connected || !wallet) {
