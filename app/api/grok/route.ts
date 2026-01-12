@@ -16,23 +16,71 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Vercel AI SDK endpoint - correct path for AI chat
-    const response = await fetch('https://api.vercel.com/v1/ai/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${VERCEL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: messages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        temperature: temperature,
-        max_tokens: 2000,
-      }),
-    });
+    // Try different Vercel AI endpoints
+    let response;
+    let lastError;
+    
+    // Try endpoint 1: /v1/ai/chat
+    try {
+      response = await fetch('https://api.vercel.com/v1/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${VERCEL_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          temperature: temperature,
+          max_tokens: 2000,
+        }),
+      });
+      
+      if (response.ok) {
+        // Success, continue below
+      } else if (response.status === 404) {
+        // Try endpoint 2: ai.vercel.com
+        response = await fetch('https://ai.vercel.com/api/v1/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${VERCEL_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: messages.map((msg: any) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
+            temperature: temperature,
+            max_tokens: 2000,
+          }),
+        });
+      }
+    } catch (error: any) {
+      lastError = error;
+      // Try endpoint 3: direct xAI with Vercel proxy header
+      response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${VERCEL_API_KEY}`,
+          'x-vercel-ai-model': MODEL,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          temperature: temperature,
+          max_tokens: 2000,
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorData = await response.text();
