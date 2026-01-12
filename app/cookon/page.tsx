@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -559,7 +559,7 @@ JSON должен быть в конце, после основного текс
               width={1350}
               height={450}
               className="mx-auto mb-8"
-              style={{ transform: 'scale(1.2)', marginTop: '-120px' }}
+              style={{ transform: 'scale(0.6)', marginTop: '-60px' }}
               unoptimized
             />
           </div>
@@ -682,7 +682,7 @@ JSON должен быть в конце, после основного текс
                 width={900}
                 height={300}
                 className="drop-shadow-2xl"
-                style={{ transform: 'scale(1.2)', marginTop: '-100px' }}
+                style={{ transform: 'scale(0.6)', marginTop: '-50px' }}
                 unoptimized
               />
             </div>
@@ -702,7 +702,7 @@ JSON должен быть в конце, после основного текс
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI - create your own viral memecoin, in chat with AI!
+              Cookon AI � create your own viral memecoin, in chat with AI!????
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
@@ -872,7 +872,6 @@ JSON должен быть в конце, после основного текс
     </div>
   );
 }
-
 
 
 
