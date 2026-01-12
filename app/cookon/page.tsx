@@ -187,7 +187,7 @@ export default function CookonPage() {
     return parsed;
   };
 
-  const handleSendMessage = async (customMessage?: string | React.MouseEvent<HTMLButtonElement>) => {
+  const handleSendMessage = useCallback(async (customMessage?: string | React.MouseEvent<HTMLButtonElement>) => {
     // Handle both cases: direct call with string or event handler
     let messageToSend: string;
     if (typeof customMessage === 'string') {
