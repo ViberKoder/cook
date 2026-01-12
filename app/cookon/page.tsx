@@ -401,6 +401,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
       let extractedTokenData: TokenData | null = null;
       
       if (jsonData) {
+        console.log('Found jsonData:', jsonData);
         extractedTokenData = {
           name: (jsonData.name || '').trim(),
           symbol: ((jsonData.symbol || '').trim().replace(/[^A-Z0-9]/g, '')).toUpperCase(),
@@ -412,16 +413,22 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
           mintable: true,
         };
         
+        console.log('Extracted token data:', extractedTokenData);
+        
         // Always generate imagePrompt - use provided one or create from description/name
         let imagePrompt = '';
         if (jsonData.imagePrompt && jsonData.imagePrompt.trim()) {
           imagePrompt = jsonData.imagePrompt.trim();
+          console.log('Using provided imagePrompt from JSON');
         } else if (extractedTokenData.name && extractedTokenData.description) {
           imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${extractedTokenData.description.substring(0, 200)}`;
+          console.log('Generated imagePrompt from name and description');
         } else if (extractedTokenData.name) {
           imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}), Telegram and TON blockchain style, vibrant colors, fun and memorable`;
+          console.log('Generated imagePrompt from name only');
         } else if (chatMessage) {
           imagePrompt = `A memecoin token logo inspired by: ${chatMessage.substring(0, 200)}`;
+          console.log('Generated imagePrompt from chatMessage');
         }
         
         const messageId = (Date.now() + 1).toString();
@@ -436,12 +443,20 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         setMessages(prev => [...prev, assistantMessage]);
         
         if (imagePrompt && imagePrompt.trim() && extractedTokenData) {
-          console.log('Generating image with prompt:', imagePrompt);
-          generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
-            console.error('Image generation failed:', err);
-          });
+          console.log('Starting image generation with prompt:', imagePrompt);
+          // Use setTimeout to ensure message is added first
+          setTimeout(() => {
+            generateImageForMessage(imagePrompt, extractedTokenData!, messageId).catch(err => {
+              console.error('Image generation failed:', err);
+            });
+          }, 100);
         } else {
-          console.warn('No imagePrompt generated or no tokenData:', { imagePrompt, hasTokenData: !!extractedTokenData });
+          console.warn('No imagePrompt generated or no tokenData:', { 
+            imagePrompt, 
+            hasTokenData: !!extractedTokenData,
+            hasName: !!extractedTokenData?.name,
+            hasDescription: !!extractedTokenData?.description 
+          });
         }
       } else {
         const parsed = parseTokenData(fullResponse);
