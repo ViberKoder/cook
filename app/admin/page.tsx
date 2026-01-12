@@ -495,31 +495,6 @@ export default function AdminPage() {
 
                     {isAdmin && (
                       <>
-                        <div className="p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={useOffchainUrl}
-                              onChange={(e) => setUseOffchainUrl(e.target.checked)}
-                              className="mr-2 accent-cook-orange"
-                            />
-                            <span className="text-sm text-cook-text">Use off-chain metadata URL</span>
-                          </label>
-                        </div>
-
-                        {useOffchainUrl ? (
-                          <div>
-                            <label className="block text-sm font-medium text-cook-text mb-2">Metadata URL</label>
-                            <input
-                              type="url"
-                              value={offchainUrl}
-                              onChange={(e) => setOffchainUrl(e.target.value)}
-                              placeholder="https://example.com/metadata.json"
-                              className="input-ton"
-                            />
-                          </div>
-                        ) : (
-                          <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-cook-text mb-2">Name</label>
@@ -570,8 +545,6 @@ export default function AdminPage() {
                                 />
                               </div>
                             </div>
-                          </>
-                        )}
 
                         <button 
                           onClick={handleChangeMetadata} 
