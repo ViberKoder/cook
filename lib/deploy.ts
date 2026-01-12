@@ -2,6 +2,7 @@ import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress, Dict
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
 import { sha256 } from '@noble/hashes/sha256';
 import toast from 'react-hot-toast';
+import { JETTON_MINTER_CODE_BASE64 as STANDARD_JETTON_MINTER_CODE_BASE64 } from './jettonMinterCode';
 
 export interface TokenData {
   name: string;
