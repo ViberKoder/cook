@@ -393,9 +393,17 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
           mintable: true,
         };
         
-        const imagePrompt = jsonData.imagePrompt || 
-          (jsonData.description ? `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${jsonData.description.substring(0, 200)}` : 
-          `A memecoin token logo: ${chatMessage}`);
+        // Always generate imagePrompt - use provided one or create from description/name
+        let imagePrompt = '';
+        if (jsonData.imagePrompt && jsonData.imagePrompt.trim()) {
+          imagePrompt = jsonData.imagePrompt.trim();
+        } else if (extractedTokenData.name && extractedTokenData.description) {
+          imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${extractedTokenData.description.substring(0, 200)}`;
+        } else if (extractedTokenData.name) {
+          imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}), Telegram and TON blockchain style, vibrant colors, fun and memorable`;
+        } else if (chatMessage) {
+          imagePrompt = `A memecoin token logo inspired by: ${chatMessage.substring(0, 200)}`;
+        }
         
         const messageId = (Date.now() + 1).toString();
         const assistantMessage: Message = {
@@ -408,13 +416,13 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
 
         setMessages(prev => [...prev, assistantMessage]);
         
-        if (imagePrompt && imagePrompt.trim()) {
+        if (imagePrompt && imagePrompt.trim() && extractedTokenData) {
           console.log('Generating image with prompt:', imagePrompt);
           generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
             console.error('Image generation failed:', err);
           });
         } else {
-          console.warn('No imagePrompt found in JSON data');
+          console.warn('No imagePrompt generated or no tokenData:', { imagePrompt, hasTokenData: !!extractedTokenData });
         }
       } else {
         const parsed = parseTokenData(fullResponse);
