@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Vercel AI SDK endpoint
 const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
-const VERCEL_API_URL = 'https://api.vercel.ai/v1/chat/completions';
+const VERCEL_API_URL = 'https://ai.vercel.com/api/v1/chat/completions';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 export async function POST(request: NextRequest) {
