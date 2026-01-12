@@ -12,6 +12,8 @@ export interface TokenData {
   decimals: number;
   totalSupply: string;
   mintable: boolean;
+  useOffchainMetadata?: boolean;
+  offchainMetadataUrl?: string;
 }
 
 // Monetization wallet address
