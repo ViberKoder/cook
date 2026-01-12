@@ -10,6 +10,8 @@ export interface TokenData {
   decimals: number;
   totalSupply: string;
   mintable: boolean;
+  useOffchainMetadata?: boolean; // Use off-chain metadata URL
+  offchainMetadataUrl?: string; // URL to off-chain metadata JSON
 }
 
 export interface TokenFormProps {
@@ -58,6 +60,8 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
   const [imagePreview, setImagePreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
+  const [useOffchainMetadata, setUseOffchainMetadata] = useState(false);
+  const [offchainMetadataUrl, setOffchainMetadataUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -123,7 +127,12 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onDeploy(formData);
+    const submitData = {
+      ...formData,
+      useOffchainMetadata,
+      offchainMetadataUrl: useOffchainMetadata ? offchainMetadataUrl : undefined,
+    };
+    onDeploy(submitData);
   };
 
   const isValid = formData.name.trim() && formData.symbol.trim() && formData.totalSupply;
@@ -364,21 +373,85 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
             </p>
           </div>
 
-          {/* On-chain Metadata Info */}
+          {/* Metadata Type Toggle */}
           <div className="p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">⛓️</span>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h4 className="font-medium text-cook-text">On-chain Metadata</h4>
-                <p className="text-sm text-cook-text-secondary">Fully decentralized, stored directly in the contract</p>
+                <h4 className="font-medium text-cook-text mb-1">Metadata Storage</h4>
+                <p className="text-sm text-cook-text-secondary">Choose how to store your token metadata</p>
               </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useOffchainMetadata}
+                  onChange={(e) => {
+                    setUseOffchainMetadata(e.target.checked);
+                    const newData = {
+                      ...formData,
+                      useOffchainMetadata: e.target.checked,
+                      offchainMetadataUrl: e.target.checked ? offchainMetadataUrl : '',
+                    };
+                    setFormData(newData);
+                    if (onDataChange) {
+                      onDataChange(newData);
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-cook-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cook-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cook-orange"></div>
+              </label>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-xs text-green-700">
-                ✅ Your token metadata (name, symbol, image, description) will be stored on-chain using TEP-64 standard.
-                This ensures maximum decentralization and permanence.
-              </p>
-            </div>
+            
+            {!useOffchainMetadata ? (
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⛓️</span>
+                  <h5 className="font-medium text-green-800">On-chain Metadata</h5>
+                </div>
+                <p className="text-xs text-green-700">
+                  Your token metadata (name, symbol, image, description) will be stored on-chain using TEP-64 standard.
+                  This ensures maximum decentralization and permanence.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🌐</span>
+                    <h5 className="font-medium text-blue-800">Off-chain Metadata</h5>
+                  </div>
+                  <p className="text-xs text-blue-700 mb-3">
+                    Store metadata at an external URL. More flexible but requires hosting the metadata file.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-cook-text mb-2">
+                      Metadata URL <span className="text-cook-orange">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={offchainMetadataUrl}
+                      onChange={(e) => {
+                        setOffchainMetadataUrl(e.target.value);
+                        const newData = {
+                          ...formData,
+                          offchainMetadataUrl: e.target.value,
+                        };
+                        setFormData(newData);
+                        if (onDataChange) {
+                          onDataChange(newData);
+                        }
+                      }}
+                      placeholder="https://example.com/metadata.json"
+                      className="input-ton w-full"
+                      required={useOffchainMetadata}
+                    />
+                    <p className="text-xs text-cook-text-secondary mt-1">
+                      URL to a JSON file containing token metadata (TEP-64 format)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mintable */}
