@@ -378,7 +378,7 @@ export function getJettonWalletAddress(
     .endCell();
 
   return contractAddress(0, {
-    code: JETTON_WALLET_CODE,
+    code: getJettonWalletCode(),
     data: walletData,
   });
 }
