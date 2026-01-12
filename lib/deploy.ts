@@ -84,7 +84,7 @@ function getJettonMinterStandardCode(): Cell {
   return JETTON_MINTER_STANDARD_CODE;
 }
 
-function getJettonWalletCode(): Cell {
+function getJettonWalletCodeCell(): Cell {
   if (!JETTON_WALLET_CODE) {
     JETTON_WALLET_CODE = base64ToCell(JETTON_WALLET_CODE_BASE64);
   }
@@ -267,7 +267,7 @@ export async function deployJettonMinter(
       .storeCoins(0) // total_supply (will be updated after mint)
       .storeAddress(walletAddress) // admin_address
       .storeAddress(null) // next_admin_address
-      .storeRef(getJettonWalletCode()) // jetton_wallet_code
+      .storeRef(getJettonWalletCodeCell()) // jetton_wallet_code
       .storeRef(contentCell) // content (TEP-64)
       .endCell();
 
@@ -378,7 +378,7 @@ export function getJettonWalletAddress(
     .endCell();
 
   return contractAddress(0, {
-    code: getJettonWalletCode(),
+    code: getJettonWalletCodeCell(),
     data: walletData,
   });
 }
