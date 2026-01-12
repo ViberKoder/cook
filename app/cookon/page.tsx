@@ -153,7 +153,7 @@ export default function CookonPage() {
       }
     }
     return true;
-  };
+  }, [connected, wallet, requestCount, sendPayment]);
 
   // Parse AI response to extract token data
   const parseTokenData = (content: string): Partial<TokenData> => {
@@ -514,7 +514,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
     } finally {
       setIsLoading(false);
     }
-  }, [connected, wallet, hasPaidInitial, requestCount, inputMessage, isLoading, messages, tonConnectUI, checkAndProcessPeriodicPayment, generateImageForMessage]);
+  }, [connected, wallet, hasPaidInitial, requestCount, inputMessage, isLoading, messages, tonConnectUI, checkAndProcessPeriodicPayment]);
 
   const generateImageForMessage = useCallback(async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
