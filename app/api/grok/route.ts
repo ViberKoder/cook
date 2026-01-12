@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createVercel } from '@ai-sdk/vercel';
-import { generateText } from 'ai';
 
-// Vercel AI SDK
+// Vercel AI API
 const VERCEL_API_KEY = process.env.VERCEL_AI_API_KEY || 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
-
-// Initialize Vercel AI - try without explicit apiKey first (uses env var)
-const vercelAI = createVercel();
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,22 +16,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Vercel AI SDK with explicit API key in headers
-    const result = await generateText({
-      model: vercelAI(MODEL, {
-        apiKey: VERCEL_API_KEY,
+    // Direct API call to Vercel AI with proper headers
+    const response = await fetch('https://api.vercel.com/v1/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${VERCEL_API_KEY}`,
+        'x-vercel-ai-model': MODEL,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        temperature: temperature,
+        max_tokens: 2000,
       }),
-      messages: messages.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-      temperature: temperature,
-      maxTokens: 2000,
-    } as any);
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Vercel API error:', response.status, errorData);
+      throw new Error(`Vercel API error: ${response.status} ${errorData}`);
+    }
+
+    const data = await response.json();
+    const textContent = data.choices?.[0]?.message?.content || data.text || '';
 
     return NextResponse.json({
-      id: `chatcmpl-${Date.now()}`,
-      content: result.text,
+      id: data.id || `chatcmpl-${Date.now()}`,
+      content: textContent,
       role: 'assistant',
     });
   } catch (error: any) {
