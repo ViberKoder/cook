@@ -183,8 +183,9 @@ export default function CookonPage() {
     return parsed;
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+  const handleSendMessage = async (customMessage?: string) => {
+    const messageToSend = customMessage || inputMessage;
+    if (!messageToSend.trim() || isLoading) return;
 
     // Check wallet connection
     if (!connected || !wallet) {
@@ -208,13 +209,15 @@ export default function CookonPage() {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputMessage,
+      content: messageToSend,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputMessage;
-    setInputMessage('');
+    const currentInput = messageToSend;
+    if (!customMessage) {
+      setInputMessage('');
+    }
     setIsLoading(true);
 
     try {
@@ -274,7 +277,7 @@ JSON_DATA:
   "name": "Coin Name",
   "symbol": "SYMBOL",
   "description": "Full narrative and description for the token (MUST BE IN ENGLISH)",
-  "imagePrompt": "Detailed description for image generation"
+  "imagePrompt": "Detailed description for image generation. IMPORTANT: The image must be a clean character or coin design without any logos, text, or branding. No Telegram logo, no TON logo, no text labels - just a pure, simple character or coin design."
 }
 
 The JSON must be at the end, after the main text. Always include JSON in your response.
@@ -416,18 +419,21 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         console.log('Extracted token data:', extractedTokenData);
         
         // Always generate imagePrompt - use provided one or create from description/name
+        // IMPORTANT: No Telegram or TON logos - just a clean character or coin
         let imagePrompt = '';
         if (jsonData.imagePrompt && jsonData.imagePrompt.trim()) {
           imagePrompt = jsonData.imagePrompt.trim();
+          // Ensure no Telegram/TON logos in the prompt
+          imagePrompt = imagePrompt.replace(/telegram|ton|logo/gi, '').trim();
           console.log('Using provided imagePrompt from JSON');
         } else if (extractedTokenData.name && extractedTokenData.description) {
-          imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}): ${extractedTokenData.description.substring(0, 200)}`;
+          imagePrompt = `A clean, simple memecoin character or coin design for ${extractedTokenData.name} (${extractedTokenData.symbol}). ${extractedTokenData.description.substring(0, 200)}. No logos, no text, just a pure character or coin design with vibrant colors, fun and memorable style.`;
           console.log('Generated imagePrompt from name and description');
         } else if (extractedTokenData.name) {
-          imagePrompt = `A memecoin token logo for ${extractedTokenData.name} (${extractedTokenData.symbol}), Telegram and TON blockchain style, vibrant colors, fun and memorable`;
+          imagePrompt = `A clean, simple memecoin character or coin design for ${extractedTokenData.name} (${extractedTokenData.symbol}). No logos, no text, just a pure character or coin design with vibrant colors, fun and memorable style.`;
           console.log('Generated imagePrompt from name only');
         } else if (chatMessage) {
-          imagePrompt = `A memecoin token logo inspired by: ${chatMessage.substring(0, 200)}`;
+          imagePrompt = `A clean, simple memecoin character or coin design inspired by: ${chatMessage.substring(0, 200)}. No logos, no text, just a pure character or coin design with vibrant colors, fun and memorable style.`;
           console.log('Generated imagePrompt from chatMessage');
         }
         
@@ -575,17 +581,33 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
   };
 
   const handleDeploy = async (data: TokenData) => {
+    console.log('=== handleDeploy called ===');
+    console.log('Connected:', connected);
+    console.log('Wallet:', wallet);
+    console.log('Token data:', data);
+    
     if (!connected || !wallet) {
+      console.error('Wallet not connected');
       setError('Please connect your wallet first');
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    if (!data.name || !data.symbol) {
+      console.error('Missing token data:', { name: data.name, symbol: data.symbol });
+      setError('Token name and symbol are required');
+      toast.error('Token name and symbol are required');
       return;
     }
 
     try {
+      console.log('Starting deployment...');
       setStep('preparing');
       setError('');
       
       const { deployJettonMinter } = await import('@/lib/deploy');
       
+      console.log('deployJettonMinter imported, calling...');
       setStep('deploying');
       
       const result = await deployJettonMinter(
@@ -595,16 +617,22 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         sendMultipleMessages
       );
       
+      console.log('Deployment result:', result);
+      
       if (result.success && result.address) {
+        console.log('Deployment successful, address:', result.address);
         setDeployedAddress(result.address);
         setStep('completed');
       } else {
+        console.error('Deployment failed:', result.error);
         throw new Error(result.error || 'Deployment failed');
       }
     } catch (err: any) {
       console.error('Deployment error:', err);
+      console.error('Error stack:', err.stack);
       setError(err.message || 'Failed to deploy token');
       setStep('error');
+      toast.error(err.message || 'Failed to deploy token');
     }
   };
 
@@ -878,13 +906,10 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
                 <div className="border-t border-gray-800 p-4">
                   <div className="flex gap-2 mb-2">
                     <button
-                      onClick={async () => {
-                        const randomPrompt = 'Generate a random memecoin based on latest TON ecosystem news and trends. Use web_search to find the latest news about TON, Telegram, Pavel Durov, Nikolai Durov, and current trends. Create a completely random memecoin that captures the current vibe of the TON ecosystem.';
-                        setInputMessage(randomPrompt);
-                        // Small delay to ensure state is updated
-                        setTimeout(() => {
-                          handleSendMessage();
-                        }, 100);
+                      onClick={() => {
+                        const randomPrompt = 'Generate a random coin';
+                        // Send message immediately with the prompt
+                        handleSendMessage(randomPrompt);
                       }}
                       disabled={isLoading}
                       className="bg-gradient disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-xl transition-colors text-sm whitespace-nowrap"
