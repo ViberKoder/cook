@@ -3,7 +3,7 @@ import { createVercel } from '@ai-sdk/vercel';
 import { generateText } from 'ai';
 
 // Vercel AI SDK
-const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
+const VERCEL_API_KEY = process.env.VERCEL_AI_API_KEY || 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 const vercelAI = createVercel({
