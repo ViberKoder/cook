@@ -18,8 +18,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try Vercel AI API first
-    let response = await fetch(VERCEL_API_URL, {
+    // Use Vercel AI SDK endpoint with proper format
+    // The vck_ key is used with Vercel AI SDK proxy
+    const response = await fetch('https://api.vercel.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,27 +36,6 @@ export async function POST(request: NextRequest) {
         max_tokens: 2000,
       }),
     });
-
-    // If Vercel API fails, try alternative endpoint
-    if (!response.ok && response.status === 404) {
-      // Try alternative endpoint
-      response = await fetch('https://ai.vercel.com/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${VERCEL_API_KEY}`,
-          'x-vercel-ai-model': MODEL,
-        },
-        body: JSON.stringify({
-          messages: messages.map((msg: any) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          temperature: temperature,
-          max_tokens: 2000,
-        }),
-      });
-    }
 
     if (!response.ok) {
       const errorData = await response.text();
