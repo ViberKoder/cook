@@ -25,17 +25,30 @@ export function addCookToken(tokenAddress: string): void {
 }
 
 /**
+ * Normalize address to EQ format
+ */
+function normalizeAddress(address: string): string {
+  // Convert UQ to EQ format for consistency
+  return address.replace(/^UQ/, 'EQ');
+}
+
+/**
  * Add a token to user's personal list
  */
 export function addUserToken(walletAddress: string, tokenAddress: string): void {
   try {
     if (typeof window !== 'undefined') {
-      const userTokens = getUserTokens(walletAddress);
-      if (!userTokens.includes(tokenAddress)) {
-        userTokens.push(tokenAddress);
+      // Normalize addresses for consistency
+      const normalizedWallet = normalizeAddress(walletAddress);
+      const normalizedToken = normalizeAddress(tokenAddress);
+      
+      const userTokens = getUserTokens(normalizedWallet);
+      if (!userTokens.includes(normalizedToken)) {
+        userTokens.push(normalizedToken);
         const allUserTokens = getAllUserTokens();
-        allUserTokens[walletAddress] = userTokens;
+        allUserTokens[normalizedWallet] = userTokens;
         localStorage.setItem(USER_TOKENS_KEY, JSON.stringify(allUserTokens));
+        console.log('Token saved to user list:', { wallet: normalizedWallet, token: normalizedToken });
       }
     }
   } catch (error) {
@@ -49,8 +62,10 @@ export function addUserToken(walletAddress: string, tokenAddress: string): void 
 export function getUserTokens(walletAddress: string): string[] {
   try {
     if (typeof window !== 'undefined') {
+      // Normalize address for consistency
+      const normalizedWallet = normalizeAddress(walletAddress);
       const allUserTokens = getAllUserTokens();
-      return allUserTokens[walletAddress] || [];
+      return allUserTokens[normalizedWallet] || [];
     }
   } catch (error) {
     console.error('Failed to load user tokens:', error);

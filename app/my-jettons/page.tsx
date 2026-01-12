@@ -90,9 +90,11 @@ export default function MyJettonsPage() {
       setAddingToken(true);
       const address = tokenAddress.trim();
       
-      // Validate address format
+      // Validate and normalize address format
+      let normalizedAddress: string;
       try {
-        Address.parse(address);
+        const parsed = Address.parse(address);
+        normalizedAddress = parsed.toString();
       } catch {
         toast.error('Invalid address format');
         return;
@@ -101,14 +103,14 @@ export default function MyJettonsPage() {
       // Check if token already exists
       const walletAddress = wallet.toString();
       const existingTokens = getUserTokens(walletAddress);
-      if (existingTokens.includes(address)) {
+      if (existingTokens.includes(normalizedAddress)) {
         toast.error('Token already in your list');
         return;
       }
 
       // Add token to user's list
-      addUserToken(walletAddress, address);
-      setTokenDeployedAt(address);
+      addUserToken(walletAddress, normalizedAddress);
+      setTokenDeployedAt(normalizedAddress);
       
       toast.success('Token added successfully!');
       setTokenAddress('');
