@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
+import { kv } from '@vercel/kv';
 
 /**
- * Upload image from data URI to Vercel Blob Storage
+ * Upload image from data URI to Vercel Blob Storage or KV Storage
  * This endpoint is used when Google Imagen returns base64 data instead of URL
  * Images are stored on your Vercel domain and can be cached via TON API imgproxy
  */
@@ -46,25 +47,71 @@ export async function POST(request: NextRequest) {
     // Convert base64 to Buffer
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
-    // Generate unique filename
+    // Generate unique filename/ID
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const filename = `jetton-images/${timestamp}-${randomId}.${imageFormat}`;
+    const imageId = `${timestamp}-${randomId}`;
+    const filename = `jetton-images/${imageId}.${imageFormat}`;
 
-    console.log('Uploading image to Vercel Blob Storage...');
+    // Get base URL for API routes
+    const baseUrl = request.headers.get('origin') || request.nextUrl.origin;
+    
+    let imageUrl: string;
 
-    // Upload to Vercel Blob Storage
-    const blob = await put(filename, imageBuffer, {
-      access: 'public',
-      contentType: mimeType,
-      addRandomSuffix: false,
-    });
+    // Try Vercel Blob Storage first (if token is configured)
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    
+    if (blobToken) {
+      try {
+        console.log('Uploading image to Vercel Blob Storage...');
+        
+        const blob = await put(filename, imageBuffer, {
+          access: 'public',
+          contentType: mimeType,
+          addRandomSuffix: false,
+          token: blobToken,
+        });
 
-    console.log('Image uploaded to Vercel Blob, URL:', blob.url);
+        imageUrl = blob.url;
+        console.log('Image uploaded to Vercel Blob, URL:', imageUrl);
+      } catch (blobError: any) {
+        console.error('Vercel Blob upload failed:', blobError);
+        // Fall through to alternative method
+        imageUrl = '';
+      }
+    } else {
+      console.log('BLOB_READ_WRITE_TOKEN not configured, using KV storage as fallback');
+      imageUrl = '';
+    }
+
+    // Fallback: Store in Vercel KV and serve via API route
+    if (!imageUrl) {
+      try {
+        console.log('Storing image in Vercel KV...');
+        
+        // Store image data in KV with the image ID
+        const kvKey = `jetton-image:${imageId}`;
+        await kv.set(kvKey, base64Data, { ex: 86400 * 30 }); // 30 days TTL
+        
+        // Create URL to API route that will serve the image
+        imageUrl = `${baseUrl}/api/images/${imageId}.${imageFormat}`;
+        console.log('Image stored in KV, serving via API route:', imageUrl);
+      } catch (kvError: any) {
+        console.error('KV storage failed:', kvError);
+        // Last resort: return data URI encoded for TON API
+        // This won't work for Jetton 2.0, but at least we return something
+        return NextResponse.json(
+          { 
+            error: 'Failed to store image. Please configure BLOB_READ_WRITE_TOKEN or Vercel KV.' 
+          },
+          { status: 500 }
+        );
+      }
+    }
 
     // Use TON API imgproxy to cache the image
     try {
-      const encodedUrl = Buffer.from(blob.url)
+      const encodedUrl = Buffer.from(imageUrl)
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
@@ -76,17 +123,15 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json({
         imageUrl: tonApiUrl,
-        originalUrl: blob.url,
-        blobUrl: blob.url,
+        originalUrl: imageUrl,
       });
     } catch (tonError: any) {
       console.error('Error creating TON API URL:', tonError);
-      // Return Vercel Blob URL as fallback (still works for Jetton 2.0)
-      console.warn('Falling back to Vercel Blob URL');
+      // Return original URL as fallback (still works for Jetton 2.0)
+      console.warn('Falling back to original URL');
       return NextResponse.json({
-        imageUrl: blob.url,
-        originalUrl: blob.url,
-        blobUrl: blob.url,
+        imageUrl: imageUrl,
+        originalUrl: imageUrl,
       });
     }
   } catch (error: any) {
