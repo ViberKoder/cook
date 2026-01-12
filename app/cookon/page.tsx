@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -672,25 +672,25 @@ JSON должен быть в конце, после основного текс
           </div>
         </div>
       </header>
-      <main className="flex-grow relative z-10 pt-24 pb-12 px-4">
+      <main className="flex-grow relative z-10 pt-8 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-6" style={{ marginTop: '20px' }}>
-            <div className="flex justify-center mb-4">
+          <div className="text-center mb-2" style={{ marginTop: '-40px' }}>
+            <div className="flex justify-center mb-0">
               <Image 
                 src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
                 alt="Cookon" 
                 width={900}
                 height={300}
                 className="drop-shadow-2xl"
-                style={{ transform: 'scale(0.6)', marginTop: '-50px' }}
+                style={{ transform: 'scale(0.6)', marginTop: '0px' }}
                 unoptimized
               />
             </div>
-            <h1 className="mb-3" style={{ 
+            <h1 className="mb-0" style={{ 
               fontSize: '72px',
               fontWeight: 'bold',
               lineHeight: '80px',
-              margin: '0 0 12px 0',
+              margin: '0 0 4px 0',
               display: 'inline-block',
               whiteSpace: 'nowrap',
               maxWidth: '100%',
@@ -702,15 +702,15 @@ JSON должен быть в конце, после основного текс
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI � create your own viral memecoin, in chat with AI!????
+              Cookon AI - create your own viral memecoin, in chat with AI!
             </p>
-            <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
+            <p className="text-sm text-gray-500" style={{ marginTop: '4px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
             </p>
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '-20px' }}>
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '0px' }}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
                 <h2 className="text-xl font-semibold text-white">Chat with Cookon AI</h2>
                 <div className="flex gap-2">
