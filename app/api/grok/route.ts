@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Vercel AI SDK endpoint
+// Vercel AI SDK endpoint - using direct xAI API with Vercel proxy
 const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
-const VERCEL_API_URL = 'https://ai.vercel.com/api/v1/chat/completions';
+// Try using Vercel AI proxy endpoint
+const VERCEL_API_URL = 'https://api.vercel.com/v1/chat/completions';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 export async function POST(request: NextRequest) {
@@ -17,8 +18,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call Vercel AI API
-    const response = await fetch(VERCEL_API_URL, {
+    // Try Vercel AI API first
+    let response = await fetch(VERCEL_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,6 +35,27 @@ export async function POST(request: NextRequest) {
         max_tokens: 2000,
       }),
     });
+
+    // If Vercel API fails, try alternative endpoint
+    if (!response.ok && response.status === 404) {
+      // Try alternative endpoint
+      response = await fetch('https://ai.vercel.com/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${VERCEL_API_KEY}`,
+          'x-vercel-ai-model': MODEL,
+        },
+        body: JSON.stringify({
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          temperature: temperature,
+          max_tokens: 2000,
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorData = await response.text();
