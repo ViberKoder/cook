@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -675,17 +675,6 @@ JSON должен быть в конце, после основного текс
       <main className="flex-grow relative z-10 pt-8 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-2" style={{ marginTop: '-40px' }}>
-            <div className="flex justify-center mb-0">
-              <Image 
-                src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
-                alt="Cookon" 
-                width={900}
-                height={300}
-                className="drop-shadow-2xl"
-                style={{ transform: 'scale(0.6)', marginTop: '0px' }}
-                unoptimized
-              />
-            </div>
             <h1 className="mb-0" style={{ 
               fontSize: '72px',
               fontWeight: 'bold',
@@ -702,7 +691,7 @@ JSON должен быть в конце, после основного текс
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI - create your own viral memecoin, in chat with AI!
+              Cookon AI � create your own viral memecoin, in chat with AI!????
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '4px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
