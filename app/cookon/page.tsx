@@ -672,9 +672,9 @@ JSON должен быть в конце, после основного текс
           </div>
         </div>
       </header>
-      <main className="flex-grow relative z-10 pt-8 pb-12 px-4">
+      <main className="flex-grow relative z-10 pt-20 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-2" style={{ marginTop: '-40px' }}>
+          <div className="text-center mb-2" style={{ marginTop: '0px' }}>
             <h1 className="mb-0" style={{ 
               fontSize: '72px',
               fontWeight: 'bold',
