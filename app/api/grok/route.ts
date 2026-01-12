@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createVercelAI } from '@ai-sdk/vercel';
+import { generateText } from 'ai';
 
-// Vercel AI SDK endpoint
+// Vercel AI SDK
 const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
+
+const vercelAI = createVercelAI({
+  apiKey: VERCEL_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,61 +22,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vercel AI SDK uses different endpoint format
-    // Try multiple endpoints in order
-    let response;
-    
-    // Endpoint 1: Try /v1/ai/chat/completions
-    response = await fetch('https://api.vercel.com/v1/ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${VERCEL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: messages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        temperature: temperature,
-        max_tokens: 2000,
-      }),
+    // Use Vercel AI SDK
+    const result = await generateText({
+      model: vercelAI(MODEL),
+      messages: messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      temperature: temperature,
+      maxTokens: 2000,
     });
-    
-    // If 404, try alternative endpoint
-    if (!response.ok && response.status === 404) {
-      // Endpoint 2: Try ai.vercel.com
-      response = await fetch('https://ai.vercel.com/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${VERCEL_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: messages.map((msg: any) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          temperature: temperature,
-          max_tokens: 2000,
-        }),
-      });
-    }
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Vercel API error:', errorData);
-      throw new Error(`Vercel API error: ${response.status} ${errorData}`);
-    }
-
-    const data = await response.json();
-    const textContent = data.choices?.[0]?.message?.content || '';
 
     return NextResponse.json({
-      id: data.id || `chatcmpl-${Date.now()}`,
-      content: textContent,
+      id: `chatcmpl-${Date.now()}`,
+      content: result.text,
       role: 'assistant',
     });
   } catch (error: any) {
