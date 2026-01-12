@@ -60,16 +60,36 @@ export const Op = {
   excesses: 0xd53276db,
 };
 
-// Parse base64 to Cell
+// Parse base64 to Cell (lazy loading to avoid build-time errors)
 function base64ToCell(base64: string): Cell {
   return Cell.fromBase64(base64);
 }
 
-// Use standard contract for offchain metadata (verified on tonviewer)
-// Use custom contract for onchain metadata (TEP-64 support)
-const JETTON_MINTER_ONCHAIN_CODE = base64ToCell(JETTON_MINTER_ONCHAIN_CODE_BASE64);
-const JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
-const JETTON_WALLET_CODE = base64ToCell(JETTON_WALLET_CODE_BASE64);
+// Lazy load contract codes to avoid build-time BOC deserialization errors
+let JETTON_MINTER_ONCHAIN_CODE: Cell | null = null;
+let JETTON_MINTER_STANDARD_CODE: Cell | null = null;
+let JETTON_WALLET_CODE: Cell | null = null;
+
+function getJettonMinterOnchainCode(): Cell {
+  if (!JETTON_MINTER_ONCHAIN_CODE) {
+    JETTON_MINTER_ONCHAIN_CODE = base64ToCell(JETTON_MINTER_ONCHAIN_CODE_BASE64);
+  }
+  return JETTON_MINTER_ONCHAIN_CODE;
+}
+
+function getJettonMinterStandardCode(): Cell {
+  if (!JETTON_MINTER_STANDARD_CODE) {
+    JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
+  }
+  return JETTON_MINTER_STANDARD_CODE;
+}
+
+function getJettonWalletCode(): Cell {
+  if (!JETTON_WALLET_CODE) {
+    JETTON_WALLET_CODE = base64ToCell(JETTON_WALLET_CODE_BASE64);
+  }
+  return JETTON_WALLET_CODE;
+}
 
 interface DeployResult {
   success: boolean;
@@ -247,7 +267,7 @@ export async function deployJettonMinter(
       .storeCoins(0) // total_supply (will be updated after mint)
       .storeAddress(walletAddress) // admin_address
       .storeAddress(null) // next_admin_address
-      .storeRef(JETTON_WALLET_CODE) // jetton_wallet_code
+      .storeRef(getJettonWalletCode()) // jetton_wallet_code
       .storeRef(contentCell) // content (TEP-64)
       .endCell();
 
@@ -255,8 +275,8 @@ export async function deployJettonMinter(
     // Standard contract for offchain (verified on tonviewer)
     // Custom contract for onchain (TEP-64 support)
     const minterCode = tokenData.useOffchainMetadata 
-      ? JETTON_MINTER_STANDARD_CODE 
-      : JETTON_MINTER_ONCHAIN_CODE;
+      ? getJettonMinterStandardCode() 
+      : getJettonMinterOnchainCode();
 
     // Create StateInit
     const stateInit = {
