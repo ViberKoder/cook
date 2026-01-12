@@ -80,6 +80,53 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Image generated successfully, URL length:', imageUrl.length);
+    
+    // Check if imageUrl is a data URI - convert to TON API imgproxy URL
+    if (imageUrl.startsWith('data:image/')) {
+      console.error('Image is in data URI format, which is not supported by Jetton 2.0');
+      return NextResponse.json(
+        { error: 'Image is in data URI format. Google Imagen should return a URL. Please check your API configuration.' },
+        { status: 500 }
+      );
+    }
+    
+    // If imageUrl is already a valid URL, use TON API imgproxy to cache it
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      try {
+        // Encode the original URL to base64url format for TON API imgproxy
+        // TON API imgproxy format: https://cache.tonapi.io/imgproxy/{hash}/rs:fill:W:H:1/g:no/{base64url_encoded_url}.webp
+        // Based on example: the hash may be auto-generated on first request
+        const encodedUrl = Buffer.from(imageUrl)
+          .toString('base64')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+        
+        // Use TON API imgproxy to cache the image
+        // For Jetton 2.0 metadata, we want good quality, so use reasonable size
+        // The hash in the example URL may be optional or auto-generated
+        // Format: https://cache.tonapi.io/imgproxy/rs:fill:W:H:1/g:no/{base64url}.webp
+        // Using 1024x1024 for good quality while keeping file size reasonable
+        const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
+        
+        console.log('Using TON API imgproxy URL:', tonApiUrl);
+        console.log('Original URL:', imageUrl);
+        
+        return NextResponse.json({
+          imageUrl: tonApiUrl,
+          originalUrl: imageUrl,
+        });
+      } catch (error: any) {
+        console.error('Error creating TON API URL:', error);
+        // Fallback to original URL if TON API URL creation fails
+        // Original URL should work for Jetton 2.0 as well
+        console.warn('Falling back to original URL');
+        return NextResponse.json({
+          imageUrl: imageUrl,
+        });
+      }
+    }
+    
     return NextResponse.json({
       imageUrl: imageUrl,
     });

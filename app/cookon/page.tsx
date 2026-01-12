@@ -529,20 +529,26 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         const data = await response.json();
         console.log('Image generation response data:', data);
         if (data.imageUrl) {
-          setMessages(prev => {
-            return prev.map(msg => 
-              msg.id === messageId && msg.tokenData
-                ? {
-                    ...msg,
-                    tokenData: {
-                      ...msg.tokenData,
-                      image: data.imageUrl,
+          // Check if it's still a data URI (shouldn't happen if upload worked)
+          if (data.imageUrl.startsWith('data:image/')) {
+            console.warn('Image is still in data URI format, may cause issues with Jetton 2.0');
+            toast.error('Image generation failed: Image is in unsupported format. Please check Pinata configuration.');
+          } else {
+            setMessages(prev => {
+              return prev.map(msg => 
+                msg.id === messageId && msg.tokenData
+                  ? {
+                      ...msg,
+                      tokenData: {
+                        ...msg.tokenData,
+                        image: data.imageUrl,
+                      }
                     }
-                  }
-                : msg
-            );
-          });
-          toast.success('Image generated!');
+                  : msg
+              );
+            });
+            toast.success('Image generated and uploaded to IPFS!');
+          }
         } else {
           console.error('No imageUrl in response:', data);
           toast.error('Image generation failed: No image URL returned');

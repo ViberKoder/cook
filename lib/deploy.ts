@@ -184,12 +184,21 @@ export async function deployJettonMinter(
     // Build TEP-64 on-chain metadata
     console.log('Building on-chain metadata (TEP-64)...');
     
-    // Handle image: use URL if provided, or create data URL from base64 if uploaded
+    // Handle image: Jetton 2.0 requires URL, not data URI
     let imageUrl: string | undefined = tokenData.image;
+    
+    // Check if image is a data URI - Jetton 2.0 doesn't support data URIs
+    if (imageUrl && imageUrl.startsWith('data:image/')) {
+      console.error('Image is in data URI format, which is not supported by Jetton 2.0');
+      throw new Error('Image must be a URL (http:// or https://), not a data URI. The image generation API should return a URL.');
+    }
+    
+    // If no image URL but we have imageData, this shouldn't happen with TON API
+    // But we'll log a warning
     if (!imageUrl && tokenData.imageData) {
-      // Create data URL from base64
-      imageUrl = `data:image/png;base64,${tokenData.imageData}`;
-      console.log('Using uploaded image as data URL');
+      console.warn('No image URL provided, but imageData exists. Image should be generated as URL by the API.');
+      // Don't throw error, just skip image
+      imageUrl = undefined;
     }
     
     contentCell = buildOnchainMetadataCell({
