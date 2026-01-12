@@ -64,6 +64,11 @@ function base64ToCell(base64: string): Cell {
   return Cell.fromBase64(base64);
 }
 
+// Parse HEX to Cell using fromBoc (for standard contract)
+function hexToCell(hex: string): Cell {
+  return Cell.fromBoc(Buffer.from(hex, 'hex'))[0];
+}
+
 // Lazy load contract codes to avoid build-time BOC deserialization errors
 let JETTON_MINTER_ONCHAIN_CODE: Cell | null = null;
 let JETTON_MINTER_STANDARD_CODE: Cell | null = null;
@@ -79,9 +84,8 @@ function getJettonMinterOnchainCode(): Cell {
 function getJettonMinterStandardCode(): Cell {
   if (!JETTON_MINTER_STANDARD_CODE) {
     try {
-      // Try to load standard contract, but if it fails, fall back to onchain contract
-      // This handles cases where the standard contract BOC is invalid
-      JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
+      // Use HEX format with fromBoc for standard contract (verified on tonviewer)
+      JETTON_MINTER_STANDARD_CODE = hexToCell(JETTON_MINTER_CODE_HEX);
     } catch (error) {
       console.warn('Failed to load standard contract, using onchain contract instead:', error);
       // Fall back to onchain contract if standard contract fails
@@ -93,7 +97,8 @@ function getJettonMinterStandardCode(): Cell {
 
 function getJettonWalletCodeCell(): Cell {
   if (!JETTON_WALLET_CODE) {
-    JETTON_WALLET_CODE = base64ToCell(JETTON_WALLET_CODE_BASE64);
+    // Use HEX format with fromBoc for wallet code
+    JETTON_WALLET_CODE = hexToCell(JETTON_WALLET_CODE_HEX);
   }
   return JETTON_WALLET_CODE;
 }
