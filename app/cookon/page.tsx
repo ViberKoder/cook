@@ -640,7 +640,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         
         // Save token to user's list
         if (wallet) {
-          addUserToken(wallet, result.address);
+          addUserToken(wallet.toString(), result.address);
           setTokenDeployedAt(result.address);
         }
       } else {

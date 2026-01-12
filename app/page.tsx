@@ -43,9 +43,7 @@ export default function Home() {
         // Save token to user's list
         if (wallet) {
           const { addUserToken, setTokenDeployedAt } = await import('@/lib/cookTokens');
-          const { Address } = await import('@ton/core');
-          const walletAddress = Address.parse(wallet).toString();
-          addUserToken(walletAddress, result.address);
+          addUserToken(wallet.toString(), result.address);
           setTokenDeployedAt(result.address);
         }
       } else {
