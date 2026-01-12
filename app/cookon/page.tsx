@@ -31,7 +31,7 @@ export default function CookonPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m Cookon AI 🚀\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
+      content: 'Hello! I\'m Cookon AI\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
       timestamp: new Date(),
     },
   ]);
@@ -490,7 +490,7 @@ JSON должен быть в конце, после основного текс
       {
         id: '1',
         role: 'assistant',
-        content: 'Hello! I\'m Cookon AI 🚀\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
+        content: 'Hello! I\'m Cookon AI\n\nI\'ll help you create a viral memecoin on the TON blockchain. Just tell me your idea or ask me to come up with something new!',
         timestamp: new Date(),
       },
     ]);
@@ -554,16 +554,28 @@ JSON должен быть в конце, после основного текс
         <div className="max-w-2xl w-full text-center" style={{ marginTop: '-100px' }}>
           <div className="mb-12" style={{ marginTop: '40px' }}>
             <Image 
-              src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
+              src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
               alt="Cookon" 
               width={1350}
               height={450}
               className="mx-auto mb-8"
-              style={{ transform: 'scale(1)', marginTop: '-80px' }}
+              style={{ transform: 'scale(1.2)', marginTop: '-120px' }}
               unoptimized
             />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white" style={{ marginTop: '-20px' }}>
+          <h1 className="mb-4" style={{ 
+            fontSize: '72px',
+            fontWeight: 'bold',
+            lineHeight: '80px',
+            margin: '0 0 16px 0',
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+            maxWidth: '100%',
+            background: 'linear-gradient(290deg, #d235ff 0%, #a062ff 30%, #3088ff 66%, #61d8ff 100%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent'
+          }}>
             Cookon
           </h1>
           <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '-10px' }}>
@@ -665,20 +677,32 @@ JSON должен быть в конце, после основного текс
           <div className="text-center mb-6" style={{ marginTop: '20px' }}>
             <div className="flex justify-center mb-4">
               <Image 
-                src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreicinlqivthmwglklcmd2f2hgikpjqtco4cmt73spj7frjfz4fpkwi" 
+                src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
                 alt="Cookon" 
                 width={900}
                 height={300}
                 className="drop-shadow-2xl"
-                style={{ transform: 'scale(1)', marginTop: '-60px' }}
+                style={{ transform: 'scale(1.2)', marginTop: '-100px' }}
                 unoptimized
               />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white" style={{ marginTop: '-20px' }}>
+            <h1 className="mb-3" style={{ 
+              fontSize: '72px',
+              fontWeight: 'bold',
+              lineHeight: '80px',
+              margin: '0 0 12px 0',
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+              maxWidth: '100%',
+              background: 'linear-gradient(290deg, #d235ff 0%, #a062ff 30%, #3088ff 66%, #61d8ff 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent'
+            }}>
               Cookon
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
-              Cookon AI вЂ” create your own viral memecoin, in chat with AI! рџЋЁ
+              Cookon AI вЂ” create your own viral memecoin, in chat with AI!
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '10px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
@@ -771,7 +795,7 @@ JSON должен быть в конце, после основного текс
                               {!connected ? (
                                 <span>Connect Wallet</span>
                               ) : (
-                                <span>Cook it! 🚀</span>
+                                <span>Cook it!</span>
                               )}
                             </button>
                           </div>
