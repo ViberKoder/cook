@@ -2,6 +2,7 @@ import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress, Dict
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
 import { sha256 } from '@noble/hashes/sha256';
 import toast from 'react-hot-toast';
+import { JETTON_MINTER_CODE_HEX, JETTON_WALLET_CODE_HEX } from './jettonMinterCode';
 
 export interface TokenData {
   name: string;
@@ -36,8 +37,7 @@ const JETTON_MINTER_ONCHAIN_CODE_BASE64 = 'te6ccgECEwEABG0AART/APSkE/S88sgLAQIBY
 // Standard Jetton 2.0 Minter (official contract from ton-blockchain/jetton-contract)
 // This is the verified contract that shows as "Verified" on tonviewer for offchain metadata
 // Source: https://github.com/ton-blockchain/jetton-contract/tree/jetton-2.0
-// Using the standard contract code from jettonMinterCode.ts which is the official compiled contract
-const JETTON_MINTER_STANDARD_CODE_BASE64 = STANDARD_JETTON_MINTER_CODE_BASE64;
+// Using HEX format from jettonMinterCode.ts which is the official compiled contract
 
 // Jetton Wallet (Jetton 2.0)
 const JETTON_WALLET_CODE_BASE64 = 'te6ccgECDQEAA4oAART/APSkE/S88sgLAQIBYgIDAvTQAdDTAwFxsMABjkMTXwOAINch7UTQ+gD6QPpA0QPTHwGEDyGCEBeNRRm6AoIQe92X3roSsfL0gEDXIfoAMBKgAshQA/oCAc8WAc8Wye1U4PpA+kAx+gAx9AH6ADH6AAExcPg6AtMfASCCEA+KfqW6joUwNFnbPOAzIgQFAB2g9gXaiaH0AfSB9IGj8FUB9APTPwEB+gD6QCH6RDDAAPLhTe1E0PoA+kD6QNFSGccF8uBJURShIML/8q8jgAvXIdcLB/gqVCWQcFQgExTIUAP6AgHPFgHPFskieHHIywDLBMsAEvQA9ADLAMlRRIT3AfkAAbBwdMjLAsoHEssHy/fJ0AP6QPQB+gAgBgJaghAXjUUZuo6EMlrbPOA0IYIQWV8HvLqOhDEB2zzgE18DghDTchWMutyED/LwCAkBliDXCwCa10vAAQHAAbDysZEw4siCEBeNRRkByx9QCQHLP1AH+gIjzxYBzxYl+gJQBs8WyciAGAHLBVADzxZw+gJad1ADy2vMzMlERgcAsCGRcpFx4vg5IG6TgSObkSDiIW6UMYEoMJEB4lAjqBOgc4EDLHD4PKACcPg2EqABcPg2oHOBBAKCEAlmAYBw+DegvPKwA4BQ+wAByFAD+gIBzxYBzxbJ7VQC9O1E0PoA+kD6QNEG0z8BAfoA+kD6QFOpxwWzjk74KlRjwCKAC9ch1wsHVSBwVCATFMhQA/oCAc8WAc8WySJ4ccjLAMsEywAS9AD0AMsAyYT3AfkAAbBwdMjLAsoHEssHy/fJ0FAKxwXy4EqROeJRUqAI+gAhkl8E4w0iCgsB7u1E0PoA+kD6QNEF0z8BAfoA+kD0AdFRQaFSN8cF8uBJJcL/8q/IghB73ZfeAcsfWAHLPwH6AiHPFljPFsnIgBgBywUlzxZw+gIBcVjLaszJAvg5IG6UMIEWDd5xgQLycPg4AXD4NqCBG99w+DagvPKwAYBQ+wBYDABgyIIQc2LQnAHLHyUByz9QBPoCWM8WWM8WyciAEAHLBSTPFlj6AgFxWMtqzMmAEfsAAK7XCwHAALOOO1BDofgvoHOBBAKCEAlmAYBw+De2CXL7AsiAEAHLBQHPFnD6AnABy2qCENUydtsByx8BAcs/yYEAgvsAkxRfBOJYyFAD+gIBzxYBzxbJ7VQAHMhQA/oCAc8WAc8Wye1U';
@@ -194,11 +194,12 @@ export function buildOnchainMetadataCell(data: { [s: string]: string | undefined
 
 /**
  * Build off-chain metadata cell (URL)
+ * For standard Jetton 2.0 contract, metadata_uri is stored as a snake-encoded string in a ref
+ * This matches jettonContentToCell() from the official wrapper
  */
 export function buildOffchainMetadataCell(uri: string): Cell {
   return beginCell()
-    .storeUint(OFFCHAIN_CONTENT_PREFIX, 8)
-    .storeStringTail(uri)
+    .storeStringRefTail(uri)
     .endCell();
 }
 
@@ -268,14 +269,19 @@ export async function deployJettonMinter(
     // Total supply with decimals
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
-    // Jetton 2.0 data structure:
-    // total_supply, admin_address, next_admin_address, wallet_code, content
+    // Build initial data for Jetton 2.0 minter
+    // Structure from load_data():
+    //   total_supply: Coins
+    //   admin_address: MsgAddress
+    //   next_admin_address: MsgAddress (null for no pending transfer)
+    //   jetton_wallet_code: ^Cell
+    //   metadata_uri/content: ^Cell (TEP-64 dict for onchain, URL string for offchain)
     const minterData = beginCell()
-      .storeCoins(0) // total_supply (will be updated after mint)
+      .storeCoins(0) // total_supply (starts at 0, updated after mint)
       .storeAddress(walletAddress) // admin_address
-      .storeAddress(null) // next_admin_address
+      .storeAddress(null) // next_admin_address (transfer_admin)
       .storeRef(getJettonWalletCodeCell()) // jetton_wallet_code
-      .storeRef(contentCell) // content (TEP-64)
+      .storeRef(contentCell) // content (TEP-64 for onchain) or metadata_uri (for offchain)
       .endCell();
 
     // Choose contract code based on metadata type
