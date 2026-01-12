@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Vercel AI SDK endpoint - using direct xAI API with Vercel proxy
+// Vercel AI SDK endpoint
 const VERCEL_API_KEY = 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
-// Try using Vercel AI proxy endpoint
-const VERCEL_API_URL = 'https://api.vercel.com/v1/chat/completions';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 export async function POST(request: NextRequest) {
@@ -18,9 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Vercel AI SDK endpoint with proper format
-    // The vck_ key is used with Vercel AI SDK proxy
-    const response = await fetch('https://api.vercel.com/v1/chat/completions', {
+    // Use Vercel AI SDK endpoint - correct path for AI chat
+    const response = await fetch('https://api.vercel.com/v1/ai/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
