@@ -98,14 +98,41 @@ export async function POST(request: NextRequest) {
         console.log('Image stored in KV, serving via API route:', imageUrl);
       } catch (kvError: any) {
         console.error('KV storage failed:', kvError);
-        // Last resort: return data URI encoded for TON API
-        // This won't work for Jetton 2.0, but at least we return something
-        return NextResponse.json(
-          { 
-            error: 'Failed to store image. Please configure BLOB_READ_WRITE_TOKEN or Vercel KV.' 
-          },
-          { status: 500 }
-        );
+        console.log('Trying fallback to external image hosting...');
+        
+        // Last resort: Use imgbb.com as fallback
+        try {
+          const formData = new FormData();
+          const blob = new Blob([imageBuffer], { type: mimeType });
+          formData.append('image', blob, `image.${imageFormat}`);
+          
+          // Try imgbb.com (free, no API key required for basic usage, but has rate limits)
+          const imgbbResponse = await fetch('https://api.imgbb.com/1/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (imgbbResponse.ok) {
+            const imgbbData = await imgbbResponse.json();
+            if (imgbbData.data && imgbbData.data.url) {
+              imageUrl = imgbbData.data.url;
+              console.log('Image uploaded to imgbb as fallback, URL:', imageUrl);
+            } else {
+              throw new Error('Failed to get URL from imgbb');
+            }
+          } else {
+            const errorData = await imgbbResponse.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(`imgbb upload failed: ${errorData.error || 'Unknown error'}`);
+          }
+        } catch (imgbbError: any) {
+          console.error('All storage methods failed:', imgbbError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to store image. All storage methods failed. Please configure BLOB_READ_WRITE_TOKEN or Vercel KV in Vercel Dashboard.' 
+            },
+            { status: 500 }
+          );
+        }
       }
     }
 
