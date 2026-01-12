@@ -408,10 +408,13 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
 
         setMessages(prev => [...prev, assistantMessage]);
         
-        if (imagePrompt) {
+        if (imagePrompt && imagePrompt.trim()) {
+          console.log('Generating image with prompt:', imagePrompt);
           generateImageForMessage(imagePrompt, extractedTokenData, messageId).catch(err => {
             console.error('Image generation failed:', err);
           });
+        } else {
+          console.warn('No imagePrompt found in JSON data');
         }
       } else {
         const parsed = parseTokenData(fullResponse);
