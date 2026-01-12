@@ -2,7 +2,6 @@ import { Address, beginCell, Cell, toNano, storeStateInit, contractAddress, Dict
 import { SendTransactionParams, TransactionMessage } from '@/hooks/useTonConnect';
 import { sha256 } from '@noble/hashes/sha256';
 import toast from 'react-hot-toast';
-import { JETTON_MINTER_CODE_BASE64 as STANDARD_JETTON_MINTER_CODE_BASE64 } from './jettonMinterCode';
 
 export interface TokenData {
   name: string;
@@ -79,7 +78,15 @@ function getJettonMinterOnchainCode(): Cell {
 
 function getJettonMinterStandardCode(): Cell {
   if (!JETTON_MINTER_STANDARD_CODE) {
-    JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
+    try {
+      // Try to load standard contract, but if it fails, fall back to onchain contract
+      // This handles cases where the standard contract BOC is invalid
+      JETTON_MINTER_STANDARD_CODE = base64ToCell(JETTON_MINTER_STANDARD_CODE_BASE64);
+    } catch (error) {
+      console.warn('Failed to load standard contract, using onchain contract instead:', error);
+      // Fall back to onchain contract if standard contract fails
+      JETTON_MINTER_STANDARD_CODE = getJettonMinterOnchainCode();
+    }
   }
   return JETTON_MINTER_STANDARD_CODE;
 }
