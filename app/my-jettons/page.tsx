@@ -19,7 +19,7 @@ interface JettonInfo {
 
 // Memoized Jetton Card component to prevent unnecessary re-renders
 const JettonCard = memo(({ jetton }: { jetton: JettonInfo }) => (
-  <div className="card hover:scale-105 transition-transform">
+  <div className="card hover:shadow-lg transition-shadow">
     {jetton.image && (
       <div className="mb-4 -mx-6 -mt-6 rounded-t-2xl overflow-hidden">
         <Image
@@ -119,7 +119,7 @@ export default function MyJettonsPage() {
       // Load metadata sequentially to avoid overwhelming the API
       const jettonsWithMetadata: JettonInfo[] = [];
       const metadataCache: Record<string, { data: any; timestamp: number }> = {};
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (much longer cache)
       
       // Load cache from localStorage
       try {
@@ -131,6 +131,7 @@ export default function MyJettonsPage() {
         // Ignore cache errors
       }
       
+      // Load all metadata first, then update once
       for (const jetton of basicJettons) {
         // Check cache first
         const cached = metadataCache[jetton.address];
@@ -142,7 +143,6 @@ export default function MyJettonsPage() {
             description: cached.data.description,
             image: cached.data.image,
           });
-          setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
           continue;
         }
         
@@ -164,12 +164,6 @@ export default function MyJettonsPage() {
               data: metadata,
               timestamp: Date.now(),
             };
-            // Save cache to localStorage
-            try {
-              localStorage.setItem('jetton_metadata_cache', JSON.stringify(metadataCache));
-            } catch (e) {
-              // Ignore localStorage errors
-            }
             
             jettonsWithMetadata.push({
               ...jetton,
@@ -188,14 +182,16 @@ export default function MyJettonsPage() {
           }
           jettonsWithMetadata.push(jetton);
         }
-        
-        // Update UI incrementally after each token (but batch updates)
-        if (jettonsWithMetadata.length % 3 === 0 || jettonsWithMetadata.length === basicJettons.length) {
-          setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
-        }
       }
       
-      // Final update
+      // Save cache to localStorage once
+      try {
+        localStorage.setItem('jetton_metadata_cache', JSON.stringify(metadataCache));
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+      
+      // Single update after all metadata is loaded
       setJettons(jettonsWithMetadata);
     } catch (error) {
       console.error('Failed to load user jettons:', error);
@@ -206,20 +202,24 @@ export default function MyJettonsPage() {
   }, [wallet]);
 
   const walletAddress = useMemo(() => wallet?.toString(), [wallet]);
+  const loadedRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     
-    if (connected && walletAddress) {
+    // Only load if wallet changed or not loaded yet
+    if (connected && walletAddress && loadedRef.current !== walletAddress) {
       setLoading(true);
+      loadedRef.current = walletAddress;
       loadUserJettons().then(() => {
         if (!cancelled) {
           setLoading(false);
         }
       });
-    } else {
+    } else if (!connected || !walletAddress) {
       setLoading(false);
       setJettons([]);
+      loadedRef.current = null;
     }
     
     return () => {
