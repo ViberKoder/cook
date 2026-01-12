@@ -183,8 +183,15 @@ export default function CookonPage() {
     return parsed;
   };
 
-  const handleSendMessage = async (customMessage?: string) => {
-    const messageToSend = customMessage || inputMessage;
+  const handleSendMessage = async (customMessage?: string | React.MouseEvent<HTMLButtonElement>) => {
+    // Handle both cases: direct call with string or event handler
+    let messageToSend: string;
+    if (typeof customMessage === 'string') {
+      messageToSend = customMessage;
+    } else {
+      messageToSend = inputMessage;
+    }
+    
     if (!messageToSend.trim() || isLoading) return;
 
     // Check wallet connection
@@ -215,7 +222,7 @@ export default function CookonPage() {
 
     setMessages(prev => [...prev, userMessage]);
     const currentInput = messageToSend;
-    if (!customMessage) {
+    if (typeof customMessage !== 'string') {
       setInputMessage('');
     }
     setIsLoading(true);
