@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       })),
       temperature: temperature,
       maxTokens: 2000,
-    });
+    } as any);
 
     return NextResponse.json({
       id: `chatcmpl-${Date.now()}`,

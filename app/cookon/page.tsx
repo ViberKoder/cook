@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -578,7 +578,7 @@ JSON должен быть в конце, после основного текс
           }}>
             Cookon
           </h1>
-          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '8px' }}>
+          <h2 className="text-2xl md:text-3xl font-light mb-8 text-gray-300" style={{ marginTop: '-10px' }}>
             Cook Jetton with AI Open Network
           </h2>
           <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto" style={{ marginTop: '-5px' }}>
@@ -690,8 +690,8 @@ JSON должен быть в конце, после основного текс
             }}>
               Cookon
             </h1>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '8px' }}>
-              Cookon AI - create your own viral memecoin, in chat with AI!
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3" style={{ marginTop: '-10px' }}>
+              Cookon AI � create your own viral memecoin, in chat with AI!????
             </p>
             <p className="text-sm text-gray-500" style={{ marginTop: '4px' }}>
               Requests: {requestCount} | Next payment at {Math.ceil((requestCount + 1) / REQUESTS_PER_PAYMENT) * REQUESTS_PER_PAYMENT} requests ({PERIODIC_PAYMENT} TON)
@@ -739,10 +739,13 @@ JSON должен быть в конце, после основного текс
                           <div className="space-y-3">
                             {message.tokenData.image && (
                               <div className="flex justify-center mb-3">
-                                <img 
+                                <Image 
                                   src={message.tokenData.image} 
                                   alt="Token preview" 
+                                  width={128}
+                                  height={128}
                                   className="w-32 h-32 rounded-xl object-cover border-2 border-gray-700"
+                                  unoptimized
                                 />
                               </div>
                             )}
