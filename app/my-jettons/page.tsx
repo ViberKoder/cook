@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { getUserTokens, getTokenDeployedAt } from '@/lib/cookTokens';
 import Header from '@/components/Header';
@@ -16,6 +16,71 @@ interface JettonInfo {
   image?: string;
   deployedAt?: number;
 }
+
+// Memoized Jetton Card component to prevent unnecessary re-renders
+const JettonCard = memo(({ jetton }: { jetton: JettonInfo }) => (
+  <div className="card hover:scale-105 transition-transform">
+    {jetton.image && (
+      <div className="mb-4 -mx-6 -mt-6 rounded-t-2xl overflow-hidden">
+        <Image
+          src={jetton.image}
+          alt={jetton.name || 'Token'}
+          width={400}
+          height={400}
+          className="w-full h-48 object-cover"
+          loading="lazy"
+        />
+      </div>
+    )}
+    
+    <div className="mb-4">
+      {jetton.name && (
+        <h3 className="text-xl font-bold text-cook-text mb-1">
+          {jetton.name}
+        </h3>
+      )}
+      {jetton.symbol && (
+        <p className="text-lg font-semibold text-cook-orange mb-2">
+          ${jetton.symbol}
+        </p>
+      )}
+      {jetton.description && (
+        <p className="text-sm text-cook-text-secondary line-clamp-2 mb-3">
+          {jetton.description}
+        </p>
+      )}
+      <div className="p-3 bg-cook-bg-secondary rounded-lg">
+        <p className="text-xs text-cook-text-secondary mb-1">Contract Address</p>
+        <code className="text-xs text-cook-orange break-all">
+          {jetton.address}
+        </code>
+      </div>
+      {jetton.deployedAt && (
+        <p className="text-xs text-cook-text-secondary mt-2">
+          Created: {new Date(jetton.deployedAt).toLocaleDateString()}
+        </p>
+      )}
+    </div>
+
+    <div className="flex flex-col gap-2">
+      <Link
+        href={`/admin?address=${jetton.address}`}
+        className="btn-cook text-center text-sm py-2"
+      >
+        Manage Token
+      </Link>
+      <Link
+        href={`https://tonviewer.com/${jetton.address}`}
+        target="_blank"
+        className="btn-secondary text-center text-sm py-2"
+      >
+        View on Explorer
+      </Link>
+    </div>
+  </div>
+));
+
+JettonCard.displayName = 'JettonCard';
 
 export default function MyJettonsPage() {
   const { connected, wallet } = useTonConnect();
@@ -229,65 +294,7 @@ export default function MyJettonsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {jettons.map((jetton) => (
-                <div key={jetton.address} className="card hover:scale-105 transition-transform">
-                  {jetton.image && (
-                    <div className="mb-4 -mx-6 -mt-6 rounded-t-2xl overflow-hidden">
-                      <Image
-                        src={jetton.image}
-                        alt={jetton.name || 'Token'}
-                        width={400}
-                        height={400}
-                        className="w-full h-48 object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="mb-4">
-                    {jetton.name && (
-                      <h3 className="text-xl font-bold text-cook-text mb-1">
-                        {jetton.name}
-                      </h3>
-                    )}
-                    {jetton.symbol && (
-                      <p className="text-lg font-semibold text-cook-orange mb-2">
-                        ${jetton.symbol}
-                      </p>
-                    )}
-                    {jetton.description && (
-                      <p className="text-sm text-cook-text-secondary line-clamp-2 mb-3">
-                        {jetton.description}
-                      </p>
-                    )}
-                    <div className="p-3 bg-cook-bg-secondary rounded-lg">
-                      <p className="text-xs text-cook-text-secondary mb-1">Contract Address</p>
-                      <code className="text-xs text-cook-orange break-all">
-                        {jetton.address}
-                      </code>
-                    </div>
-                    {jetton.deployedAt && (
-                      <p className="text-xs text-cook-text-secondary mt-2">
-                        Created: {new Date(jetton.deployedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      href={`/admin?address=${jetton.address}`}
-                      className="btn-cook text-center text-sm py-2"
-                    >
-                      Manage Token
-                    </Link>
-                    <Link
-                      href={`https://tonviewer.com/${jetton.address}`}
-                      target="_blank"
-                      className="btn-secondary text-center text-sm py-2"
-                    >
-                      View on Explorer
-                    </Link>
-                  </div>
-                </div>
+                <JettonCard key={jetton.address} jetton={jetton} />
               ))}
             </div>
           )}
