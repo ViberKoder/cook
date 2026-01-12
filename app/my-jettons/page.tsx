@@ -53,7 +53,34 @@ export default function MyJettonsPage() {
       
       // Load metadata sequentially to avoid overwhelming the API
       const jettonsWithMetadata: JettonInfo[] = [];
+      const metadataCache: Record<string, { data: any; timestamp: number }> = {};
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      
+      // Load cache from localStorage
+      try {
+        const cached = localStorage.getItem('jetton_metadata_cache');
+        if (cached) {
+          Object.assign(metadataCache, JSON.parse(cached));
+        }
+      } catch (e) {
+        // Ignore cache errors
+      }
+      
       for (const jetton of basicJettons) {
+        // Check cache first
+        const cached = metadataCache[jetton.address];
+        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+          jettonsWithMetadata.push({
+            ...jetton,
+            name: cached.data.name,
+            symbol: cached.data.symbol,
+            description: cached.data.description,
+            image: cached.data.image,
+          });
+          setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
+          continue;
+        }
+        
         try {
           // Try to get metadata from API with timeout
           const controller = new AbortController();
@@ -67,6 +94,18 @@ export default function MyJettonsPage() {
           
           if (response.ok) {
             const metadata = await response.json();
+            // Cache the metadata
+            metadataCache[jetton.address] = {
+              data: metadata,
+              timestamp: Date.now(),
+            };
+            // Save cache to localStorage
+            try {
+              localStorage.setItem('jetton_metadata_cache', JSON.stringify(metadataCache));
+            } catch (e) {
+              // Ignore localStorage errors
+            }
+            
             jettonsWithMetadata.push({
               ...jetton,
               name: metadata.name,
@@ -85,9 +124,14 @@ export default function MyJettonsPage() {
           jettonsWithMetadata.push(jetton);
         }
         
-        // Update UI incrementally after each token
-        setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
+        // Update UI incrementally after each token (but batch updates)
+        if (jettonsWithMetadata.length % 3 === 0 || jettonsWithMetadata.length === basicJettons.length) {
+          setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
+        }
       }
+      
+      // Final update
+      setJettons(jettonsWithMetadata);
     } catch (error) {
       console.error('Failed to load user jettons:', error);
       setJettons([]);
