@@ -23,79 +23,94 @@ export default function MyJettonsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+    
     if (connected && wallet) {
-      loadUserJettons();
+      loadUserJettons().then(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
     } else {
       setLoading(false);
     }
+    
+    return () => {
+      cancelled = true;
+    };
   }, [connected, wallet]);
 
-  const loadUserJettons = async () => {
+  const loadUserJettons = async (): Promise<void> => {
     if (!wallet) {
-      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
       const walletAddress = wallet.toString();
       const tokenAddresses = getUserTokens(walletAddress);
       
       // If no tokens, set empty array immediately
       if (tokenAddresses.length === 0) {
         setJettons([]);
-        setLoading(false);
         return;
       }
       
-      // Load metadata for each token with timeout and error handling
-      const jettonsData: JettonInfo[] = [];
+      // Show tokens immediately with basic info (no metadata yet)
+      const basicJettons: JettonInfo[] = tokenAddresses.map(address => ({
+        address,
+        deployedAt: getTokenDeployedAt(address),
+      }));
       
-      // Load tokens sequentially to avoid overwhelming the API
-      for (const address of tokenAddresses) {
-        const deployedAt = getTokenDeployedAt(address);
-        const jettonInfo: JettonInfo = {
-          address,
-          deployedAt,
-        };
-        
-        try {
-          // Try to get metadata from API with timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-          
-          const response = await fetch(`/api/jetton-metadata/${address}`, {
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const metadata = await response.json();
-            jettonInfo.name = metadata.name;
-            jettonInfo.symbol = metadata.symbol;
-            jettonInfo.description = metadata.description;
-            jettonInfo.image = metadata.image;
-          }
-        } catch (error: any) {
-          // Silently fail - token will be shown without metadata
-          if (error.name !== 'AbortError') {
-            console.error(`Failed to load metadata for ${address}:`, error);
-          }
-        }
-        
-        jettonsData.push(jettonInfo);
-      }
-
       // Sort by deployment date (newest first)
-      jettonsData.sort((a, b) => (b.deployedAt || 0) - (a.deployedAt || 0));
+      basicJettons.sort((a, b) => (b.deployedAt || 0) - (a.deployedAt || 0));
       
-      setJettons(jettonsData);
+      // Set basic info first for immediate display
+      setJettons(basicJettons);
+      
+      // Load metadata in background (non-blocking)
+      const jettonsWithMetadata = await Promise.allSettled(
+        basicJettons.map(async (jetton) => {
+          try {
+            // Try to get metadata from API with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+            
+            const response = await fetch(`/api/jetton-metadata/${jetton.address}`, {
+              signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              const metadata = await response.json();
+              return {
+                ...jetton,
+                name: metadata.name,
+                symbol: metadata.symbol,
+                description: metadata.description,
+                image: metadata.image,
+              };
+            }
+          } catch (error: any) {
+            // Silently fail - token will be shown without metadata
+            if (error.name !== 'AbortError') {
+              console.error(`Failed to load metadata for ${jetton.address}:`, error);
+            }
+          }
+          
+          return jetton;
+        })
+      );
+
+      // Update with metadata (only successful ones)
+      const updatedJettons = jettonsWithMetadata.map((result) => 
+        result.status === 'fulfilled' ? result.value : null
+      ).filter((jetton): jetton is JettonInfo => jetton !== null);
+      
+      setJettons(updatedJettons);
     } catch (error) {
       console.error('Failed to load user jettons:', error);
       setJettons([]);
-    } finally {
-      setLoading(false);
     }
   };
 
