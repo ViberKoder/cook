@@ -28,20 +28,52 @@ export async function POST(request: NextRequest) {
 
     console.log('Calling xAI image API with model: grok-2-image-1212');
     
-    // Use direct xAI API call with AI_GATEWAY_API_KEY
-    // The key should work as a proxy through Vercel AI Gateway
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'grok-2-image-1212',
-        prompt: prompt,
-        n: 1,
-      }),
-    });
+    // Try using Vercel AI Gateway endpoint first, then fallback to direct xAI API
+    // Vercel AI Gateway might proxy image generation requests
+    let response;
+    let lastError;
+    
+    // First, try Vercel AI Gateway endpoint (if it supports images)
+    try {
+      console.log('Trying Vercel AI Gateway endpoint for images...');
+      response = await fetch('https://api.vercel.ai/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'xai/grok-2-image-1212',
+          prompt: prompt,
+          n: 1,
+        }),
+      });
+      
+      if (response.ok) {
+        console.log('Vercel AI Gateway endpoint worked!');
+      } else {
+        console.log('Vercel AI Gateway endpoint failed, trying direct xAI API...');
+        throw new Error('Vercel endpoint not available');
+      }
+    } catch (error) {
+      console.log('Vercel AI Gateway endpoint error, trying direct xAI API:', error);
+      lastError = error;
+      
+      // Fallback to direct xAI API call with AI_GATEWAY_API_KEY
+      // The key might work as a proxy through Vercel AI Gateway
+      response = await fetch('https://api.x.ai/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'grok-2-image-1212',
+          prompt: prompt,
+          n: 1,
+        }),
+      });
+    }
 
     console.log('xAI image API response status:', response.status);
 
