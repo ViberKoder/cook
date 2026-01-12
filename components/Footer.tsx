@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 border-t border-cook-border bg-white/50 backdrop-blur-xl">
+    <footer className="relative z-10 border-t border-cook-border bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -14,7 +14,7 @@ export default function Footer() {
                 alt="Cook" 
                 width={40}
                 height={40}
-                unoptimized
+                loading="lazy"
               />
               <span className="text-xl font-bold gradient-text-cook">Cook</span>
             </div>

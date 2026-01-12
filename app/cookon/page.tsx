@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import TokenForm, { TokenData } from '@/components/TokenForm';
@@ -55,6 +55,7 @@ export default function CookonPage() {
   const [error, setError] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check payment status on mount and apply dark theme
   useEffect(() => {
@@ -67,10 +68,12 @@ export default function CookonPage() {
       setRequestCount(parseInt(count, 10));
     }
 
-    // Apply dark theme to body
-    document.body.style.backgroundColor = '#000000';
-    document.body.style.color = '#ffffff';
-    document.documentElement.style.backgroundColor = '#000000';
+    // Apply dark theme to body (only once)
+    if (document.body.style.backgroundColor !== '#000000') {
+      document.body.style.backgroundColor = '#000000';
+      document.body.style.color = '#ffffff';
+      document.documentElement.style.backgroundColor = '#000000';
+    }
 
     // Cleanup on unmount
     return () => {
@@ -81,7 +84,7 @@ export default function CookonPage() {
   }, []);
 
   // Send payment transaction
-  const sendPayment = async (amount: number, comment: string): Promise<boolean> => {
+  const sendPayment = useCallback(async (amount: number, comment: string): Promise<boolean> => {
     if (!connected || !wallet) {
       toast.error('Please connect your wallet first');
       return false;
@@ -118,10 +121,10 @@ export default function CookonPage() {
       toast.error(error.message || 'Payment failed');
       return false;
     }
-  };
+  }, [connected, wallet, tonConnectUI]);
 
   // Handle initial payment
-  const handleInitialPayment = async () => {
+  const handleInitialPayment = useCallback(async () => {
     if (!connected || !wallet) {
       toast.error('Please connect your TON wallet first');
       return;
@@ -133,7 +136,7 @@ export default function CookonPage() {
       localStorage.setItem('cookon_initial_payment', 'true');
       toast.success('Access granted! You can now use Cookon.');
     }
-  };
+  }, [connected, wallet, sendPayment]);
 
   // Check and process periodic payment
   const checkAndProcessPeriodicPayment = async (): Promise<boolean> => {
@@ -511,9 +514,9 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [connected, wallet, hasPaidInitial, requestCount, inputMessage, isLoading, messages, tonConnectUI]);
 
-  const generateImageForMessage = async (prompt: string, tokenData: TokenData, messageId: string) => {
+  const generateImageForMessage = useCallback(async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
       console.log('Calling image generation API with prompt:', prompt);
       const response = await fetch('/api/generate-image', {
@@ -563,16 +566,16 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
       console.error('Failed to generate image:', error);
       toast.error('Image generation failed: ' + (error as Error).message);
     }
-  };
+  }, []);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const handleClearChat = () => {
+  const handleClearChat = useCallback(() => {
     setMessages([
       {
         id: '1',
@@ -592,7 +595,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
       mintable: true,
     };
     setTokenData(emptyData);
-  };
+  }, []);
 
   const handleDeploy = async (data: TokenData) => {
     console.log('=== handleDeploy called ===');
@@ -729,7 +732,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
   return (
     <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
       {/* Header with dark theme styling */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/80 backdrop-blur-xl border-b border-gray-800">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/95 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -740,7 +743,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
                 width={40}
                 height={40}
                 className="group-hover:scale-110 transition-transform"
-                unoptimized
+                loading="lazy"
               />
               <span className="text-xl font-bold text-white">Cook</span>
             </Link>
@@ -814,7 +817,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
           </div>
 
           {step === 'idle' || step === 'error' ? (
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '0px' }}>
+              <div className="bg-gray-900/50 rounded-2xl border border-gray-800 max-w-4xl mx-auto p-6" style={{ marginTop: '0px', backdropFilter: 'blur(8px)' }}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
                 <h2 className="text-xl font-semibold text-white">Chat with Cookon AI</h2>
                 <div className="flex gap-2">
@@ -828,7 +831,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
               </div>
 
               <div className="h-[calc(100vh-240px)] min-h-[600px] flex flex-col">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef} style={{ willChange: 'scroll-position' }}>
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-3">
                       <div
@@ -860,7 +863,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
                                   width={128}
                                   height={128}
                                   className="w-32 h-32 rounded-xl object-cover border-2 border-gray-700"
-                                  unoptimized
+                                  loading="lazy"
                                 />
                               </div>
                             )}

@@ -64,11 +64,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-        {/* Background decorations - more saturated orange gradients */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/30 to-yellow-500/20 rounded-full blur-3xl" />
-          <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-orange-400/25 to-amber-500/15 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 left-1/3 w-[550px] h-[550px] bg-gradient-to-br from-yellow-500/20 to-orange-400/25 rounded-full blur-3xl" />
+        {/* Background decorations - optimized with will-change and reduced blur */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ willChange: 'transform' }}>
+          <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/30 to-yellow-500/20 rounded-full blur-2xl opacity-80" style={{ willChange: 'transform' }} />
+          <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-orange-400/25 to-amber-500/15 rounded-full blur-2xl opacity-80" style={{ willChange: 'transform' }} />
         </div>
 
         <Header />
@@ -85,7 +84,8 @@ export default function Home() {
                   width={240}
                   height={240}
                   className="mx-auto drop-shadow-2xl"
-                  unoptimized
+                  priority
+                  loading="eager"
                 />
               </div>
               
