@@ -84,31 +84,15 @@ export async function POST(request: NextRequest) {
 
       const imageUrl = blob.url;
 
-      // Use TON API imgproxy to cache the image
-      try {
-        const encodedUrl = Buffer.from(imageUrl)
-          .toString('base64')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
-        
-        const tonApiUrl = `https://cache.tonapi.io/imgproxy/rs:fill:1024:1024:1/g:no/${encodedUrl}.webp`;
-        
-        console.log('Using TON API imgproxy URL:', tonApiUrl);
-        
-        return NextResponse.json({
-          imageUrl: tonApiUrl,
-          originalUrl: imageUrl,
-        });
-      } catch (tonError: any) {
-        console.error('Error creating TON API URL:', tonError);
-        // Return original URL as fallback (still works for Jetton 2.0)
-        console.warn('Falling back to original Vercel Blob URL');
-        return NextResponse.json({
-          imageUrl: imageUrl,
-          originalUrl: imageUrl,
-        });
-      }
+      // Return Vercel Blob URL directly
+      // Vercel Blob Storage URLs are already public and CDN-optimized
+      // No need for TON API imgproxy as Vercel handles caching and optimization
+      console.log('Returning Vercel Blob URL directly:', imageUrl);
+      
+      return NextResponse.json({
+        imageUrl: imageUrl,
+        originalUrl: imageUrl,
+      });
     } catch (blobError: any) {
       console.error('Vercel Blob upload error:', blobError);
       console.error('Error message:', blobError.message);
