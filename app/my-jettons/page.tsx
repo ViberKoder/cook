@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTonConnect } from '@/hooks/useTonConnect';
-import { getUserTokens, getTokenDeployedAt, addUserToken, setTokenDeployedAt } from '@/lib/cookTokens';
-import toast from 'react-hot-toast';
+import { getUserTokens, getTokenDeployedAt } from '@/lib/cookTokens';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,9 +21,6 @@ export default function MyJettonsPage() {
   const { connected, wallet } = useTonConnect();
   const [jettons, setJettons] = useState<JettonInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddToken, setShowAddToken] = useState(false);
-  const [tokenAddress, setTokenAddress] = useState('');
-  const [addingToken, setAddingToken] = useState(false);
 
   useEffect(() => {
     if (connected && wallet) {
@@ -35,42 +31,61 @@ export default function MyJettonsPage() {
   }, [connected, wallet]);
 
   const loadUserJettons = async () => {
-    if (!wallet) return;
+    if (!wallet) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       const walletAddress = wallet.toString();
       const tokenAddresses = getUserTokens(walletAddress);
       
-      // Load metadata for each token
-      const jettonsData: JettonInfo[] = await Promise.all(
-        tokenAddresses.map(async (address) => {
-          const deployedAt = getTokenDeployedAt(address);
+      // If no tokens, set empty array immediately
+      if (tokenAddresses.length === 0) {
+        setJettons([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Load metadata for each token with timeout and error handling
+      const jettonsData: JettonInfo[] = [];
+      
+      // Load tokens sequentially to avoid overwhelming the API
+      for (const address of tokenAddresses) {
+        const deployedAt = getTokenDeployedAt(address);
+        const jettonInfo: JettonInfo = {
+          address,
+          deployedAt,
+        };
+        
+        try {
+          // Try to get metadata from API with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
           
-          try {
-            // Try to get metadata from API
-            const response = await fetch(`/api/jetton-metadata/${address}`);
-            if (response.ok) {
-              const metadata = await response.json();
-              return {
-                address,
-                name: metadata.name,
-                symbol: metadata.symbol,
-                description: metadata.description,
-                image: metadata.image,
-                deployedAt,
-              };
-            }
-          } catch (error) {
+          const response = await fetch(`/api/jetton-metadata/${address}`, {
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const metadata = await response.json();
+            jettonInfo.name = metadata.name;
+            jettonInfo.symbol = metadata.symbol;
+            jettonInfo.description = metadata.description;
+            jettonInfo.image = metadata.image;
+          }
+        } catch (error: any) {
+          // Silently fail - token will be shown without metadata
+          if (error.name !== 'AbortError') {
             console.error(`Failed to load metadata for ${address}:`, error);
           }
-          
-          return {
-            address,
-            deployedAt,
-          };
-        })
-      );
+        }
+        
+        jettonsData.push(jettonInfo);
+      }
 
       // Sort by deployment date (newest first)
       jettonsData.sort((a, b) => (b.deployedAt || 0) - (a.deployedAt || 0));
@@ -78,51 +93,9 @@ export default function MyJettonsPage() {
       setJettons(jettonsData);
     } catch (error) {
       console.error('Failed to load user jettons:', error);
+      setJettons([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAddToken = async () => {
-    if (!tokenAddress.trim() || !wallet) return;
-
-    try {
-      setAddingToken(true);
-      const address = tokenAddress.trim();
-      
-      // Validate and normalize address format
-      let normalizedAddress: string;
-      try {
-        const parsed = Address.parse(address);
-        normalizedAddress = parsed.toString();
-      } catch {
-        toast.error('Invalid address format');
-        return;
-      }
-
-      // Check if token already exists
-      const walletAddress = wallet.toString();
-      const existingTokens = getUserTokens(walletAddress);
-      if (existingTokens.includes(normalizedAddress)) {
-        toast.error('Token already in your list');
-        return;
-      }
-
-      // Add token to user's list
-      addUserToken(walletAddress, normalizedAddress);
-      setTokenDeployedAt(normalizedAddress);
-      
-      toast.success('Token added successfully!');
-      setTokenAddress('');
-      setShowAddToken(false);
-      
-      // Reload tokens
-      await loadUserJettons();
-    } catch (error: any) {
-      console.error('Failed to add token:', error);
-      toast.error(error.message || 'Failed to add token');
-    } finally {
-      setAddingToken(false);
     }
   };
 
@@ -154,45 +127,12 @@ export default function MyJettonsPage() {
       <Header />
       <main className="pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold gradient-text-cook mb-2">My Jettons</h1>
-              <p className="text-cook-text-secondary">
-                Manage your created Jetton 2.0 tokens
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddToken(!showAddToken)}
-              className="btn-cook"
-            >
-              {showAddToken ? 'Cancel' : '+ Add Token'}
-            </button>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold gradient-text-cook mb-2">My Jettons</h1>
+            <p className="text-cook-text-secondary">
+              Manage your created Jetton 2.0 tokens
+            </p>
           </div>
-
-          {showAddToken && (
-            <div className="card mb-6">
-              <h3 className="text-lg font-semibold text-cook-text mb-4">Add Token Manually</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={tokenAddress}
-                  onChange={(e) => setTokenAddress(e.target.value)}
-                  placeholder="Enter token contract address (EQ...)"
-                  className="input-ton flex-1"
-                />
-                <button
-                  onClick={handleAddToken}
-                  disabled={!tokenAddress.trim() || addingToken}
-                  className="btn-cook"
-                >
-                  {addingToken ? 'Adding...' : 'Add'}
-                </button>
-              </div>
-              <p className="text-xs text-cook-text-secondary mt-2">
-                Add a token by its contract address if it was created before this feature was added
-              </p>
-            </div>
-          )}
 
           {loading ? (
             <div className="card text-center py-12">
