@@ -6,9 +6,8 @@ import { generateText } from 'ai';
 const VERCEL_API_KEY = process.env.VERCEL_AI_API_KEY || 'vck_413sJS0GQCZTNCiDj7Q0TSC3FHf9nON6GldHo2N0lig4i74bVR35LZFA';
 const MODEL = 'xai/grok-4.1-fast-reasoning';
 
-const vercelAI = createVercel({
-  apiKey: VERCEL_API_KEY,
-});
+// Initialize Vercel AI - try without explicit apiKey first (uses env var)
+const vercelAI = createVercel();
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,9 +21,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Vercel AI SDK
+    // Use Vercel AI SDK with explicit API key in headers
     const result = await generateText({
-      model: vercelAI(MODEL),
+      model: vercelAI(MODEL, {
+        apiKey: VERCEL_API_KEY,
+      }),
       messages: messages.map((msg: any) => ({
         role: msg.role,
         content: msg.content,
