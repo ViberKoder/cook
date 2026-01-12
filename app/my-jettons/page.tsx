@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { getUserTokens, getTokenDeployedAt } from '@/lib/cookTokens';
 import Header from '@/components/Header';
@@ -22,25 +22,7 @@ export default function MyJettonsPage() {
   const [jettons, setJettons] = useState<JettonInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    
-    if (connected && wallet) {
-      loadUserJettons().then(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    } else {
-      setLoading(false);
-    }
-    
-    return () => {
-      cancelled = true;
-    };
-  }, [connected, wallet]);
-
-  const loadUserJettons = async (): Promise<void> => {
+  const loadUserJettons = useCallback(async (): Promise<void> => {
     if (!wallet) {
       return;
     }
@@ -67,52 +49,69 @@ export default function MyJettonsPage() {
       // Set basic info first for immediate display
       setJettons(basicJettons);
       
-      // Load metadata in background (non-blocking)
-      const jettonsWithMetadata = await Promise.allSettled(
-        basicJettons.map(async (jetton) => {
-          try {
-            // Try to get metadata from API with timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-            
-            const response = await fetch(`/api/jetton-metadata/${jetton.address}`, {
-              signal: controller.signal,
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-              const metadata = await response.json();
-              return {
-                ...jetton,
-                name: metadata.name,
-                symbol: metadata.symbol,
-                description: metadata.description,
-                image: metadata.image,
-              };
-            }
-          } catch (error: any) {
-            // Silently fail - token will be shown without metadata
-            if (error.name !== 'AbortError') {
-              console.error(`Failed to load metadata for ${jetton.address}:`, error);
-            }
-          }
+      // Load metadata sequentially to avoid overwhelming the API
+      const jettonsWithMetadata: JettonInfo[] = [];
+      for (const jetton of basicJettons) {
+        try {
+          // Try to get metadata from API with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
           
-          return jetton;
-        })
-      );
-
-      // Update with metadata (only successful ones)
-      const updatedJettons = jettonsWithMetadata.map((result) => 
-        result.status === 'fulfilled' ? result.value : null
-      ).filter((jetton): jetton is JettonInfo => jetton !== null);
-      
-      setJettons(updatedJettons);
+          const response = await fetch(`/api/jetton-metadata/${jetton.address}`, {
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const metadata = await response.json();
+            jettonsWithMetadata.push({
+              ...jetton,
+              name: metadata.name,
+              symbol: metadata.symbol,
+              description: metadata.description,
+              image: metadata.image,
+            });
+          } else {
+            jettonsWithMetadata.push(jetton);
+          }
+        } catch (error: any) {
+          // Silently fail - token will be shown without metadata
+          if (error.name !== 'AbortError') {
+            console.error(`Failed to load metadata for ${jetton.address}:`, error);
+          }
+          jettonsWithMetadata.push(jetton);
+        }
+        
+        // Update UI incrementally after each token
+        setJettons([...jettonsWithMetadata, ...basicJettons.slice(jettonsWithMetadata.length)]);
+      }
     } catch (error) {
       console.error('Failed to load user jettons:', error);
       setJettons([]);
     }
-  };
+  }, [wallet]);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    if (connected && wallet) {
+      setLoading(true);
+      loadUserJettons().then(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+    } else {
+      setLoading(false);
+      setJettons([]);
+    }
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, wallet, loadUserJettons]);
+
 
   if (!connected || !wallet) {
     return (
@@ -162,7 +161,7 @@ export default function MyJettonsPage() {
                 width={80}
                 height={80}
                 className="mx-auto mb-4 opacity-50"
-                unoptimized
+                loading="lazy"
               />
               <h2 className="text-2xl font-bold text-cook-text mb-2">No tokens yet</h2>
               <p className="text-cook-text-secondary mb-6">
@@ -189,7 +188,7 @@ export default function MyJettonsPage() {
                         width={400}
                         height={400}
                         className="w-full h-48 object-cover"
-                        unoptimized
+                        loading="lazy"
                       />
                     </div>
                   )}
