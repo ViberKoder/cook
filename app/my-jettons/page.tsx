@@ -35,7 +35,7 @@ export default function MyJettonsPage() {
 
     try {
       setLoading(true);
-      const walletAddress = Address.parse(wallet).toString();
+      const walletAddress = wallet.toString();
       const tokenAddresses = getUserTokens(walletAddress);
       
       // Load metadata for each token
