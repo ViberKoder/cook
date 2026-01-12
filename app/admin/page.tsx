@@ -39,6 +39,17 @@ export default function AdminPage() {
   const loadedAddressRef = useRef<string>('');
   const isLoadingRef = useRef(false);
 
+  // Get address from URL params
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const address = params.get('address');
+      if (address) {
+        setContractAddress(address);
+      }
+    }
+  }, []);
+
   const handleLoadJetton = useCallback(async (showToast = true) => {
     if (!contractAddress) {
       if (showToast) toast.error('Please enter a contract address');
