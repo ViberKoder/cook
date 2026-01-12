@@ -313,24 +313,43 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
       let jsonData = null;
       let chatMessage = fullResponse;
       
+      console.log('Full AI response:', fullResponse.substring(0, 500));
+      
+      // Try to find JSON_DATA pattern
       const jsonDataMatch = fullResponse.match(/JSON_DATA\s*:\s*(\{[\s\S]*?\})/);
       if (jsonDataMatch && jsonDataMatch[1]) {
         try {
           jsonData = JSON.parse(jsonDataMatch[1]);
+          console.log('Parsed JSON_DATA:', jsonData);
           chatMessage = fullResponse.replace(/JSON_DATA\s*:[\s\S]*/, '').trim();
         } catch (e) {
-          console.error('Failed to parse JSON_DATA:', e);
+          console.error('Failed to parse JSON_DATA:', e, jsonDataMatch[1]);
         }
       }
       
+      // Try to find JSON in code blocks
       if (!jsonData) {
         const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
           try {
             jsonData = JSON.parse(jsonMatch[1]);
+            console.log('Parsed JSON from code block:', jsonData);
             chatMessage = fullResponse.replace(/```json[\s\S]*?```/, '').trim();
           } catch (e) {
-            console.error('Failed to parse JSON block:', e);
+            console.error('Failed to parse JSON block:', e, jsonMatch[1]);
+          }
+        }
+      }
+      
+      // Try to find any JSON object at the end
+      if (!jsonData) {
+        const jsonAtEnd = fullResponse.match(/\{[\s\S]*"name"[\s\S]*"symbol"[\s\S]*"description"[\s\S]*\}/);
+        if (jsonAtEnd && jsonAtEnd[0]) {
+          try {
+            jsonData = JSON.parse(jsonAtEnd[0]);
+            console.log('Parsed JSON from end of response:', jsonData);
+          } catch (e) {
+            console.error('Failed to parse JSON from end:', e);
           }
         }
       }
@@ -467,6 +486,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
 
   const generateImageForMessage = async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
+      console.log('Calling image generation API with prompt:', prompt);
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -475,8 +495,11 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         body: JSON.stringify({ prompt }),
       });
 
+      console.log('Image generation response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Image generation response data:', data);
         if (data.imageUrl) {
           setMessages(prev => {
             return prev.map(msg => 
@@ -492,10 +515,18 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
             );
           });
           toast.success('Image generated!');
+        } else {
+          console.error('No imageUrl in response:', data);
+          toast.error('Image generation failed: No image URL returned');
         }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Image generation API error:', response.status, errorData);
+        toast.error(`Image generation failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
+      toast.error('Image generation failed: ' + (error as Error).message);
     }
   };
 
