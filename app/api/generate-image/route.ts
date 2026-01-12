@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { experimental_generateImage as generateImage } from 'ai';
 
 // Vercel AI Gateway - uses AI_GATEWAY_API_KEY from environment
-// Note: Vercel AI Gateway might not support image generation directly
-// We'll try using it as a proxy to Google Cloud Vertex AI
-const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY || '';
 const MODEL = 'google/imagen-4.0-generate-001';
 
 export async function POST(request: NextRequest) {
@@ -21,147 +19,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!AI_GATEWAY_API_KEY) {
-      console.error('AI_GATEWAY_API_KEY is not set');
-      return NextResponse.json(
-        { error: 'AI_GATEWAY_API_KEY is not configured. Please set AI_GATEWAY_API_KEY environment variable.' },
-        { status: 500 }
-      );
-    }
-
     console.log('Using Google Imagen model:', MODEL);
     
-    // Vercel AI Gateway might not support image generation directly through standard endpoints
-    // Let's try using xAI for image generation instead, as it worked before
-    // We'll use the same AI_GATEWAY_API_KEY but with xAI's image generation endpoint
+    // Use AI SDK with Vercel AI Gateway for image generation
+    // The AI_GATEWAY_API_KEY should be set in environment variables
+    const result = await generateImage({
+      model: MODEL,
+      prompt: prompt,
+    });
+
+    console.log('Image generation result:', {
+      hasImage: !!result.image,
+      imageType: typeof result.image,
+    });
+
+    // The result.image is a GeneratedFile object
+    // It has properties like url, base64, etc.
+    let imageUrl: string;
+    const image = result.image as any;
     
-    console.log('Trying xAI image generation with AI_GATEWAY_API_KEY as fallback...');
-    
-    try {
-      // Try xAI image generation API with AI_GATEWAY_API_KEY
-      // This might work if the key can be used as a proxy
-      const response = await fetch('https://api.x.ai/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'grok-2-image-1212',
-          prompt: prompt,
-          n: 1,
-        }),
-      });
-
-      console.log('xAI image API response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('xAI image API success, response keys:', Object.keys(data));
-        
-        const imageUrl = data.data?.[0]?.url;
-
-        if (!imageUrl) {
-          console.error('No imageUrl in xAI response, full data:', JSON.stringify(data));
-          throw new Error('No image URL in xAI response');
-        }
-
-        console.log('Image generated successfully via xAI, URL:', imageUrl.substring(0, 50));
-        return NextResponse.json({
-          imageUrl: imageUrl,
-        });
-      } else {
-        const errorText = await response.text();
-        console.error('xAI image API error response:', errorText);
-        throw new Error(`xAI API returned ${response.status}: ${errorText}`);
-      }
-    } catch (xaiError: any) {
-      console.error('xAI image generation failed:', xaiError.message);
-      
-      // If xAI doesn't work either, return a helpful error message
+    if (!image) {
+      console.error('No image in result');
       return NextResponse.json(
-        { 
-          error: `Image generation failed. Vercel AI Gateway might not support image generation for ${MODEL}. xAI fallback also failed: ${xaiError.message}. Please check your API key configuration.` 
-        },
+        { error: 'No image generated' },
         { status: 500 }
       );
     }
-
-      console.log('Vercel AI Gateway response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Vercel AI Gateway error response:', errorText);
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText || 'Unknown error' };
-        }
-        console.error('Vercel AI Gateway error:', response.status, errorData);
-        
-        // If this endpoint doesn't work, try alternative approach
-        throw new Error(`Vercel AI Gateway returned ${response.status}: ${JSON.stringify(errorData)}`);
+    
+    // Check if GeneratedFile has a url property
+    if (image.url && typeof image.url === 'string') {
+      imageUrl = image.url;
+    } else if (image.base64 && typeof image.base64 === 'string') {
+      // If it's base64, convert to data URL
+      imageUrl = `data:image/png;base64,${image.base64}`;
+    } else if (image.data && image.data instanceof Uint8Array) {
+      // If it's Uint8Array data
+      const base64 = Buffer.from(image.data).toString('base64');
+      imageUrl = `data:image/png;base64,${base64}`;
+    } else if (typeof image === 'string') {
+      // If it's already a string (URL or base64)
+      if (image.startsWith('http://') || image.startsWith('https://')) {
+        imageUrl = image;
+      } else {
+        imageUrl = `data:image/png;base64,${image}`;
       }
-
-      const data = await response.json();
-      console.log('Vercel AI Gateway success, response keys:', Object.keys(data));
-      console.log('Image data structure:', JSON.stringify(data).substring(0, 200));
-      
-      // The response format may vary, try different possible structures
-      let imageUrl: string | undefined;
-      
-      // Try OpenAI-style response: { data: [{ url: ... }] }
-      if (data.data && Array.isArray(data.data) && data.data[0]?.url) {
-        imageUrl = data.data[0].url;
-      }
-      // Try direct url property
-      else if (data.url) {
-        imageUrl = data.url;
-      }
-      // Try base64 property
-      else if (data.base64) {
-        imageUrl = `data:image/png;base64,${data.base64}`;
-      }
-      // Try image property
-      else if (data.image) {
-        if (typeof data.image === 'string') {
-          if (data.image.startsWith('http://') || data.image.startsWith('https://')) {
-            imageUrl = data.image;
-          } else {
-            imageUrl = `data:image/png;base64,${data.image}`;
-          }
-        } else if (data.image.url) {
-          imageUrl = data.image.url;
-        }
-      }
-
-      if (!imageUrl) {
-        console.error('No imageUrl in response, full data:', JSON.stringify(data));
+    } else {
+      // Try to convert the whole object to string if it's a string
+      const imageStr = String(image);
+      if (imageStr.startsWith('http://') || imageStr.startsWith('https://')) {
+        imageUrl = imageStr;
+      } else if (imageStr.length > 0 && imageStr !== '[object Object]') {
+        imageUrl = `data:image/png;base64,${imageStr}`;
+      } else {
+        console.error('Unexpected image format:', image);
         return NextResponse.json(
-          { error: 'Failed to generate image - no image URL in response' },
+          { error: 'Unexpected image format from API' },
           { status: 500 }
         );
       }
-
-      console.log('Image generated successfully, URL length:', imageUrl.length);
-      return NextResponse.json({
-        imageUrl: imageUrl,
-      });
-    } catch (fetchError: any) {
-      console.error('First attempt failed, trying alternative approach:', fetchError.message);
-      
-      // Alternative: Use Google Cloud Vertex AI API directly with AI_GATEWAY_API_KEY
-      // This might work if AI_GATEWAY_API_KEY can be used as a proxy
-      // But first, let's try using the model name directly in a different format
-      
-      // Since Vercel AI Gateway might not support image generation directly,
-      // we might need to use a different service or approach
-      return NextResponse.json(
-        { error: `Image generation failed: ${fetchError.message}. Vercel AI Gateway might not support image generation for this model yet.` },
-        { status: 500 }
-      );
     }
+
+    console.log('Image generated successfully, URL length:', imageUrl.length);
+    return NextResponse.json({
+      imageUrl: imageUrl,
+    });
   } catch (error: any) {
     console.error('Image generation API error:', error);
     console.error('Error stack:', error.stack);
