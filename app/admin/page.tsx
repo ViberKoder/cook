@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useTonConnect } from '@/hooks/useTonConnect';
@@ -687,7 +688,7 @@ export default function AdminPage() {
             <div className="card text-center mt-8">
               <h3 className="text-lg font-semibold text-cook-text mb-2">Manage Your Tokens</h3>
               <p className="text-cook-text-secondary text-sm mb-4">
-                View and manage all tokens you've created without entering addresses manually
+                View and manage all tokens you&apos;ve created without entering addresses manually
               </p>
               <Link
                 href="/my-jettons"

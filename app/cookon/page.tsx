@@ -139,7 +139,7 @@ export default function CookonPage() {
   }, [connected, wallet, sendPayment]);
 
   // Check and process periodic payment
-  const checkAndProcessPeriodicPayment = async (): Promise<boolean> => {
+  const checkAndProcessPeriodicPayment = useCallback(async (): Promise<boolean> => {
     const newCount = requestCount + 1;
     setRequestCount(newCount);
     localStorage.setItem('cookon_request_count', newCount.toString());
@@ -514,7 +514,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
     } finally {
       setIsLoading(false);
     }
-  }, [connected, wallet, hasPaidInitial, requestCount, inputMessage, isLoading, messages, tonConnectUI]);
+  }, [connected, wallet, hasPaidInitial, requestCount, inputMessage, isLoading, messages, tonConnectUI, checkAndProcessPeriodicPayment, generateImageForMessage]);
 
   const generateImageForMessage = useCallback(async (prompt: string, tokenData: TokenData, messageId: string) => {
     try {
