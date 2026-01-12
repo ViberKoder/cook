@@ -10,6 +10,7 @@ import { Address, beginCell, toNano } from '@ton/core';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { TonConnectButton } from '@tonconnect/ui-react';
+import { addUserToken, setTokenDeployedAt } from '@/lib/cookTokens';
 
 interface Message {
   id: string;
@@ -636,6 +637,13 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
         console.log('Deployment successful, address:', result.address);
         setDeployedAddress(result.address);
         setStep('completed');
+        
+        // Save token to user's list
+        if (wallet) {
+          const walletAddress = Address.parse(wallet).toString();
+          addUserToken(walletAddress, result.address);
+          setTokenDeployedAt(result.address);
+        }
       } else {
         console.error('Deployment failed:', result.error);
         throw new Error(result.error || 'Deployment failed');

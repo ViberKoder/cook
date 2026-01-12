@@ -43,6 +43,12 @@ export default function Header() {
               Cookon
             </Link>
             <Link 
+              href="/my-jettons"
+              className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
+            >
+              My Jettons
+            </Link>
+            <Link 
               href="/admin"
               className="text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium"
             >

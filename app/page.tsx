@@ -39,6 +39,15 @@ export default function Home() {
       if (result.success && result.address) {
         setDeployedAddress(result.address);
         setStep('completed');
+        
+        // Save token to user's list
+        if (wallet) {
+          const { addUserToken, setTokenDeployedAt } = await import('@/lib/cookTokens');
+          const { Address } = await import('@ton/core');
+          const walletAddress = Address.parse(wallet).toString();
+          addUserToken(walletAddress, result.address);
+          setTokenDeployedAt(result.address);
+        }
       } else {
         throw new Error(result.error || 'Deployment failed');
       }

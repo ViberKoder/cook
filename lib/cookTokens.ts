@@ -5,6 +5,7 @@
  */
 
 const STORAGE_KEY = 'cook_tg_tokens';
+const USER_TOKENS_KEY = 'cook_user_tokens'; // wallet address -> token addresses
 
 /**
  * Add a token address to the list of tokens created on cook.tg
@@ -21,6 +22,57 @@ export function addCookToken(tokenAddress: string): void {
   } catch (error) {
     console.error('Failed to save cook token:', error);
   }
+}
+
+/**
+ * Add a token to user's personal list
+ */
+export function addUserToken(walletAddress: string, tokenAddress: string): void {
+  try {
+    if (typeof window !== 'undefined') {
+      const userTokens = getUserTokens(walletAddress);
+      if (!userTokens.includes(tokenAddress)) {
+        userTokens.push(tokenAddress);
+        const allUserTokens = getAllUserTokens();
+        allUserTokens[walletAddress] = userTokens;
+        localStorage.setItem(USER_TOKENS_KEY, JSON.stringify(allUserTokens));
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save user token:', error);
+  }
+}
+
+/**
+ * Get user's tokens
+ */
+export function getUserTokens(walletAddress: string): string[] {
+  try {
+    if (typeof window !== 'undefined') {
+      const allUserTokens = getAllUserTokens();
+      return allUserTokens[walletAddress] || [];
+    }
+  } catch (error) {
+    console.error('Failed to load user tokens:', error);
+  }
+  return [];
+}
+
+/**
+ * Get all user tokens (wallet -> tokens mapping)
+ */
+function getAllUserTokens(): Record<string, string[]> {
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(USER_TOKENS_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load all user tokens:', error);
+  }
+  return {};
 }
 
 /**
