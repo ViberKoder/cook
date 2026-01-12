@@ -101,6 +101,7 @@ export default function MyJettonsPage() {
       // If no tokens, set empty array immediately
       if (tokenAddresses.length === 0) {
         setJettons([]);
+        loadingRef.current = false;
         return;
       }
       
@@ -211,15 +212,27 @@ export default function MyJettonsPage() {
     if (connected && walletAddress && loadedRef.current !== walletAddress) {
       setLoading(true);
       loadedRef.current = walletAddress;
+      loadingRef.current = false; // Reset loading ref
       loadUserJettons().then(() => {
         if (!cancelled) {
           setLoading(false);
+          loadingRef.current = false;
+        }
+      }).catch((error) => {
+        console.error('Error loading jettons:', error);
+        if (!cancelled) {
+          setLoading(false);
+          loadingRef.current = false;
         }
       });
     } else if (!connected || !walletAddress) {
       setLoading(false);
       setJettons([]);
       loadedRef.current = null;
+      loadingRef.current = false;
+    } else {
+      // Wallet is the same, don't reload
+      setLoading(false);
     }
     
     return () => {
