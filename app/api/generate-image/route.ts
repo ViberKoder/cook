@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateObject } from 'ai';
 
-// Get API key from environment variables - using XAI_API_KEY for xAI API
-const getApiKey = () => {
-  return process.env.XAI_API_KEY || process.env.NEXT_PUBLIC_XAI_API_KEY || '';
-};
+// Vercel AI Gateway - uses AI_GATEWAY_API_KEY from environment
+const MODEL = 'xai/grok-4.1-fast-reasoning';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,61 +16,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get API key first to provide better error message
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'XAI API key is not configured. Please set XAI_API_KEY or NEXT_PUBLIC_XAI_API_KEY environment variable.' },
-        { status: 500 }
-      );
-    }
-
-    // Use direct fetch to xAI API to avoid OpenAI SDK default API key issues
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    // Use AI SDK to generate image description, then use that to generate image
+    // Since grok-4.1-fast-reasoning doesn't directly generate images,
+    // we'll use it to create a detailed image description and then use an image generation service
+    // For now, we'll use the prompt directly with a service that supports image generation
+    
+    // Try using Vercel AI Gateway with image generation capability
+    // Note: grok-4.1-fast-reasoning is a text model, so we need to use a different approach
+    // We'll generate a detailed image description using the model, then use that for image generation
+    
+    const imageDescriptionResult = await generateObject({
+      model: MODEL,
+      prompt: `Create a detailed, vivid description for generating a memecoin token logo image based on this prompt: "${prompt}". 
+      The description should be specific about colors, style, character design, and visual elements. 
+      Make it suitable for image generation.`,
+      schema: {
+        type: 'object',
+        properties: {
+          imageDescription: {
+            type: 'string',
+            description: 'Detailed description for image generation',
+          },
+        },
+        required: ['imageDescription'],
       },
-      body: JSON.stringify({
-        model: 'grok-2-image-1212',
-        prompt: prompt,
-        n: 1,
-      }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('xAI API error:', response.status, errorData);
-      
-      // Provide more specific error message
-      const errorMessage = errorData.error?.message || errorData.error || 'Failed to generate image';
-      if (errorMessage.includes('API key') || errorMessage.includes('OPENAI_API_KEY') || errorMessage.includes('authentication')) {
-        return NextResponse.json(
-          { error: 'XAI API key is not configured. Please set XAI_API_KEY or NEXT_PUBLIC_XAI_API_KEY environment variable.' },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: response.status }
-      );
-    }
+    const detailedPrompt = imageDescriptionResult.object.imageDescription || prompt;
 
-    const data = await response.json();
-
-    // Extract image URL from response
-    const imageUrl = data.data?.[0]?.url;
-
-    if (!imageUrl) {
-      return NextResponse.json(
-        { error: 'Failed to generate image - no image URL in response' },
-        { status: 500 }
-      );
-    }
-
+    // For actual image generation, we'll need to use a service that supports images
+    // Since Vercel AI Gateway with grok-4.1-fast-reasoning doesn't generate images directly,
+    // we'll return the detailed description and let the frontend handle image generation
+    // or use a fallback image generation service
+    
+    // For now, return a placeholder - you may want to integrate with an image generation API
+    // that works with Vercel AI Gateway or use a separate image generation service
+    
     return NextResponse.json({
-      imageUrl: imageUrl,
+      imageUrl: null,
+      imageDescription: detailedPrompt,
+      note: 'Image generation requires a separate image generation service. Use the imageDescription to generate the image.',
     });
   } catch (error: any) {
     console.error('Image generation API error:', error);
