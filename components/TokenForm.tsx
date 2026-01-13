@@ -58,7 +58,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
   const [imagePreview, setImagePreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
-  const [useOffchainMetadata, setUseOffchainMetadata] = useState(false);
+  const [useOffchainMetadata, setUseOffchainMetadata] = useState(true);
   const [offchainMetadataUrl, setOffchainMetadataUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -233,29 +233,29 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
             </label>
             
             {/* Image Source Toggle */}
-            <div className="flex space-x-2 mb-3">
-              <button
-                type="button"
-                onClick={() => setImageSource('url')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  imageSource === 'url'
-                    ? 'bg-cook-orange text-white'
-                    : 'bg-cook-bg-secondary text-cook-text-secondary hover:text-cook-text'
-                }`}
-              >
-                From URL
-              </button>
-              <button
-                type="button"
-                onClick={() => setImageSource('upload')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  imageSource === 'upload'
-                    ? 'bg-cook-orange text-white'
-                    : 'bg-cook-bg-secondary text-cook-text-secondary hover:text-cook-text'
-                }`}
-              >
-                Upload
-              </button>
+            <div className="flex items-center space-x-4 mb-3">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  value="url"
+                  checked={imageSource === 'url'}
+                  onChange={(e) => setImageSource(e.target.value as 'url' | 'upload')}
+                  className="w-4 h-4 text-cook-orange focus:ring-cook-orange focus:ring-2"
+                />
+                <span className="ml-2 text-sm text-cook-text">Image URL</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  value="upload"
+                  checked={imageSource === 'upload'}
+                  onChange={(e) => setImageSource(e.target.value as 'url' | 'upload')}
+                  className="w-4 h-4 text-cook-orange focus:ring-cook-orange focus:ring-2"
+                />
+                <span className="ml-2 text-sm text-cook-text">Upload Image</span>
+              </label>
             </div>
 
             {imageSource === 'url' ? (
@@ -452,19 +452,13 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
         </div>
       )}
 
-      {/* Summary & Submit */}
+      {/* Submit */}
       <div className="mt-8 pt-6 border-t border-cook-border">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-left">
-            <p className="text-cook-text-secondary text-sm">Deployment cost</p>
-            <p className="text-2xl font-bold text-cook-text">1 TON</p>
-            <p className="text-xs text-cook-text-secondary mt-1">0.2 TON deploy + 0.8 TON fee</p>
-          </div>
-          
+        <div className="flex justify-center">
           <button
             type="submit"
             disabled={!isConnected || !isValid}
-            className="btn-cook w-full md:w-auto flex items-center justify-center gap-2 min-w-[200px] text-lg py-4"
+            className="btn-cook w-full max-w-md flex items-center justify-center gap-2 text-lg py-4"
           >
             {!isConnected ? (
               <>
@@ -482,7 +476,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
                   height={24}
                   unoptimized
                 />
-                Cook Jetton
+                Cook it!
               </>
             )}
           </button>
