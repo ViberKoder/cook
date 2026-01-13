@@ -674,9 +674,9 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
             <Image 
               src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
               alt="Cookon" 
-              width={1620}
-              height={540}
-              className="mx-auto mb-8 scale-[0.72] mt-8 sm:mt-0 w-full h-auto"
+              width={2430}
+              height={810}
+              className="mx-auto mb-8 scale-[1.08] mt-16 sm:mt-12 w-full h-auto"
               unoptimized
             />
           </div>
