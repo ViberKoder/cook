@@ -160,13 +160,12 @@ export async function sendChangeMetadataTransaction(
   sendTransaction: (params: SendTransactionParams) => Promise<any>
 ): Promise<void> {
   const metadataCell = buildOnchainMetadataCell({
-      name: metadata.name || '',
-      symbol: metadata.symbol || '',
-      description: metadata.description,
-      image: metadata.image,
-      decimals: metadata.decimals || '9',
-    });
-  }
+    name: metadata.name || '',
+    symbol: metadata.symbol || '',
+    description: metadata.description,
+    image: metadata.image,
+    decimals: metadata.decimals || '9',
+  });
   
   const changeMetadataBody = buildChangeMetadataBody(metadataCell);
 

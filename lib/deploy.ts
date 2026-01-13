@@ -327,23 +327,20 @@ export async function deployJettonMinter(
     // Total supply with decimals
     const supplyWithDecimals = BigInt(tokenData.totalSupply) * BigInt(10 ** tokenData.decimals);
 
-    // Build initial data for Jetton 2.0 minter with on-chain metadata (TEP-64)
+    // Build initial data for Jetton 2.0 minter
     // Structure:
     //   total_supply: Coins
     //   admin_address: MsgAddress
     //   next_admin_address: MsgAddress (null for no pending transfer)
     //   jetton_wallet_code: ^Cell
-    //   content: ^Cell (TEP-64 dictionary)
+    //   content/metadata_uri: ^Cell (TEP-64 dictionary for onchain, URL string for offchain)
     const minterData = beginCell()
       .storeCoins(0) // total_supply (starts at 0, updated after mint)
       .storeAddress(walletAddress) // admin_address
       .storeAddress(null) // next_admin_address (transfer_admin)
       .storeRef(getJettonWalletCodeCell()) // jetton_wallet_code
-      .storeRef(contentCell) // content (TEP-64 on-chain metadata)
+      .storeRef(contentCell) // content (TEP-64 for onchain) or metadata_uri (for offchain)
       .endCell();
-
-    // Use on-chain contract with TEP-64 support
-    const minterCode = getJettonMinterOnchainCode();
 
     // Create StateInit
     const stateInit = {
