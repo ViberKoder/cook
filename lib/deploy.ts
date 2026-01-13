@@ -196,6 +196,49 @@ export function buildOnchainMetadataCell(data: { [s: string]: string | undefined
     .endCell();
 }
 
+/**
+ * Build off-chain metadata cell (URL)
+ * For standard Jetton 2.0 contract, metadata_uri is stored as a snake-encoded string in a ref
+ * This matches jettonContentToCell() from the official wrapper
+ */
+export function buildOffchainMetadataCell(uri: string): Cell {
+  return beginCell()
+    .storeStringRefTail(uri)
+    .endCell();
+}
+
+/**
+ * Upload metadata JSON to the site
+ * Returns the public URL to the JSON file
+ */
+async function uploadMetadataJson(metadata: {
+  name: string;
+  symbol: string;
+  description: string;
+  image: string;
+  decimals: string;
+}, baseUrl: string): Promise<string> {
+  try {
+    const response = await fetch(`${baseUrl}/api/metadata`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(`Failed to upload metadata: ${errorData.error || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+  } catch (error: any) {
+    console.error('Metadata upload error:', error);
+    throw error;
+  }
+}
 
 export async function deployJettonMinter(
   tokenData: TokenData,

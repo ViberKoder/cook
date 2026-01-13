@@ -124,6 +124,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
     e.preventDefault();
     const submitData = {
       ...formData,
+      useOffchainMetadata,
     };
     onDeploy(submitData);
   };
@@ -348,18 +349,57 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
             </p>
           </div>
 
-          {/* On-chain Metadata Info */}
+          {/* Metadata Type Toggle */}
           <div className="p-4 bg-cook-bg-secondary rounded-xl border border-cook-border">
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">⛓️</span>
-                <h5 className="font-medium text-green-800">On-chain Metadata</h5>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="font-medium text-cook-text mb-1">Metadata Storage</h4>
+                <p className="text-sm text-cook-text-secondary">Choose how to store your token metadata</p>
               </div>
-              <p className="text-xs text-green-700">
-                Your token metadata (name, symbol, image, description) will be stored on-chain using TEP-64 standard.
-                This ensures maximum decentralization and permanence.
-              </p>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useOffchainMetadata}
+                  onChange={(e) => {
+                    setUseOffchainMetadata(e.target.checked);
+                    const newData = {
+                      ...formData,
+                      useOffchainMetadata: e.target.checked,
+                    };
+                    setFormData(newData);
+                    if (onDataChange) {
+                      onDataChange(newData);
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-cook-border rounded-full peer peer-checked:after:translate-x-full peer peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cook-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cook-orange"></div>
+              </label>
             </div>
+            
+            {!useOffchainMetadata ? (
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⛓️</span>
+                  <h5 className="font-medium text-green-800">On-chain Metadata</h5>
+                </div>
+                <p className="text-xs text-green-700">
+                  Your token metadata (name, symbol, image, description) will be stored on-chain using TEP-64 standard.
+                  This ensures maximum decentralization and permanence.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🌐</span>
+                  <h5 className="font-medium text-blue-800">Off-chain Metadata</h5>
+                </div>
+                <p className="text-xs text-blue-700">
+                  Metadata will be stored as a JSON file on our server. The contract will reference this URL.
+                  Uses the official Jetton 2.0 standard contract (verified on tonviewer).
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Mintable */}
