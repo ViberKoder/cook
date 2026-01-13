@@ -93,7 +93,9 @@ a {
 /* TON Connect button mobile styles */
 @media (max-width: 768px) {
   .tc-wallet-button,
-  .tc-wallet-button button {
+  .tc-wallet-button button,
+  .tc-wallet-button > *,
+  .tc-wallet-button > * > button {
     font-size: 12px !important;
     padding: 6px 12px !important;
     height: auto !important;
@@ -102,6 +104,15 @@ a {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+  
+  /* Ensure TON Connect button container is visible */
+  header .tc-wallet-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
   }
 }
 
