@@ -79,8 +79,10 @@ export default function Header() {
               />
               <span className="text-lg font-bold gradient-text-cook">Cook</span>
             </Link>
-            <div className="flex items-center flex-shrink-0">
-              <TonConnectButton />
+            <div className="flex items-center flex-shrink-0 z-10">
+              <div className="[&>button]:!text-xs [&>button]:!px-3 [&>button]:!py-1.5 [&>button]:!h-auto">
+                <TonConnectButton />
+              </div>
             </div>
           </div>
           
