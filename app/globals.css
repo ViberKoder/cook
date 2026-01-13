@@ -90,6 +90,21 @@ a {
   --tc-modal-backdrop: rgba(0, 0, 0, 0.5) !important;
 }
 
+/* TON Connect button mobile styles */
+@media (max-width: 768px) {
+  .tc-wallet-button,
+  .tc-wallet-button button {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    height: auto !important;
+    min-height: 32px !important;
+    white-space: nowrap !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
 /* Gradient text - TON blue */
 .gradient-text {
   background: linear-gradient(135deg, #0088CC 0%, #00D4FF 100%);

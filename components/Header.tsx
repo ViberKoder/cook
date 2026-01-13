@@ -67,7 +67,7 @@ export default function Header() {
         {/* Mobile: Two-row layout */}
         <div className="md:hidden">
           {/* First row: Logo left, Wallet right */}
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between h-14 w-full px-0">
             <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
               <Image 
                 src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
@@ -79,10 +79,8 @@ export default function Header() {
               />
               <span className="text-lg font-bold gradient-text-cook">Cook</span>
             </Link>
-            <div className="flex items-center flex-shrink-0 z-10">
-              <div className="[&>button]:!text-xs [&>button]:!px-3 [&>button]:!py-1.5 [&>button]:!h-auto">
-                <TonConnectButton />
-              </div>
+            <div className="flex items-center justify-end flex-shrink-0 relative z-10" style={{ minWidth: '120px' }}>
+              <TonConnectButton className="tc-wallet-button" />
             </div>
           </div>
           
