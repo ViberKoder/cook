@@ -79,8 +79,10 @@ export default function Header() {
               />
               <span className="text-lg font-bold gradient-text-cook">Cook</span>
             </Link>
-            <div className="flex items-center justify-end flex-shrink-0 relative z-10" style={{ minWidth: '120px' }}>
-              <TonConnectButton className="tc-wallet-button" />
+            <div className="flex items-center justify-end flex-shrink-0 relative z-50" style={{ minWidth: '120px', overflow: 'visible' }}>
+              <div style={{ display: 'block', visibility: 'visible', opacity: 1, position: 'relative', zIndex: 50 }}>
+                <TonConnectButton className="tc-wallet-button" />
+              </div>
             </div>
           </div>
           
