@@ -476,7 +476,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
           disabled={!isConnected || !isValid}
           className="w-full cook-it-button hover:opacity-90 disabled:bg-white/20 disabled:cursor-not-allowed text-white disabled:text-white/60 font-medium py-3 px-6 rounded-xl transition-opacity"
         >
-          {!isConnected ? 'Connect Wallet to Deploy' : 'Deploy Jetton 2.0'}
+          {!isConnected ? 'Connect Wallet' : 'Cook it!'}
         </button>
       </div>
     </form>
