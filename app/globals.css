@@ -144,6 +144,25 @@ a {
       opacity: 1 !important;
     }
   }
+  
+  /* Force visibility for all TON Connect elements in mobile header */
+  header.lg\\:hidden .tc-wallet-button,
+  header[class*="lg:hidden"] .tc-wallet-button,
+  div[class*="lg:hidden"] .tc-wallet-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 999 !important;
+  }
+  
+  /* Override any potential hiding from parent containers */
+  header > div > div[class*="lg:hidden"] > div:first-child > div:last-child {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+  }
 }
 
 /* Gradient text - TON blue */
