@@ -59,6 +59,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
   const [useOffchainMetadata, setUseOffchainMetadata] = useState(false);
+  const [offchainMetadataUrl, setOffchainMetadataUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -125,6 +126,7 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
     const submitData = {
       ...formData,
       useOffchainMetadata,
+      offchainMetadataUrl: useOffchainMetadata ? offchainMetadataUrl : undefined,
     };
     onDeploy(submitData);
   };
@@ -441,43 +443,50 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
       {/* Error Message */}
       {error && (
         <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-          <p className="text-sm text-red-700">{error}</p>
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-red-600">{error}</p>
+          </div>
         </div>
       )}
 
       {/* Summary & Submit */}
       <div className="mt-8 pt-6 border-t border-cook-border">
-        <div className="bg-cook-bg-secondary rounded-xl p-4 mb-4">
-          <h4 className="font-semibold text-cook-text mb-3">Token Summary</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-cook-text-secondary">Name:</span>
-              <span className="text-cook-text font-medium">{formData.name || '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-cook-text-secondary">Symbol:</span>
-              <span className="text-cook-text font-medium">${formData.symbol || '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-cook-text-secondary">Supply:</span>
-              <span className="text-cook-text font-medium">
-                {formData.totalSupply ? Number(formData.totalSupply).toLocaleString() : '—'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-cook-text-secondary">Decimals:</span>
-              <span className="text-cook-text font-medium">{formData.decimals}</span>
-            </div>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="text-center md:text-left">
+            <p className="text-cook-text-secondary text-sm">Deployment cost</p>
+            <p className="text-2xl font-bold text-cook-text">1 TON</p>
+            <p className="text-xs text-cook-text-secondary mt-1">0.2 TON deploy + 0.8 TON fee</p>
           </div>
+          
+          <button
+            type="submit"
+            disabled={!isConnected || !isValid}
+            className="btn-cook w-full md:w-auto flex items-center justify-center gap-2 min-w-[200px] text-lg py-4"
+          >
+            {!isConnected ? (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Connect Wallet
+              </>
+            ) : (
+              <>
+                <Image 
+                  src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                  alt="" 
+                  width={24}
+                  height={24}
+                  unoptimized
+                />
+                Cook Jetton
+              </>
+            )}
+          </button>
         </div>
-
-        <button
-          type="submit"
-          disabled={!isConnected || !isValid}
-          className="w-full cook-it-button hover:opacity-90 disabled:bg-white/20 disabled:cursor-not-allowed text-white disabled:text-white/60 font-medium py-3 px-6 rounded-xl transition-opacity"
-        >
-          {!isConnected ? 'Connect Wallet' : 'Cook it!'}
-        </button>
       </div>
     </form>
   );
