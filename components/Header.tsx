@@ -9,7 +9,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 border-b border-cook-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Desktop: Single row layout */}
-        <div className="hidden md:flex items-center justify-between h-16">
+        <div className="hidden lg:flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
             <Image 
@@ -64,8 +64,8 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile: Two-row layout */}
-        <div className="md:hidden">
+        {/* Mobile/Tablet: Two-row layout */}
+        <div className="lg:hidden">
           {/* First row: Logo left, Wallet right */}
           <div className="flex items-center justify-between h-14 w-full px-0">
             <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
