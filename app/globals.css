@@ -90,79 +90,16 @@ a {
   --tc-modal-backdrop: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* TON Connect button mobile/tablet styles - apply to all screen sizes below 1024px */
-@media (max-width: 1023px) {
-  /* Target all possible TON Connect button elements */
-  .tc-wallet-button,
-  .tc-wallet-button *,
-  .tc-wallet-button button,
-  .tc-wallet-button > *,
-  .tc-wallet-button > * > *,
-  .tc-wallet-button > * > button,
-  [class*="tonconnect-button"],
-  [class*="tonconnect-button"] *,
-  [class*="tonconnect-button"] button {
-    font-size: 12px !important;
-    padding: 6px 12px !important;
-    height: auto !important;
-    min-height: 32px !important;
-    white-space: nowrap !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    max-width: none !important;
-    overflow: visible !important;
-    position: relative !important;
-    z-index: 50 !important;
-  }
-  
-  /* Ensure TON Connect button container is visible */
-  header .tc-wallet-button,
-  header [class*="tonconnect-button"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    position: relative !important;
-    z-index: 50 !important;
-  }
-  
-  /* Ensure button wrapper is visible */
-  header > div > div > div:last-child {
-    overflow: visible !important;
-    position: relative !important;
-    z-index: 50 !important;
-  }
-  
-  /* Prevent any hiding at specific breakpoints */
-  @media (min-width: 640px) and (max-width: 1023px) {
-    .tc-wallet-button,
-    .tc-wallet-button *,
-    [class*="tonconnect-button"],
-    [class*="tonconnect-button"] * {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-  }
-  
-  /* Force visibility for all TON Connect elements in mobile header */
-  header.lg\\:hidden .tc-wallet-button,
-  header[class*="lg:hidden"] .tc-wallet-button,
-  div[class*="lg:hidden"] .tc-wallet-button {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: relative !important;
-    z-index: 999 !important;
-  }
-  
-  /* Override any potential hiding from parent containers */
-  header > div > div[class*="lg:hidden"] > div:first-child > div:last-child {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    overflow: visible !important;
-  }
+/* TON Connect button - ensure visibility on all devices */
+header [class*="tonconnect"],
+header [class*="tonconnect"] *,
+header button[class*="tonconnect"],
+header > div > div > div:last-child > div {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 10 !important;
 }
 
 /* Gradient text - TON blue */

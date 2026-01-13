@@ -67,8 +67,8 @@ export default function Header() {
         {/* Mobile/Tablet: Two-row layout */}
         <div className="lg:hidden">
           {/* First row: Logo left, Wallet right */}
-          <div className="flex items-center justify-between h-14 w-full">
-            <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
+          <div className="flex items-center justify-between h-14 w-full relative">
+            <Link href="/" className="flex items-center space-x-2 group flex-shrink-0 z-10">
               <Image 
                 src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
                 alt="Cook" 
@@ -79,8 +79,8 @@ export default function Header() {
               />
               <span className="text-lg font-bold gradient-text-cook">Cook</span>
             </Link>
-            <div className="flex items-center justify-end flex-shrink-0">
-              <TonConnectButton className="tc-wallet-button" />
+            <div className="flex items-center justify-end flex-shrink-0 z-10 relative" style={{ minWidth: 'auto' }}>
+              <TonConnectButton />
             </div>
           </div>
           
