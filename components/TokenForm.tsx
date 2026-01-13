@@ -386,19 +386,17 @@ export default function TokenForm({ onDeploy, isConnected, error, initialData, o
                   <h5 className="font-medium text-green-800">On-chain Metadata</h5>
                 </div>
                 <p className="text-xs text-green-700">
-                  Your token metadata (name, symbol, image, description) will be stored on-chain using TEP-64 standard.
-                  This ensures maximum decentralization and permanence.
+                  Onchain metadata, shows &quot;Sources not verified&quot; in escrow, but the metadata can be changed
                 </p>
               </div>
             ) : (
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg">🌐</span>
-                  <h5 className="font-medium text-blue-800">Off-chain Metadata</h5>
+                  <h5 className="font-medium text-blue-800">URI Metadata</h5>
                 </div>
                 <p className="text-xs text-blue-700">
-                  Metadata will be stored as a JSON file on our server. The contract will reference this URL.
-                  Uses the official Jetton 2.0 standard contract (verified on tonviewer).
+                  URI metadata, the full-fledged code is visible in the explorers, but the metadata cannot be changed.
                 </p>
               </div>
             )}
