@@ -13,6 +13,7 @@ export interface TokenData {
   decimals: number;
   totalSupply: string;
   mintable: boolean;
+  useOffchainMetadata?: boolean;
 }
 
 // Monetization wallet address
@@ -213,9 +214,9 @@ export async function deployJettonMinter(
 
     toast.loading('Preparing Jetton 2.0 contract...', { id: 'deploy' });
 
-    // Build on-chain metadata (TEP-64)
-    console.log('Building on-chain metadata (TEP-64)...');
-    
+    let contentCell: Cell;
+    let minterCode: Cell;
+
     // Handle image: Jetton 2.0 requires URL, not data URI
     let imageUrl: string | undefined = tokenData.image;
     
@@ -232,14 +233,45 @@ export async function deployJettonMinter(
       // Don't throw error, just skip image
       imageUrl = undefined;
     }
-    
-    const contentCell = buildOnchainMetadataCell({
-      name: tokenData.name,
-      symbol: tokenData.symbol.toUpperCase(),
-      description: tokenData.description || tokenData.name,
-      image: imageUrl || undefined,
-      decimals: tokenData.decimals.toString(),
-    });
+
+    // Build metadata (on-chain or off-chain)
+    if (tokenData.useOffchainMetadata) {
+      console.log('Building off-chain metadata...');
+      
+      // Get base URL for API calls
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : 'https://cook.tg';
+      
+      toast.loading('Uploading metadata JSON...', { id: 'deploy' });
+      
+      // Upload metadata JSON to the site
+      const metadataUrl = await uploadMetadataJson({
+        name: tokenData.name,
+        symbol: tokenData.symbol.toUpperCase(),
+        description: tokenData.description || tokenData.name,
+        image: imageUrl || '',
+        decimals: tokenData.decimals.toString(),
+      }, baseUrl);
+      
+      console.log('Metadata uploaded to:', metadataUrl);
+      
+      // Build off-chain metadata cell
+      contentCell = buildOffchainMetadataCell(metadataUrl);
+      minterCode = getJettonMinterStandardCode();
+    } else {
+      console.log('Building on-chain metadata (TEP-64)...');
+      
+      // Build on-chain metadata (TEP-64)
+      contentCell = buildOnchainMetadataCell({
+        name: tokenData.name,
+        symbol: tokenData.symbol.toUpperCase(),
+        description: tokenData.description || tokenData.name,
+        image: imageUrl || undefined,
+        decimals: tokenData.decimals.toString(),
+      });
+      minterCode = getJettonMinterOnchainCode();
+    }
 
     console.log('=== PROCESSED METADATA ===');
     console.log('Content cell created:', {
