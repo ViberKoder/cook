@@ -676,8 +676,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
               alt="Cookon" 
               width={1620}
               height={540}
-              className="mx-auto mb-8 mt-8 sm:mt-0 w-full h-auto"
-              style={{ transform: 'scale(0.6)', marginTop: '-60px' }}
+              className="mx-auto mb-8 scale-[0.72] mt-8 sm:mt-0 w-full h-auto"
               unoptimized
             />
           </div>

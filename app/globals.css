@@ -74,6 +74,16 @@ a {
   background: #EA580C;
 }
 
+/* Hide scrollbar for mobile navigation */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* TON Connect modal styles override */
 .tc-modal {
   --tc-modal-background: #FFFFFF !important;
