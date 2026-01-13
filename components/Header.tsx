@@ -22,7 +22,7 @@ export default function Header() {
         </Link>
 
         {/* Navigation */}
-        <nav className="flex w-full items-center gap-1 max-lg:order-1 max-lg:w-full max-md:-mx-2 max-md:w-[calc(100%+16px)] max-md:overflow-x-auto max-md:scrollbar-hide lg:justify-center lg:absolute lg:left-1/2 lg:transform lg:-translate-x-1/2 lg:w-auto lg:gap-x-6 xl:gap-x-8">
+        <nav className="flex w-full items-center justify-center gap-1 max-lg:order-1 max-lg:w-full max-md:-mx-2 max-md:w-[calc(100%+16px)] max-md:overflow-x-auto max-md:scrollbar-hide lg:absolute lg:left-1/2 lg:transform lg:-translate-x-1/2 lg:w-auto lg:gap-x-6 xl:gap-x-8">
           <Link 
             href="/"
             className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium whitespace-nowrap"
