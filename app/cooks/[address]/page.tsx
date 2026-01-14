@@ -70,7 +70,7 @@ export default function TokenPage() {
 
       const tokenData = await tokenResponse.json();
       
-      setTokenInfo({
+      const tokenInfoData = {
         address: tokenAddress,
         name: tokenData.metadata?.name || 'Unknown',
         symbol: tokenData.metadata?.symbol || '???',
@@ -80,7 +80,9 @@ export default function TokenPage() {
         decimals: parseInt(tokenData.metadata?.decimals || '9'),
         adminAddress: tokenData.admin?.address,
         mintable: tokenData.mintable !== false,
-      });
+      };
+      
+      setTokenInfo(tokenInfoData);
 
       // Mark as loaded so we can show the page
       setLoading(false);
@@ -127,7 +129,10 @@ export default function TokenPage() {
               
               if (reserve0 > 0n) {
                 // Price in TON per token
-                const price = Number(reserve1) / Number(reserve0) / Math.pow(10, 9 - tokenData.metadata?.decimals || 9);
+                // reserve1 is in nanoTON (10^9), reserve0 is in token units (10^decimals)
+                // Price = (reserve1 / 10^9) / (reserve0 / 10^decimals) = reserve1 * 10^decimals / (reserve0 * 10^9)
+                const decimals = tokenInfoData.decimals || 9;
+                const price = Number(reserve1) * Math.pow(10, decimals) / (Number(reserve0) * Math.pow(10, 9));
                 setPriceData({ price, change24h: 0 }); // TODO: Get 24h change from API
               }
             }
@@ -315,10 +320,13 @@ export default function TokenPage() {
               <div>
                 <p className="text-sm text-cook-text-secondary mb-1">Admin Status</p>
                 <p className="text-lg font-bold text-cook-text">
-                  {tokenInfo.adminAddress ? (
-                    <span className="text-orange-600 dark:text-orange-400">Has Admin</span>
-                  ) : (
+                  {!tokenInfo.adminAddress ? (
                     <span className="text-purple-600 dark:text-purple-400">Decentralized</span>
+                  ) : tokenInfo.adminAddress === 'EQ0000000000000000000000000000000000000000000000000000000000' || 
+                       tokenInfo.adminAddress === 'UQ0000000000000000000000000000000000000000000000000000000000' ? (
+                    <span className="text-red-600 dark:text-red-400">Revoked</span>
+                  ) : (
+                    <span className="text-orange-600 dark:text-orange-400">Has Admin</span>
                   )}
                 </p>
               </div>
