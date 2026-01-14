@@ -668,7 +668,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
   // Payment gate - show payment screen if not paid
   if (!connected || !hasPaidInitial) {
     return (
-      <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
+      <div className="cookon-dark-theme cookon-no-scrollbar min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
         {/* Header with dark theme styling - always visible */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/95 border-b border-gray-800">
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-x-6 gap-y-2 max-lg:flex-wrap max-lg:pt-2 md:gap-x-8 h-16 max-lg:h-auto">
