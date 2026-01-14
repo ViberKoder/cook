@@ -832,8 +832,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
               Admin
             </Link>
             <Link 
-              href="https://tonviewer.com" 
-              target="_blank"
+              href="/explorer"
               className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-gray-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap max-md:hidden"
             >
               Explorer
