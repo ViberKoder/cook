@@ -70,6 +70,7 @@ export default function TokenPage() {
 
       const tokenData = await tokenResponse.json();
       
+      const decimals = parseInt(tokenData.metadata?.decimals || '9');
       const tokenInfoData = {
         address: tokenAddress,
         name: tokenData.metadata?.name || 'Unknown',
@@ -77,7 +78,7 @@ export default function TokenPage() {
         image: tokenData.metadata?.image,
         description: tokenData.metadata?.description,
         totalSupply: tokenData.total_supply || '0',
-        decimals: parseInt(tokenData.metadata?.decimals || '9'),
+        decimals,
         adminAddress: tokenData.admin?.address,
         mintable: tokenData.mintable !== false,
       };
@@ -120,21 +121,25 @@ export default function TokenPage() {
         // Check liquidity and calculate price (don't wait for it, it can be slow)
         checkStonfiLiquidity(tokenAddress)
           .then(pool => {
-            if (pool) {
+            if (pool && pool.reserve0 && pool.reserve1) {
               setPoolInfo(pool);
               
               // Calculate price: reserve1 (TON) / reserve0 (token)
               const reserve0 = BigInt(pool.reserve0 || '0');
               const reserve1 = BigInt(pool.reserve1 || '0');
               
-              if (reserve0 > 0n) {
+              if (reserve0 > 0n && reserve1 > 0n) {
                 // Price in TON per token
                 // reserve1 is in nanoTON (10^9), reserve0 is in token units (10^decimals)
                 // Price = (reserve1 / 10^9) / (reserve0 / 10^decimals) = reserve1 * 10^decimals / (reserve0 * 10^9)
-                const decimals = tokenInfoData.decimals || 9;
                 const price = Number(reserve1) * Math.pow(10, decimals) / (Number(reserve0) * Math.pow(10, 9));
+                console.log('Calculated price:', price, 'decimals:', decimals, 'reserve0:', pool.reserve0, 'reserve1:', pool.reserve1);
                 setPriceData({ price, change24h: 0 }); // TODO: Get 24h change from API
+              } else {
+                console.log('Pool reserves are zero, cannot calculate price');
               }
+            } else {
+              console.log('No pool info or missing reserves');
             }
           })
           .catch(err => console.error('Failed to check liquidity:', err)),
