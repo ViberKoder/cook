@@ -57,6 +57,12 @@ export default function TokenPage() {
     priceChange24h?: number;
   } | null>(null);
   const [dyorLiquidity, setDyorLiquidity] = useState<number | null>(null);
+  const [swapCoffeeData, setSwapCoffeeData] = useState<{
+    priceUsd: number;
+    priceChange24h: number;
+    mcap: number;
+    tvlUsd: number;
+  } | null>(null);
 
   useEffect(() => {
     if (tokenAddress) {
@@ -128,7 +134,49 @@ export default function TokenPage() {
           })
           .catch(err => console.error('Failed to load holders:', err)),
         
-        // Load data from DYOR.io API
+        // Load data from swap.coffee API
+        fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${normalizedEQ}&size=1`)
+          .then(res => {
+            if (!res.ok) {
+              console.log('swap.coffee API response not OK:', res.status, res.statusText);
+              return null;
+            }
+            return res.json();
+          })
+          .then(data => {
+            if (data && Array.isArray(data) && data.length > 0) {
+              const jetton = data[0];
+              const marketStats = jetton.market_stats;
+              
+              if (marketStats) {
+                const swapData = {
+                  priceUsd: marketStats.price_usd || 0,
+                  priceChange24h: marketStats.price_change_24h || 0,
+                  mcap: marketStats.mcap || 0,
+                  tvlUsd: marketStats.tvl_usd || 0,
+                };
+                
+                console.log('swap.coffee data loaded:', swapData);
+                setSwapCoffeeData(swapData);
+                
+                // Use swap.coffee data if available
+                if (swapData.priceUsd > 0) {
+                  setPriceData({
+                    price: swapData.priceUsd, // Will need to convert to TON if needed
+                    change24h: swapData.priceChange24h,
+                  });
+                }
+              }
+            } else {
+              console.log('swap.coffee API returned no data for address:', normalizedEQ);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to load swap.coffee data:', err);
+            // Don't fail the whole page if swap.coffee is unavailable
+          }),
+        
+        // Load data from DYOR.io API (fallback)
         // Try getJettonDetails endpoint first, then fallback to getJettons with address parameter
         Promise.race([
           // Try getJettonDetails endpoint (if it exists)
@@ -524,7 +572,9 @@ export default function TokenPage() {
                         </button>
                         <div>
                           <div className="text-3xl font-bold text-cook-text">
-                            {dyorData?.priceUsd ? (
+                            {swapCoffeeData?.priceUsd ? (
+                              `$${swapCoffeeData.priceUsd.toFixed(4)}`
+                            ) : dyorData?.priceUsd ? (
                               `$${dyorData.priceUsd.toFixed(4)}`
                             ) : dyorData ? (
                               `${dyorData.price.toFixed(6)} TON`
@@ -534,27 +584,28 @@ export default function TokenPage() {
                               'Calculating...'
                             )}
                           </div>
-                          {dyorData?.priceUsd && (
+                          {(swapCoffeeData || dyorData?.priceUsd) && (
                             <div className="text-sm text-cook-text-secondary mt-1">
-                              {dyorData.price.toFixed(6)} TON
-                            </div>
-                          )}
-                          {!dyorData?.priceUsd && (dyorData || priceData) && (
-                            <div className="text-sm text-cook-text-secondary mt-1">
-                              {dyorData?.priceUsd ? `$${dyorData.priceUsd.toFixed(4)} USD` : 'USD price unavailable'}
+                              {swapCoffeeData ? (
+                                `${(swapCoffeeData.priceUsd / 5.5).toFixed(6)} TON` // Approximate TON price
+                              ) : dyorData?.price ? (
+                                `${dyorData.price.toFixed(6)} TON`
+                              ) : (
+                                'TON price unavailable'
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
                       {/* Price Change */}
-                      {(dyorData || priceData) && (
+                      {(swapCoffeeData || dyorData || priceData) && (
                         <div className={`inline-flex items-center gap-1 text-sm font-semibold mt-2 ${
-                          (dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                          (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
                             ? 'text-green-600 dark:text-green-400' 
                             : 'text-red-600 dark:text-red-400'
                         }`}>
-                          <span>{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}</span>
-                          <span>{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%</span>
+                          <span>{(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}</span>
+                          <span>{((swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) * 100).toFixed(2)}%</span>
                         </div>
                       )}
                     </div>
@@ -597,7 +648,9 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {dyorData?.liquidityUsd ? (
+                    {swapCoffeeData?.tvlUsd ? (
+                      `$${(swapCoffeeData.tvlUsd / 1000000).toFixed(2)}M`
+                    ) : dyorData?.liquidityUsd ? (
                       `$${(dyorData.liquidityUsd / 1000000).toFixed(2)}M`
                     ) : dyorLiquidity ? (
                       `$${(dyorLiquidity / 1000000).toFixed(2)}M`
@@ -612,7 +665,9 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {dyorData?.mcap ? (
+                    {swapCoffeeData?.mcap ? (
+                      `$${(swapCoffeeData.mcap / 1000000).toFixed(2)}M`
+                    ) : dyorData?.mcap ? (
                       `${(dyorData.mcap / 1000000).toFixed(2)}M TON`
                     ) : priceData && tokenInfo ? (
                       `${((Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price) / 1000000).toFixed(2)}M TON`
