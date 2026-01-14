@@ -476,38 +476,109 @@ export default function TokenPage() {
             </div>
           </div>
 
-          {/* Market Data */}
+          {/* Market Data - Inspired by swap.coffee */}
           {(dyorData || poolInfo) && (
             <div className="card mb-6">
-              <h2 className="text-xl font-bold text-cook-text mb-4">Market Data</h2>
-              
-              {/* Price Chart Placeholder */}
-              {(dyorData || priceData) && (
-                <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-cook-text-secondary">Price</span>
-                    {(dyorData || priceData) && (
-                      <span className={`text-lg font-bold ${(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-2xl font-bold text-cook-text mb-2">
-                    {dyorData ? `${dyorData.price.toFixed(8)} TON` : priceData ? `${priceData.price.toFixed(8)} TON` : 'Calculating...'}
-                  </div>
-                  {dyorData?.priceUsd && (
-                    <div className="text-sm text-cook-text-secondary mb-4">
-                      ${dyorData.priceUsd.toFixed(6)} USD
+              {/* Top Section: Token Info and Time Buttons */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-cook-border">
+                <div className="flex items-center gap-3">
+                  {/* Token Image */}
+                  {tokenInfo?.image && (
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-cook-bg-secondary flex items-center justify-center">
+                      <Image
+                        src={tokenInfo.image}
+                        alt={tokenInfo.symbol}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   )}
-                  {/* Simple chart placeholder */}
-                  <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
-                    {Array.from({ length: 30 }).map((_, i) => {
-                      const height = 30 + Math.random() * 70;
+                  {/* Token Symbol */}
+                  <div>
+                    <p className="text-lg font-bold text-cook-text">{tokenInfo?.symbol || 'TOKEN'}</p>
+                    <p className="text-sm text-cook-text-secondary">/ TON</p>
+                  </div>
+                </div>
+                
+                {/* Time Period Buttons (Mobile) */}
+                <div className="flex gap-2 md:hidden">
+                  <button className="px-3 py-1 text-xs bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                    24H
+                  </button>
+                  <button className="px-3 py-1 text-xs bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                    ALL
+                  </button>
+                </div>
+              </div>
+
+              {/* Chart Section */}
+              {(dyorData || priceData) && (
+                <div className="mb-6">
+                  {/* Price Info Section */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <button className="text-sm font-medium text-cook-text-secondary hover:text-cook-text transition-colors">
+                          $
+                        </button>
+                        <div>
+                          <div className="text-3xl font-bold text-cook-text">
+                            {dyorData?.priceUsd ? (
+                              `$${dyorData.priceUsd.toFixed(4)}`
+                            ) : dyorData ? (
+                              `${dyorData.price.toFixed(6)} TON`
+                            ) : priceData ? (
+                              `${priceData.price.toFixed(6)} TON`
+                            ) : (
+                              'Calculating...'
+                            )}
+                          </div>
+                          {dyorData && !dyorData.priceUsd && (
+                            <div className="text-sm text-cook-text-secondary mt-1">
+                              ${dyorData.priceUsd?.toFixed(4) || 'N/A'} USD
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Price Change */}
+                      {(dyorData || priceData) && (
+                        <div className={`inline-flex items-center gap-1 text-sm font-semibold mt-2 ${
+                          (dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          <span>{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}</span>
+                          <span>{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Time Period Buttons (Desktop) */}
+                    <div className="hidden md:flex gap-2">
+                      <button className="px-3 py-1.5 text-sm bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                        24H
+                      </button>
+                      <button className="px-3 py-1.5 text-sm bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                        1W
+                      </button>
+                      <button className="px-3 py-1.5 text-sm bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                        1M
+                      </button>
+                      <button className="px-3 py-1.5 text-sm bg-cook-bg-secondary hover:bg-cook-border rounded-lg text-cook-text transition-colors">
+                        ALL
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chart Placeholder */}
+                  <div className="h-64 bg-cook-bg-secondary rounded-xl p-4 flex items-end justify-between gap-1">
+                    {Array.from({ length: 50 }).map((_, i) => {
+                      const height = 20 + Math.random() * 80;
                       return (
                         <div
                           key={i}
-                          className="flex-1 bg-cook-orange rounded-t"
+                          className="flex-1 bg-cook-orange rounded-t hover:opacity-80 transition-opacity"
                           style={{ height: `${height}%` }}
                         />
                       );
@@ -516,17 +587,17 @@ export default function TokenPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Stats Section */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-cook-border">
                 <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
+                  <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {dyorData ? (
-                      dyorData.mcap.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' TON'
-                    ) : priceData && tokenInfo ? (
-                      (Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price).toLocaleString('en-US', {
+                    {dyorData?.liquidityUsd ? (
+                      `$${(dyorData.liquidityUsd / 1000000).toFixed(2)}M`
+                    ) : dyorLiquidity ? (
+                      `$${(dyorLiquidity / 1000000).toFixed(2)}M`
+                    ) : poolInfo && poolInfo.reserve1 !== '0' ? (
+                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
                         maximumFractionDigits: 2,
                         minimumFractionDigits: 2
                       }) + ' TON'
@@ -534,23 +605,12 @@ export default function TokenPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
+                  <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {dyorData?.liquidityUsd ? (
-                      '$' + dyorData.liquidityUsd.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : dyorLiquidity ? (
-                      '$' + dyorLiquidity.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : poolInfo && poolInfo.reserve1 !== '0' ? (
-                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' TON'
+                    {dyorData?.mcap ? (
+                      `${(dyorData.mcap / 1000000).toFixed(2)}M TON`
+                    ) : priceData && tokenInfo ? (
+                      `${((Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price) / 1000000).toFixed(2)}M TON`
                     ) : 'N/A'}
                   </p>
                 </div>
