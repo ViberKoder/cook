@@ -142,12 +142,15 @@ export default function TokenPage() {
             // Try to parse and convert address to raw format
             const parsedAddr = Address.parse(normalizedEQ);
             swapCoffeeAddr = parsedAddr.toRawString(); // Format: "0:hex"
+            console.log('swap.coffee: Converted address', normalizedEQ, 'to', swapCoffeeAddr);
           } catch (e) {
             // If parsing fails, use normalizedEQ as is
             console.log('Could not parse address for swap.coffee, using as is:', normalizedEQ);
           }
           
-          return fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddr)}&size=1`);
+          const apiUrl = `https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddr)}&size=1`;
+          console.log('swap.coffee: Fetching from URL:', apiUrl);
+          return fetch(apiUrl);
         })().then(res => {
             if (!res.ok) {
               console.log('swap.coffee API response not OK:', res.status, res.statusText);
@@ -156,11 +159,29 @@ export default function TokenPage() {
             return res.json();
           })
           .then(data => {
-            console.log('swap.coffee API response:', data);
+            console.log('swap.coffee API full response:', JSON.stringify(data, null, 2));
+            console.log('swap.coffee API response type:', Array.isArray(data) ? 'array' : typeof data);
             
+            // Check if data is an array
             if (data && Array.isArray(data) && data.length > 0) {
               const jetton = data[0];
+              console.log('swap.coffee: Found jetton:', jetton.address, 'requested:', normalizedEQ);
+              
+              // Verify that the address matches
+              const jettonAddr = jetton.address || '';
+              const matches = jettonAddr === normalizedEQ || 
+                             jettonAddr.replace(/^0:/, 'EQ') === normalizedEQ ||
+                             jettonAddr.replace(/^0:/, 'UQ') === normalizedEQ ||
+                             normalizedEQ.replace(/^EQ/, '0:') === jettonAddr ||
+                             normalizedEQ.replace(/^UQ/, '0:') === jettonAddr;
+              
+              if (!matches) {
+                console.warn('swap.coffee: Address mismatch! Requested:', normalizedEQ, 'Got:', jettonAddr);
+                return; // Don't use data if address doesn't match
+              }
+              
               const marketStats = jetton.market_stats;
+              console.log('swap.coffee: Market stats:', marketStats);
               
               if (marketStats) {
                 // price_change_24h is already a percentage (0.1 = 10%), so multiply by 100 for display
@@ -171,7 +192,7 @@ export default function TokenPage() {
                   tvlUsd: marketStats.tvl_usd || 0,
                 };
                 
-                console.log('swap.coffee data loaded:', swapData);
+                console.log('swap.coffee data loaded for', normalizedEQ, ':', swapData);
                 setSwapCoffeeData(swapData);
                 
                 // Use swap.coffee data if available
@@ -181,9 +202,11 @@ export default function TokenPage() {
                     change24h: swapData.priceChange24h,
                   });
                 }
+              } else {
+                console.log('swap.coffee: No market_stats in response');
               }
             } else {
-              console.log('swap.coffee API returned no data for address:', normalizedEQ);
+              console.log('swap.coffee API returned no data or empty array for address:', normalizedEQ);
             }
           })
           .catch(err => {
