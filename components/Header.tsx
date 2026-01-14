@@ -49,7 +49,7 @@ export default function Header() {
           </Link>
           <Link 
             href="/explorer"
-            className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium whitespace-nowrap max-md:hidden"
+            className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-cook-text-secondary hover:text-cook-orange transition-colors text-sm font-medium whitespace-nowrap"
           >
             Explorer
           </Link>

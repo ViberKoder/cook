@@ -451,42 +451,44 @@ export default function TokenPage() {
 
           {/* Token Header */}
           <div className="card mb-6">
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
-                {tokenInfo.image ? (
-                  <Image 
-                    src={tokenInfo.image} 
-                    alt={tokenInfo.name}
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
-                    unoptimized
-                    onError={(e) => (e.currentTarget.style.display = 'none')}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-cook-text-secondary">
-                    {tokenInfo.symbol?.charAt(0) || '?'}
-                  </div>
-                )}
-              </div>
-              <div className="flex-grow">
-                <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
-                <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
-                <div className="flex items-center gap-4 flex-wrap">
-                  {!tokenInfo.adminAddress && (
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
-                      Decentralized
-                    </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
+              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
+                  {tokenInfo.image ? (
+                    <Image 
+                      src={tokenInfo.image} 
+                      alt={tokenInfo.name}
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl font-bold text-cook-text-secondary">
+                      {tokenInfo.symbol?.charAt(0) || '?'}
+                    </div>
                   )}
+                </div>
+                <div className="flex-grow sm:flex-grow">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-cook-text mb-1 sm:mb-2">{tokenInfo.name}</h1>
+                  <p className="text-lg sm:text-xl text-cook-text-secondary mb-2 sm:mb-4">${tokenInfo.symbol}</p>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {!tokenInfo.adminAddress && (
+                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
+                        Decentralized
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               {/* Market Data - Right side, same height as avatar and name */}
               {(swapCoffeeData || dyorData || priceData) && (
-                <div className="flex-shrink-0 text-right">
+                <div className="flex-shrink-0 text-right w-full sm:w-auto sm:ml-auto">
                   {/* Price */}
-                  <div className="flex items-center gap-2 justify-end mb-1">
-                    <span className="text-sm text-cook-text-secondary">Price: </span>
-                    <div className="text-2xl font-bold text-cook-text">
+                  <div className="flex items-center gap-2 justify-end sm:justify-end mb-1">
+                    <span className="text-xs sm:text-sm text-cook-text-secondary">Price: </span>
+                    <div className="text-xl sm:text-2xl font-bold text-cook-text">
                       {swapCoffeeData?.priceUsd ? (
                         `$${swapCoffeeData.priceUsd.toFixed(4)}`
                       ) : dyorData?.priceUsd ? (
@@ -499,7 +501,7 @@ export default function TokenPage() {
                     </div>
                     {/* Price Change */}
                     {(swapCoffeeData || dyorData || priceData) && (
-                      <span className={`text-sm font-semibold ${
+                      <span className={`text-xs sm:text-sm font-semibold ${
                         (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
@@ -510,7 +512,7 @@ export default function TokenPage() {
                     )}
                   </div>
                   {/* Market Cap and Liquidity */}
-                  <div className="flex items-center gap-4 text-sm justify-end">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                     <div>
                       <span className="text-cook-text-secondary">Market Cap: </span>
                       <span className="font-bold text-cook-text">
@@ -571,24 +573,24 @@ export default function TokenPage() {
             </div>
 
             {/* Token Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-cook-border">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-cook-border">
               <div>
-                <p className="text-sm text-cook-text-secondary mb-1">Total Supply</p>
-                <p className="text-lg font-bold text-cook-text">
+                <p className="text-xs sm:text-sm text-cook-text-secondary mb-1">Total Supply</p>
+                <p className="text-base sm:text-lg font-bold text-cook-text break-words">
                   {formatSupply(tokenInfo.totalSupply, tokenInfo.decimals)} {tokenInfo.symbol}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-cook-text-secondary mb-1">Decimals</p>
-                <p className="text-lg font-bold text-cook-text">{tokenInfo.decimals}</p>
+                <p className="text-xs sm:text-sm text-cook-text-secondary mb-1">Decimals</p>
+                <p className="text-base sm:text-lg font-bold text-cook-text">{tokenInfo.decimals}</p>
               </div>
               <div>
-                <p className="text-sm text-cook-text-secondary mb-1">Holders</p>
-                <p className="text-lg font-bold text-cook-text">{totalHolders || holders.length}</p>
+                <p className="text-xs sm:text-sm text-cook-text-secondary mb-1">Holders</p>
+                <p className="text-base sm:text-lg font-bold text-cook-text">{totalHolders || holders.length}</p>
               </div>
               <div>
-                <p className="text-sm text-cook-text-secondary mb-1">Admin Status</p>
-                <p className="text-lg font-bold text-cook-text">
+                <p className="text-xs sm:text-sm text-cook-text-secondary mb-1">Admin Status</p>
+                <p className="text-base sm:text-lg font-bold text-cook-text">
                   {!tokenInfo.adminAddress ? (
                     <span className="text-purple-600 dark:text-purple-400">Decentralized</span>
                   ) : tokenInfo.adminAddress === 'EQ0000000000000000000000000000000000000000000000000000000000' || 

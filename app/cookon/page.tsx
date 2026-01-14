@@ -734,7 +734,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
               alt="Cookon" 
               width={2430}
               height={810}
-              className="mx-auto mb-8 scale-[0.72] sm:scale-[1.08] mt-[50px] sm:mt-16 w-full h-auto"
+              className="mx-auto mb-8 scale-[0.96] sm:scale-[1.08] mt-[50px] sm:mt-16 w-full h-auto"
               unoptimized
             />
           </div>

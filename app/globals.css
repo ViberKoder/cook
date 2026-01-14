@@ -84,6 +84,18 @@ a {
   display: none;
 }
 
+/* Hide scrollbar on cookon page for mobile */
+@media (max-width: 640px) {
+  .cookon-dark-theme {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .cookon-dark-theme::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* TON Connect modal styles override */
 .tc-modal {
   --tc-modal-background: #FFFFFF !important;
