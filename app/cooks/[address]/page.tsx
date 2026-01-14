@@ -134,68 +134,67 @@ export default function TokenPage() {
           })
           .catch(err => console.error('Failed to load holders:', err)),
         
-        // Load data from swap.coffee API
-        // Convert address to raw format (0:hex) if needed
-        (async () => {
-          let swapCoffeeAddr = normalizedEQ;
-          try {
-            // Try to parse and convert address to raw format
-            const parsedAddr = Address.parse(normalizedEQ);
-            swapCoffeeAddr = parsedAddr.toRawString(); // Format: "0:hex"
-            console.log('swap.coffee: Converted address', normalizedEQ, 'to', swapCoffeeAddr);
-          } catch (e) {
-            // If parsing fails, use normalizedEQ as is
-            console.log('Could not parse address for swap.coffee, using as is:', normalizedEQ);
-          }
-          
-          const apiUrl = `https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddr)}&size=1`;
-          console.log('swap.coffee: Fetching from URL:', apiUrl);
-          return fetch(apiUrl);
-        })().then(res => {
+        // Load data from DexScreener API
+        // DexScreener API: https://api.dexscreener.com/latest/dex/tokens/{tokenAddress}
+        fetch(`https://api.dexscreener.com/latest/dex/tokens/${normalizedEQ}`)
+          .then(res => {
             if (!res.ok) {
-              console.log('swap.coffee API response not OK:', res.status, res.statusText);
+              console.log('DexScreener API response not OK:', res.status, res.statusText);
               return null;
             }
             return res.json();
           })
           .then(data => {
-            if (!data || !data.jetton) {
-              console.log('swap.coffee: No jetton data received');
-              return;
-            }
+            console.log('DexScreener API response:', data);
             
-            const jetton = data.jetton;
-            console.log('swap.coffee: Processing jetton:', jetton.address, 'requested:', normalizedEQ);
-            
-            const marketStats = jetton.market_stats;
-            console.log('swap.coffee: Market stats:', marketStats);
-            
-            if (marketStats) {
-              // price_change_24h is already a percentage (0.1 = 10%), so multiply by 100 for display
-              const swapData = {
-                priceUsd: marketStats.price_usd || 0,
-                priceChange24h: (marketStats.price_change_24h || 0) * 100, // Convert to percentage
-                mcap: marketStats.mcap || 0,
-                tvlUsd: marketStats.tvl_usd || 0,
-              };
+            if (data && data.pairs && Array.isArray(data.pairs) && data.pairs.length > 0) {
+              // Find the pair with TON as quote token (usually the main pair)
+              const mainPair = data.pairs.find((pair: any) => 
+                pair.quoteToken?.symbol === 'TON' || 
+                pair.chainId === 'ton' ||
+                pair.dexId === 'stonfi' ||
+                pair.dexId === 'dedust'
+              ) || data.pairs[0]; // Fallback to first pair if no TON pair found
               
-              console.log('swap.coffee data loaded for', normalizedEQ, ':', swapData);
-              setSwapCoffeeData(swapData);
+              console.log('DexScreener: Using pair:', mainPair.pairAddress, 'for token:', normalizedEQ);
               
-              // Use swap.coffee data if available
-              if (swapData.priceUsd > 0) {
-                setPriceData({
-                  price: swapData.priceUsd, // Price in USD
-                  change24h: swapData.priceChange24h,
-                });
+              if (mainPair) {
+                const priceUsd = parseFloat(mainPair.priceUsd || '0');
+                const priceChange24h = parseFloat(mainPair.priceChange?.h24 || '0');
+                const liquidityUsd = parseFloat(mainPair.liquidity?.usd || '0');
+                
+                // Calculate market cap: price * total supply
+                let mcap = 0;
+                if (priceUsd > 0 && tokenInfo) {
+                  const totalSupplyFormatted = Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals);
+                  mcap = totalSupplyFormatted * priceUsd;
+                }
+                
+                const dexData = {
+                  priceUsd,
+                  priceChange24h,
+                  mcap,
+                  tvlUsd: liquidityUsd,
+                };
+                
+                console.log('DexScreener data loaded for', normalizedEQ, ':', dexData);
+                setSwapCoffeeData(dexData);
+                
+                // Use DexScreener data if available
+                if (priceUsd > 0) {
+                  setPriceData({
+                    price: priceUsd,
+                    change24h: priceChange24h,
+                  });
+                }
               }
             } else {
-              console.log('swap.coffee: No market_stats in response');
+              console.log('DexScreener API returned no pairs for address:', normalizedEQ);
             }
           })
           .catch(err => {
-            console.error('Failed to load swap.coffee data:', err);
-            // Don't fail the whole page if swap.coffee is unavailable
+            console.error('Failed to load DexScreener data:', err);
+            // Don't fail the whole page if DexScreener is unavailable
           }),
         
         // Load data from DYOR.io API (fallback)
