@@ -668,8 +668,66 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
   // Payment gate - show payment screen if not paid
   if (!connected || !hasPaidInitial) {
     return (
-      <div className="cookon-dark-theme min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="max-w-2xl w-full text-center" style={{ marginTop: '-100px' }}>
+      <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
+        {/* Header with dark theme styling - always visible */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/95 border-b border-gray-800">
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-x-6 gap-y-2 max-lg:flex-wrap max-lg:pt-2 md:gap-x-8 h-16 max-lg:h-auto">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
+              <Image 
+                src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
+                alt="Cook" 
+                width={40}
+                height={40}
+                className="group-hover:scale-110 transition-transform max-lg:w-8 max-lg:h-8"
+                priority
+              />
+              <span className="text-xl font-bold text-white max-lg:text-lg">Cook</span>
+            </Link>
+
+            {/* Navigation */}
+            <nav className="flex w-full items-center justify-center gap-1 max-lg:order-1 max-lg:w-full max-md:-mx-2 max-md:w-[calc(100%+16px)] max-md:overflow-x-auto max-md:scrollbar-hide lg:absolute lg:left-1/2 lg:transform lg:-translate-x-1/2 lg:w-auto lg:gap-x-6 xl:gap-x-8">
+              <Link 
+                href="/"
+                className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-gray-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Jetton 2.0
+              </Link>
+              <Link 
+                href="/cooks"
+                className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-gray-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Cooks
+              </Link>
+              <Link 
+                href="/cookon"
+                className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-white font-semibold transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Cookon
+              </Link>
+              <Link 
+                href="/admin"
+                className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-gray-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Admin
+              </Link>
+              <Link 
+                href="https://tonviewer.com" 
+                target="_blank"
+                className="relative px-2 xl:px-[10px] py-[25px] max-lg:py-[14px] text-gray-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap max-md:hidden"
+              >
+                Explorer
+              </Link>
+            </nav>
+
+            {/* Wallet Connect Button */}
+            <div className="flex gap-2 items-center flex-shrink-0">
+              <TonConnectButton />
+            </div>
+          </section>
+        </header>
+        <div className="flex-grow flex items-center justify-center px-4 pt-20">
+          <div className="max-w-2xl w-full text-center">
           <div className="mb-12" style={{ marginTop: '40px' }}>
             <Image 
               src="https://lime-gigantic-quelea-995.mypinata.cloud/ipfs/bafkreiahul6q7sdieg6grbhjtf4ddq7j5kmgfdoncj6ny4fjfzthuq3uga" 
@@ -723,6 +781,7 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     );
