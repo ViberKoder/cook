@@ -135,7 +135,18 @@ export default function TokenPage() {
           .catch(err => console.error('Failed to load holders:', err)),
         
         // Load data from swap.coffee API
-        fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${normalizedEQ}&size=1`)
+        // Convert address to raw format (0:hex) if needed
+        let swapCoffeeAddress = normalizedEQ;
+        try {
+          // Try to parse and convert address to raw format
+          const parsedAddr = Address.parse(normalizedEQ);
+          swapCoffeeAddress = parsedAddr.toRawString(); // Format: "0:hex"
+        } catch (e) {
+          // If parsing fails, use normalizedEQ as is
+          console.log('Could not parse address for swap.coffee, using as is:', normalizedEQ);
+        }
+        
+        fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddress)}&size=1`)
           .then(res => {
             if (!res.ok) {
               console.log('swap.coffee API response not OK:', res.status, res.statusText);
@@ -144,14 +155,17 @@ export default function TokenPage() {
             return res.json();
           })
           .then(data => {
+            console.log('swap.coffee API response:', data);
+            
             if (data && Array.isArray(data) && data.length > 0) {
               const jetton = data[0];
               const marketStats = jetton.market_stats;
               
               if (marketStats) {
+                // price_change_24h is already a percentage (0.1 = 10%), so multiply by 100 for display
                 const swapData = {
                   priceUsd: marketStats.price_usd || 0,
-                  priceChange24h: marketStats.price_change_24h || 0,
+                  priceChange24h: (marketStats.price_change_24h || 0) * 100, // Convert to percentage
                   mcap: marketStats.mcap || 0,
                   tvlUsd: marketStats.tvl_usd || 0,
                 };
@@ -162,13 +176,13 @@ export default function TokenPage() {
                 // Use swap.coffee data if available
                 if (swapData.priceUsd > 0) {
                   setPriceData({
-                    price: swapData.priceUsd, // Will need to convert to TON if needed
+                    price: swapData.priceUsd, // Price in USD
                     change24h: swapData.priceChange24h,
                   });
                 }
               }
             } else {
-              console.log('swap.coffee API returned no data for address:', normalizedEQ);
+              console.log('swap.coffee API returned no data for address:', swapCoffeeAddress);
             }
           })
           .catch(err => {
@@ -605,7 +619,7 @@ export default function TokenPage() {
                             : 'text-red-600 dark:text-red-400'
                         }`}>
                           <span>{(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}</span>
-                          <span>{((swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) * 100).toFixed(2)}%</span>
+                          <span>{(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%</span>
                         </div>
                       )}
                     </div>
