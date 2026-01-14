@@ -451,10 +451,38 @@ export default function TokenPage() {
 
           {/* Token Header */}
           <div className="card mb-6">
-            {/* Market Data - Top Right */}
-            {(swapCoffeeData || dyorData || priceData) && (
-              <div className="flex justify-end mb-6 pb-4 border-b border-cook-border">
-                <div className="text-right">
+            <div className="flex items-center gap-6 mb-6">
+              <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
+                {tokenInfo.image ? (
+                  <Image 
+                    src={tokenInfo.image} 
+                    alt={tokenInfo.name}
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-cook-text-secondary">
+                    {tokenInfo.symbol?.charAt(0) || '?'}
+                  </div>
+                )}
+              </div>
+              <div className="flex-grow">
+                <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
+                <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {!tokenInfo.adminAddress && (
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
+                      Decentralized
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Market Data - Right side, same height as avatar and name */}
+              {(swapCoffeeData || dyorData || priceData) && (
+                <div className="flex-shrink-0 text-right">
                   {/* Price */}
                   <div className="flex items-center gap-2 justify-end mb-1">
                     <span className="text-sm text-cook-text-secondary">Price: </span>
@@ -515,38 +543,7 @@ export default function TokenPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
-                {tokenInfo.image ? (
-                  <Image 
-                    src={tokenInfo.image} 
-                    alt={tokenInfo.name}
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
-                    unoptimized
-                    onError={(e) => (e.currentTarget.style.display = 'none')}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-cook-text-secondary">
-                    {tokenInfo.symbol?.charAt(0) || '?'}
-                  </div>
-                )}
-              </div>
-              <div className="flex-grow">
-                <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
-                <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
-                <div className="flex items-center gap-4 flex-wrap">
-                  {!tokenInfo.adminAddress && (
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
-                      Decentralized
-                    </span>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-start justify-between gap-4 mb-6">
