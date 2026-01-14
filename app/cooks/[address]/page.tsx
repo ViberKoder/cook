@@ -128,11 +128,21 @@ export default function TokenPage() {
           .catch(err => console.error('Failed to load holders:', err)),
         
         // Load data from DYOR.io API
-        fetch(`https://api.dyor.io/v1/jettons?address=${normalizedEQ}&currency=ton`)
-          .then(res => res.ok ? res.json() : null)
+        // According to docs: address parameter should be an array, but we'll try both formats
+        fetch(`https://api.dyor.io/v1/jettons?address[]=${normalizedEQ}&currency=ton`)
+          .then(res => {
+            if (!res.ok) {
+              console.log('DYOR.io API response not OK:', res.status, res.statusText);
+              return null;
+            }
+            return res.json();
+          })
           .then(dyorResponse => {
+            console.log('DYOR.io API response:', dyorResponse);
+            
             if (dyorResponse && dyorResponse.jettons && dyorResponse.jettons.length > 0) {
               const jetton = dyorResponse.jettons[0];
+              console.log('DYOR.io jetton data:', jetton);
               
               // Parse price
               const priceValue = jetton.price?.value || '0';
@@ -157,33 +167,52 @@ export default function TokenPage() {
               // Get holders count
               const holdersCount = parseInt(jetton.holdersCount || '0');
               
-              // Get price change (try 24h change)
-              const priceChange24h = jetton.priceChange?.ton?.day || 0;
+              // Get price change (try 24h change) - may not be in response, will be 0 for now
+              const priceChange24h = 0;
               
-              setDyorData({
-                price,
-                priceUsd,
-                liquidityUsd,
-                mcap,
-                holdersCount,
-                priceChange24h,
-              });
-              
-              // Also set priceData for compatibility
-              setPriceData({ 
+              console.log('Parsed DYOR.io data:', { 
                 price, 
-                change24h: priceChange24h 
+                priceUsd, 
+                liquidityUsd, 
+                mcap, 
+                holdersCount,
+                rawPrice: jetton.price,
+                rawMcap: jetton.mcap,
+                rawLiquidity: jetton.liquidityUsd
               });
               
-              // Update totalHolders if DYOR has better data
-              if (holdersCount > 0) {
-                setTotalHolders(holdersCount);
+              // Only set data if we have meaningful values
+              if (price > 0 || mcap > 0 || liquidityUsd > 0) {
+                setDyorData({
+                  price,
+                  priceUsd,
+                  liquidityUsd,
+                  mcap,
+                  holdersCount,
+                  priceChange24h,
+                });
+                
+                // Also set priceData for compatibility
+                setPriceData({ 
+                  price: price || 0, 
+                  change24h: priceChange24h 
+                });
+                
+                // Update totalHolders if DYOR has better data
+                if (holdersCount > 0) {
+                  setTotalHolders(holdersCount);
+                }
+              } else {
+                console.log('DYOR.io data has no meaningful values, skipping');
               }
-              
-              console.log('DYOR.io data loaded:', { price, priceUsd, liquidityUsd, mcap, holdersCount });
+            } else {
+              console.log('DYOR.io API returned no jettons for address:', normalizedEQ);
             }
           })
-          .catch(err => console.error('Failed to load DYOR.io data:', err)),
+          .catch(err => {
+            console.error('Failed to load DYOR.io data:', err);
+            // Don't fail the whole page if DYOR.io is unavailable
+          }),
         
         // Check liquidity and calculate price (don't wait for it, it can be slow)
         checkStonfiLiquidity(tokenAddress)
