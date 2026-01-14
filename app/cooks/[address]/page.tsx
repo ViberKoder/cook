@@ -282,15 +282,9 @@ export default function TokenPage() {
       const num = BigInt(supply);
       const divisor = BigInt(10 ** decimals);
       const whole = num / divisor;
-      const remainder = num % divisor;
       
-      if (remainder === 0n) {
-        return whole.toLocaleString();
-      }
-      
-      const decimalsStr = remainder.toString().padStart(decimals, '0');
-      const trimmed = decimalsStr.replace(/0+$/, '');
-      return `${whole.toLocaleString()}.${trimmed}`;
+      // Return only whole part, no decimals to prevent text overlap
+      return whole.toLocaleString();
     } catch {
       return supply;
     }
