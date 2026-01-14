@@ -534,9 +534,14 @@ export default function TokenPage() {
                               'Calculating...'
                             )}
                           </div>
-                          {dyorData && !dyorData.priceUsd && (
+                          {dyorData?.priceUsd && (
                             <div className="text-sm text-cook-text-secondary mt-1">
-                              ${dyorData.priceUsd?.toFixed(4) || 'N/A'} USD
+                              {dyorData.price.toFixed(6)} TON
+                            </div>
+                          )}
+                          {!dyorData?.priceUsd && (dyorData || priceData) && (
+                            <div className="text-sm text-cook-text-secondary mt-1">
+                              {dyorData?.priceUsd ? `$${dyorData.priceUsd.toFixed(4)} USD` : 'USD price unavailable'}
                             </div>
                           )}
                         </div>
