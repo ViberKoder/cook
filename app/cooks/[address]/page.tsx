@@ -352,7 +352,7 @@ export default function TokenPage() {
           </div>
 
           {/* Market Data */}
-          {poolInfo && priceData && (
+          {poolInfo && (
             <div className="card mb-6">
               <h2 className="text-xl font-bold text-cook-text mb-4">Market Data</h2>
               
@@ -360,12 +360,14 @@ export default function TokenPage() {
               <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-cook-text-secondary">Price</span>
-                  <span className={`text-lg font-bold ${priceData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
-                  </span>
+                  {priceData && (
+                    <span className={`text-lg font-bold ${priceData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                    </span>
+                  )}
                 </div>
                 <div className="text-2xl font-bold text-cook-text mb-4">
-                  {priceData.price.toFixed(8)} TON
+                  {priceData ? `${priceData.price.toFixed(8)} TON` : 'Calculating...'}
                 </div>
                 {/* Simple chart placeholder */}
                 <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
@@ -386,7 +388,7 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {poolInfo && priceData ? (
+                    {priceData && tokenInfo ? (
                       (Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price).toLocaleString('en-US', {
                         maximumFractionDigits: 2,
                         minimumFractionDigits: 2
@@ -397,12 +399,10 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {poolInfo ? (
-                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' TON'
-                    ) : 'N/A'}
+                    {(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
+                      maximumFractionDigits: 2,
+                      minimumFractionDigits: 2
+                    }) + ' TON'}
                   </p>
                 </div>
               </div>
