@@ -730,65 +730,8 @@ CRITICAL: The description field MUST ALWAYS be in English, regardless of the use
 
   return (
     <div className="cookon-dark-theme min-h-screen flex flex-col" style={{ minHeight: '100vh', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
-      {/* Header with dark theme styling */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1f]/95 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 group">
-              <Image 
-                src="https://em-content.zobj.net/source/telegram/386/poultry-leg_1f357.webp" 
-                alt="Cook" 
-                width={40}
-                height={40}
-                className="group-hover:scale-110 transition-transform"
-                loading="lazy"
-              />
-              <span className="text-xl font-bold text-white">Cook</span>
-            </Link>
-
-            {/* Navigation */}
-            <nav className="flex items-center space-x-4 md:space-x-8">
-              <Link 
-                href="/"
-                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
-              >
-                Jetton 2.0
-              </Link>
-              <Link 
-                href="/cooks"
-                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
-              >
-                Cooks
-              </Link>
-              <Link 
-                href="/cookon"
-                className="text-white font-semibold transition-colors text-sm font-medium"
-              >
-                Cookon
-              </Link>
-              <Link 
-                href="/admin"
-                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
-              >
-                Admin
-              </Link>
-              <Link 
-                href="https://tonviewer.com" 
-                target="_blank"
-                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
-              >
-                Explorer
-              </Link>
-            </nav>
-
-            {/* Wallet Connect Button */}
-            <div className="flex items-center space-x-4">
-              <TonConnectButton />
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header */}
+      <Header />
       <main className="flex-grow relative z-10 pt-20 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-2" style={{ marginTop: '0px' }}>
