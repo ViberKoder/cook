@@ -370,6 +370,17 @@ export default function TokenPage() {
     }
   };
 
+  const formatCurrency = (value: number): string => {
+    if (value === 0) return '$0';
+    if (value < 1000) {
+      return `$${value.toFixed(2)}`;
+    }
+    if (value < 1000000) {
+      return `$${(value / 1000).toFixed(1)}k`;
+    }
+    return `$${(value / 1000000).toFixed(1)}M`;
+  };
+
   const formatAddress = (address: string) => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -475,24 +486,89 @@ export default function TokenPage() {
               {tokenInfo.description && (
                 <p className="text-cook-text-secondary flex-grow">{tokenInfo.description}</p>
               )}
-              <Link
-                href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
-                target="_blank"
-                className="flex-shrink-0 py-4 px-8 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105" 
-                style={{
-                  background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
-                }}
-              >
-                <Image
-                  src="https://pbs.twimg.com/profile_images/1957769581809807360/Hne_kG84.jpg"
-                  alt="DTrade"
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                  unoptimized
-                />
-                Trade on DTrade
-              </Link>
+              <div className="flex-shrink-0 flex flex-col items-end gap-3">
+                {/* Market Data - Price, Change, Market Cap, Liquidity */}
+                {(swapCoffeeData || dyorData || priceData) && (
+                  <div className="text-right">
+                    {/* Price */}
+                    <div className="flex items-center gap-2 justify-end mb-1">
+                      <div className="text-2xl font-bold text-cook-text">
+                        {swapCoffeeData?.priceUsd ? (
+                          `$${swapCoffeeData.priceUsd.toFixed(4)}`
+                        ) : dyorData?.priceUsd ? (
+                          `$${dyorData.priceUsd.toFixed(4)}`
+                        ) : priceData ? (
+                          `$${priceData.price.toFixed(4)}`
+                        ) : (
+                          'N/A'
+                        )}
+                      </div>
+                      {/* Price Change */}
+                      {(swapCoffeeData || dyorData || priceData) && (
+                        <span className={`text-sm font-semibold ${
+                          (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
+                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {/* Market Cap and Liquidity */}
+                    <div className="flex items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-cook-text-secondary">Market Cap: </span>
+                        <span className="font-bold text-cook-text">
+                          {swapCoffeeData?.mcap ? (
+                            formatCurrency(swapCoffeeData.mcap)
+                          ) : dyorData?.mcap ? (
+                            formatCurrency(dyorData.mcap)
+                          ) : priceData && tokenInfo ? (
+                            formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
+                          ) : (
+                            'N/A'
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-cook-text-secondary">Liquidity: </span>
+                        <span className="font-bold text-cook-text">
+                          {swapCoffeeData?.tvlUsd ? (
+                            formatCurrency(swapCoffeeData.tvlUsd)
+                          ) : dyorData?.liquidityUsd ? (
+                            formatCurrency(dyorData.liquidityUsd)
+                          ) : dyorLiquidity ? (
+                            formatCurrency(dyorLiquidity)
+                          ) : poolInfo && poolInfo.reserve1 !== '0' ? (
+                            formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
+                          ) : (
+                            'N/A'
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <Link
+                  href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
+                  target="_blank"
+                  className="py-4 px-8 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105" 
+                  style={{
+                    background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
+                  }}
+                >
+                  <Image
+                    src="https://pbs.twimg.com/profile_images/1957769581809807360/Hne_kG84.jpg"
+                    alt="DTrade"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                    unoptimized
+                  />
+                  Trade on DTrade
+                </Link>
+              </div>
             </div>
 
             {/* Token Stats */}
