@@ -56,6 +56,7 @@ export default function TokenPage() {
     holdersCount: number;
     priceChange24h?: number;
   } | null>(null);
+  const [dyorLiquidity, setDyorLiquidity] = useState<number | null>(null);
 
   useEffect(() => {
     if (tokenAddress) {
@@ -128,20 +129,33 @@ export default function TokenPage() {
           .catch(err => console.error('Failed to load holders:', err)),
         
         // Load data from DYOR.io API
-        // According to docs: address parameter should be an array, but we'll try both formats
-        fetch(`https://api.dyor.io/v1/jettons?address[]=${normalizedEQ}&currency=ton`)
-          .then(res => {
-            if (!res.ok) {
-              console.log('DYOR.io API response not OK:', res.status, res.statusText);
+        // Try getJettonDetails endpoint first, then fallback to getJettons with address parameter
+        Promise.race([
+          // Try getJettonDetails endpoint (if it exists)
+          fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}?currency=ton`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => data ? { jetton: data } : null)
+            .catch(() => null),
+          // Fallback to getJettons with address as query parameter
+          fetch(`https://api.dyor.io/v1/jettons?address=${encodeURIComponent(normalizedEQ)}&currency=ton`)
+            .then(res => {
+              if (!res.ok) {
+                console.log('DYOR.io getJettons API response not OK:', res.status, res.statusText);
+                return null;
+              }
+              return res.json();
+            })
+            .then(data => {
+              if (data && data.jettons && data.jettons.length > 0) {
+                return { jetton: data.jettons[0] };
+              }
               return null;
-            }
-            return res.json();
-          })
+            })
+            .catch(() => null),
+        ])
           .then(dyorResponse => {
-            console.log('DYOR.io API response:', dyorResponse);
-            
-            if (dyorResponse && dyorResponse.jettons && dyorResponse.jettons.length > 0) {
-              const jetton = dyorResponse.jettons[0];
+            if (dyorResponse && dyorResponse.jetton) {
+              const jetton = dyorResponse.jetton;
               console.log('DYOR.io jetton data:', jetton);
               
               // Parse price
@@ -175,10 +189,7 @@ export default function TokenPage() {
                 priceUsd, 
                 liquidityUsd, 
                 mcap, 
-                holdersCount,
-                rawPrice: jetton.price,
-                rawMcap: jetton.mcap,
-                rawLiquidity: jetton.liquidityUsd
+                holdersCount
               });
               
               // Only set data if we have meaningful values
@@ -206,7 +217,7 @@ export default function TokenPage() {
                 console.log('DYOR.io data has no meaningful values, skipping');
               }
             } else {
-              console.log('DYOR.io API returned no jettons for address:', normalizedEQ);
+              console.log('DYOR.io API returned no data for address:', normalizedEQ);
             }
           })
           .catch(err => {
@@ -215,25 +226,49 @@ export default function TokenPage() {
           }),
         
         // Check liquidity and calculate price (don't wait for it, it can be slow)
+        // This also checks DYOR.io liquidity API as fallback
         checkStonfiLiquidity(tokenAddress)
           .then(pool => {
-            if (pool && pool.reserve0 && pool.reserve1) {
+            if (pool) {
               setPoolInfo(pool);
               
-              // Only calculate price if DYOR didn't provide it
-              if (!dyorData) {
+              // If pool has reserves, calculate price
+              if (pool.reserve0 && pool.reserve1 && pool.reserve0 !== '0' && pool.reserve1 !== '0') {
                 const reserve0 = BigInt(pool.reserve0 || '0');
                 const reserve1 = BigInt(pool.reserve1 || '0');
                 
                 if (reserve0 > 0n && reserve1 > 0n) {
                   const price = Number(reserve1) * Math.pow(10, decimals) / (Number(reserve0) * Math.pow(10, 9));
                   console.log('Calculated price from pool:', price);
-                  setPriceData({ price, change24h: 0 });
+                  
+                  // Only set price if DYOR didn't provide it
+                  if (!dyorData || !dyorData.price) {
+                    setPriceData({ price, change24h: 0 });
+                  }
                 }
+              } else {
+                // Pool found but reserves are '0' - this means it was found via DYOR.io liquidity API
+                // We need to get liquidity from DYOR.io liquidity endpoint
+                console.log('Pool found via DYOR.io liquidity API, fetching liquidity value...');
+                fetch(`https://api.dyor.io/v1/jettons/${normalizedEQ}/liquidity?currency=usd`)
+                  .then(res => res.ok ? res.json() : null)
+                  .then(liquidityData => {
+                    if (liquidityData && liquidityData.usd) {
+                      const liquidityValue = liquidityData.usd.value || '0';
+                      const liquidityDecimals = liquidityData.usd.decimals || 9;
+                      const liquidityUsd = parseFloat(liquidityValue) / Math.pow(10, liquidityDecimals);
+                      console.log('DYOR.io liquidity fetched:', liquidityUsd);
+                      setDyorLiquidity(liquidityUsd);
+                    }
+                  })
+                  .catch(err => console.error('Failed to fetch DYOR.io liquidity:', err));
               }
             }
           })
-          .catch(err => console.error('Failed to check liquidity:', err)),
+          .catch(err => {
+            console.error('Failed to check liquidity:', err);
+            // Don't fail the whole page if liquidity check fails
+          }),
       ]);
     } catch (err: any) {
       console.error('Failed to load token data:', err);
@@ -507,12 +542,17 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {dyorData ? (
+                    {dyorData?.liquidityUsd ? (
                       '$' + dyorData.liquidityUsd.toLocaleString('en-US', {
                         maximumFractionDigits: 2,
                         minimumFractionDigits: 2
                       }) + ' USD'
-                    ) : poolInfo ? (
+                    ) : dyorLiquidity ? (
+                      '$' + dyorLiquidity.toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' USD'
+                    ) : poolInfo && poolInfo.reserve1 !== '0' ? (
                       (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
                         maximumFractionDigits: 2,
                         minimumFractionDigits: 2
