@@ -136,18 +136,19 @@ export default function TokenPage() {
         
         // Load data from swap.coffee API
         // Convert address to raw format (0:hex) if needed
-        let swapCoffeeAddress = normalizedEQ;
-        try {
-          // Try to parse and convert address to raw format
-          const parsedAddr = Address.parse(normalizedEQ);
-          swapCoffeeAddress = parsedAddr.toRawString(); // Format: "0:hex"
-        } catch (e) {
-          // If parsing fails, use normalizedEQ as is
-          console.log('Could not parse address for swap.coffee, using as is:', normalizedEQ);
-        }
-        
-        fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddress)}&size=1`)
-          .then(res => {
+        (async () => {
+          let swapCoffeeAddr = normalizedEQ;
+          try {
+            // Try to parse and convert address to raw format
+            const parsedAddr = Address.parse(normalizedEQ);
+            swapCoffeeAddr = parsedAddr.toRawString(); // Format: "0:hex"
+          } catch (e) {
+            // If parsing fails, use normalizedEQ as is
+            console.log('Could not parse address for swap.coffee, using as is:', normalizedEQ);
+          }
+          
+          return fetch(`https://tokens.swap.coffee/api/v3/jettons?address=${encodeURIComponent(swapCoffeeAddr)}&size=1`);
+        })().then(res => {
             if (!res.ok) {
               console.log('swap.coffee API response not OK:', res.status, res.statusText);
               return null;
@@ -182,7 +183,7 @@ export default function TokenPage() {
                 }
               }
             } else {
-              console.log('swap.coffee API returned no data for address:', swapCoffeeAddress);
+              console.log('swap.coffee API returned no data for address:', normalizedEQ);
             }
           })
           .catch(err => {
