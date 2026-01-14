@@ -453,7 +453,7 @@ export default function TokenPage() {
           <div className="card mb-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
               {/* Avatar and Name */}
-              <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
                   {tokenInfo.image ? (
                     <Image 
@@ -471,8 +471,8 @@ export default function TokenPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex-grow">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-cook-text mb-1 sm:mb-2">{tokenInfo.name}</h1>
+                <div className="flex-grow min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-cook-text mb-1 sm:mb-2 break-words">{tokenInfo.name}</h1>
                   <p className="text-lg sm:text-xl text-cook-text-secondary mb-2 sm:mb-4">${tokenInfo.symbol}</p>
                   <div className="flex items-center gap-4 flex-wrap">
                     {!tokenInfo.adminAddress && (
@@ -485,11 +485,11 @@ export default function TokenPage() {
               </div>
               
               {/* Trade Button and Market Data */}
-              <div className="flex items-center gap-3 sm:gap-4 ml-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto sm:ml-auto">
                 <Link
                   href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
                   target="_blank"
-                  className="flex-shrink-0 py-3 sm:py-4 px-6 sm:px-8 text-white font-bold text-base sm:text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105" 
+                  className="flex-shrink-0 py-3 sm:py-4 px-4 sm:px-6 md:px-8 text-white font-bold text-sm sm:text-base md:text-lg rounded-xl transition-all flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105" 
                   style={{
                     background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
                   }}
@@ -497,21 +497,22 @@ export default function TokenPage() {
                   <Image
                     src="https://pbs.twimg.com/profile_images/1957769581809807360/Hne_kG84.jpg"
                     alt="DTrade"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
+                    width={24}
+                    height={24}
+                    className="rounded-full sm:w-8 sm:h-8"
                     unoptimized
                   />
-                  Trade on DTrade
+                  <span className="hidden xs:inline">Trade on DTrade</span>
+                  <span className="xs:hidden">Trade</span>
                 </Link>
                 
                 {/* Market Data - Right side of Trade button */}
                 {(swapCoffeeData || dyorData || priceData) && (
-                  <div className="flex-shrink-0 text-right">
+                  <div className="flex-shrink-0 text-right sm:text-right min-w-0 sm:min-w-[120px]">
                     {/* Price */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 justify-end mb-1">
-                      <span className="text-xs text-cook-text-secondary">Price: </span>
-                      <div className="text-lg sm:text-xl font-bold text-cook-text">
+                    <div className="flex items-center gap-1 sm:gap-1.5 justify-end mb-1 flex-wrap">
+                      <span className="text-[10px] sm:text-xs text-cook-text-secondary whitespace-nowrap">Price: </span>
+                      <div className="text-sm sm:text-lg md:text-xl font-bold text-cook-text whitespace-nowrap">
                         {swapCoffeeData?.priceUsd ? (
                           `$${swapCoffeeData.priceUsd.toFixed(4)}`
                         ) : dyorData?.priceUsd ? (
@@ -524,7 +525,7 @@ export default function TokenPage() {
                       </div>
                       {/* Price Change */}
                       {(swapCoffeeData || dyorData || priceData) && (
-                        <span className={`text-xs font-semibold ${
+                        <span className={`text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
                           (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
                             ? 'text-green-600 dark:text-green-400' 
                             : 'text-red-600 dark:text-red-400'
@@ -535,8 +536,8 @@ export default function TokenPage() {
                       )}
                     </div>
                     {/* Market Cap and Liquidity */}
-                    <div className="flex flex-col items-end gap-1 text-xs">
-                      <div>
+                    <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-[10px] sm:text-xs">
+                      <div className="whitespace-nowrap">
                         <span className="text-cook-text-secondary">MCap: </span>
                         <span className="font-bold text-cook-text">
                           {swapCoffeeData?.mcap ? (
@@ -550,7 +551,7 @@ export default function TokenPage() {
                           )}
                         </span>
                       </div>
-                      <div>
+                      <div className="whitespace-nowrap">
                         <span className="text-cook-text-secondary">Liq: </span>
                         <span className="font-bold text-cook-text">
                           {swapCoffeeData?.tvlUsd ? (
