@@ -86,13 +86,26 @@ a {
 
 /* Hide scrollbar on cookon page for mobile */
 @media (max-width: 640px) {
-  .cookon-dark-theme {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  .cookon-no-scrollbar {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
   
-  .cookon-dark-theme::-webkit-scrollbar {
-    display: none;
+  .cookon-no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  
+  .cookon-no-scrollbar * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  .cookon-no-scrollbar *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 
