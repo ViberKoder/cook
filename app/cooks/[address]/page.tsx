@@ -48,6 +48,14 @@ export default function TokenPage() {
   const [error, setError] = useState<string | null>(null);
   const [showTrade, setShowTrade] = useState(false);
   const [priceData, setPriceData] = useState<{ price: number; change24h: number } | null>(null);
+  const [dyorData, setDyorData] = useState<{
+    price: number;
+    priceUsd: number;
+    liquidityUsd: number;
+    mcap: number;
+    holdersCount: number;
+    priceChange24h?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (tokenAddress) {
@@ -88,8 +96,9 @@ export default function TokenPage() {
       // Mark as loaded so we can show the page
       setLoading(false);
 
-      // Load additional data (holders and pool) in parallel, but don't block the page
+      // Load additional data (holders, pool, and DYOR data) in parallel, but don't block the page
       const totalSupply = BigInt(tokenData.total_supply || '0');
+      const normalizedEQ = tokenAddress.replace(/^UQ/, 'EQ');
       
       Promise.all([
         // Load holders
@@ -118,28 +127,81 @@ export default function TokenPage() {
           })
           .catch(err => console.error('Failed to load holders:', err)),
         
+        // Load data from DYOR.io API
+        fetch(`https://api.dyor.io/v1/jettons?address=${normalizedEQ}&currency=ton`)
+          .then(res => res.ok ? res.json() : null)
+          .then(dyorResponse => {
+            if (dyorResponse && dyorResponse.jettons && dyorResponse.jettons.length > 0) {
+              const jetton = dyorResponse.jettons[0];
+              
+              // Parse price
+              const priceValue = jetton.price?.value || '0';
+              const priceDecimals = jetton.price?.decimals || 9;
+              const price = parseFloat(priceValue) / Math.pow(10, priceDecimals);
+              
+              // Parse price USD
+              const priceUsdValue = jetton.priceUsd?.value || '0';
+              const priceUsdDecimals = jetton.priceUsd?.decimals || 9;
+              const priceUsd = parseFloat(priceUsdValue) / Math.pow(10, priceUsdDecimals);
+              
+              // Parse liquidity USD
+              const liquidityValue = jetton.liquidityUsd?.value || '0';
+              const liquidityDecimals = jetton.liquidityUsd?.decimals || 9;
+              const liquidityUsd = parseFloat(liquidityValue) / Math.pow(10, liquidityDecimals);
+              
+              // Parse market cap
+              const mcapValue = jetton.mcap?.value || '0';
+              const mcapDecimals = jetton.mcap?.decimals || 9;
+              const mcap = parseFloat(mcapValue) / Math.pow(10, mcapDecimals);
+              
+              // Get holders count
+              const holdersCount = parseInt(jetton.holdersCount || '0');
+              
+              // Get price change (try 24h change)
+              const priceChange24h = jetton.priceChange?.ton?.day || 0;
+              
+              setDyorData({
+                price,
+                priceUsd,
+                liquidityUsd,
+                mcap,
+                holdersCount,
+                priceChange24h,
+              });
+              
+              // Also set priceData for compatibility
+              setPriceData({ 
+                price, 
+                change24h: priceChange24h 
+              });
+              
+              // Update totalHolders if DYOR has better data
+              if (holdersCount > 0) {
+                setTotalHolders(holdersCount);
+              }
+              
+              console.log('DYOR.io data loaded:', { price, priceUsd, liquidityUsd, mcap, holdersCount });
+            }
+          })
+          .catch(err => console.error('Failed to load DYOR.io data:', err)),
+        
         // Check liquidity and calculate price (don't wait for it, it can be slow)
         checkStonfiLiquidity(tokenAddress)
           .then(pool => {
             if (pool && pool.reserve0 && pool.reserve1) {
               setPoolInfo(pool);
               
-              // Calculate price: reserve1 (TON) / reserve0 (token)
-              const reserve0 = BigInt(pool.reserve0 || '0');
-              const reserve1 = BigInt(pool.reserve1 || '0');
-              
-              if (reserve0 > 0n && reserve1 > 0n) {
-                // Price in TON per token
-                // reserve1 is in nanoTON (10^9), reserve0 is in token units (10^decimals)
-                // Price = (reserve1 / 10^9) / (reserve0 / 10^decimals) = reserve1 * 10^decimals / (reserve0 * 10^9)
-                const price = Number(reserve1) * Math.pow(10, decimals) / (Number(reserve0) * Math.pow(10, 9));
-                console.log('Calculated price:', price, 'decimals:', decimals, 'reserve0:', pool.reserve0, 'reserve1:', pool.reserve1);
-                setPriceData({ price, change24h: 0 }); // TODO: Get 24h change from API
-              } else {
-                console.log('Pool reserves are zero, cannot calculate price');
+              // Only calculate price if DYOR didn't provide it
+              if (!dyorData) {
+                const reserve0 = BigInt(pool.reserve0 || '0');
+                const reserve1 = BigInt(pool.reserve1 || '0');
+                
+                if (reserve0 > 0n && reserve1 > 0n) {
+                  const price = Number(reserve1) * Math.pow(10, decimals) / (Number(reserve0) * Math.pow(10, 9));
+                  console.log('Calculated price from pool:', price);
+                  setPriceData({ price, change24h: 0 });
+                }
               }
-            } else {
-              console.log('No pool info or missing reserves');
             }
           })
           .catch(err => console.error('Failed to check liquidity:', err)),
@@ -357,43 +419,55 @@ export default function TokenPage() {
           </div>
 
           {/* Market Data */}
-          {poolInfo && (
+          {(dyorData || poolInfo) && (
             <div className="card mb-6">
               <h2 className="text-xl font-bold text-cook-text mb-4">Market Data</h2>
               
               {/* Price Chart Placeholder */}
-              <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-cook-text-secondary">Price</span>
-                  {priceData && (
-                    <span className={`text-lg font-bold ${priceData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
-                    </span>
+              {(dyorData || priceData) && (
+                <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-cook-text-secondary">Price</span>
+                    {(dyorData || priceData) && (
+                      <span className={`text-lg font-bold ${(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {(dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}{(dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl font-bold text-cook-text mb-2">
+                    {dyorData ? `${dyorData.price.toFixed(8)} TON` : priceData ? `${priceData.price.toFixed(8)} TON` : 'Calculating...'}
+                  </div>
+                  {dyorData?.priceUsd && (
+                    <div className="text-sm text-cook-text-secondary mb-4">
+                      ${dyorData.priceUsd.toFixed(6)} USD
+                    </div>
                   )}
+                  {/* Simple chart placeholder */}
+                  <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
+                    {Array.from({ length: 30 }).map((_, i) => {
+                      const height = 30 + Math.random() * 70;
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 bg-cook-orange rounded-t"
+                          style={{ height: `${height}%` }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-cook-text mb-4">
-                  {priceData ? `${priceData.price.toFixed(8)} TON` : 'Calculating...'}
-                </div>
-                {/* Simple chart placeholder */}
-                <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
-                  {Array.from({ length: 30 }).map((_, i) => {
-                    const height = 30 + Math.random() * 70;
-                    return (
-                      <div
-                        key={i}
-                        className="flex-1 bg-cook-orange rounded-t"
-                        style={{ height: `${height}%` }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {priceData && tokenInfo ? (
+                    {dyorData ? (
+                      dyorData.mcap.toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' TON'
+                    ) : priceData && tokenInfo ? (
                       (Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price).toLocaleString('en-US', {
                         maximumFractionDigits: 2,
                         minimumFractionDigits: 2
@@ -404,10 +478,17 @@ export default function TokenPage() {
                 <div>
                   <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
                   <p className="text-lg font-bold text-cook-text">
-                    {(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
-                      maximumFractionDigits: 2,
-                      minimumFractionDigits: 2
-                    }) + ' TON'}
+                    {dyorData ? (
+                      '$' + dyorData.liquidityUsd.toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' USD'
+                    ) : poolInfo ? (
+                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' TON'
+                    ) : 'N/A'}
                   </p>
                 </div>
               </div>
