@@ -42,10 +42,12 @@ export default function TokenPage() {
   
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [holders, setHolders] = useState<Holder[]>([]);
+  const [totalHolders, setTotalHolders] = useState<number>(0);
   const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTrade, setShowTrade] = useState(false);
+  const [priceData, setPriceData] = useState<{ price: number; change24h: number } | null>(null);
 
   useEffect(() => {
     if (tokenAddress) {
@@ -92,6 +94,9 @@ export default function TokenPage() {
           .then(res => res.ok ? res.json() : null)
           .then(holdersData => {
             if (holdersData) {
+              // Get total count from API
+              setTotalHolders(holdersData.total || holdersData.addresses?.length || 0);
+              
               const holdersList: Holder[] = (holdersData.addresses || []).map((holder: any) => {
                 const balance = BigInt(holder.balance || '0');
                 const percentage = totalSupply > 0n 
@@ -110,11 +115,21 @@ export default function TokenPage() {
           })
           .catch(err => console.error('Failed to load holders:', err)),
         
-        // Check liquidity (don't wait for it, it can be slow)
+        // Check liquidity and calculate price (don't wait for it, it can be slow)
         checkStonfiLiquidity(tokenAddress)
           .then(pool => {
             if (pool) {
               setPoolInfo(pool);
+              
+              // Calculate price: reserve1 (TON) / reserve0 (token)
+              const reserve0 = BigInt(pool.reserve0 || '0');
+              const reserve1 = BigInt(pool.reserve1 || '0');
+              
+              if (reserve0 > 0n) {
+                // Price in TON per token
+                const price = Number(reserve1) / Number(reserve0) / Math.pow(10, 9 - tokenData.metadata?.decimals || 9);
+                setPriceData({ price, change24h: 0 }); // TODO: Get 24h change from API
+              }
             }
           })
           .catch(err => console.error('Failed to check liquidity:', err)),
@@ -248,11 +263,6 @@ export default function TokenPage() {
                 <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
                 <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
                 <div className="flex items-center gap-4 flex-wrap">
-                  {poolInfo && (
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm font-bold">
-                      Has Liquidity
-                    </span>
-                  )}
                   {!tokenInfo.adminAddress && (
                     <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
                       Decentralized
@@ -300,7 +310,7 @@ export default function TokenPage() {
               </div>
               <div>
                 <p className="text-sm text-cook-text-secondary mb-1">Holders</p>
-                <p className="text-lg font-bold text-cook-text">{holders.length}</p>
+                <p className="text-lg font-bold text-cook-text">{totalHolders || holders.length}</p>
               </div>
               <div>
                 <p className="text-sm text-cook-text-secondary mb-1">Admin Status</p>
@@ -333,31 +343,60 @@ export default function TokenPage() {
             </div>
           </div>
 
-          {/* Liquidity Pool Info */}
-          {poolInfo && (
+          {/* Market Data */}
+          {poolInfo && priceData && (
             <div className="card mb-6">
-              <h2 className="text-xl font-bold text-cook-text mb-4">Liquidity Pool</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Token 0 Reserve</p>
-                  <p className="text-lg font-bold text-cook-text">{formatSupply(poolInfo.reserve0, tokenInfo.decimals)}</p>
+              <h2 className="text-xl font-bold text-cook-text mb-4">Market Data</h2>
+              
+              {/* Price Chart Placeholder */}
+              <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-cook-text-secondary">Price</span>
+                  <span className={`text-lg font-bold ${priceData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Token 1 Reserve</p>
-                  <p className="text-lg font-bold text-cook-text">{formatSupply(poolInfo.reserve1, 9)} TON</p>
+                <div className="text-2xl font-bold text-cook-text mb-4">
+                  {priceData.price.toFixed(8)} TON
+                </div>
+                {/* Simple chart placeholder */}
+                <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
+                  {Array.from({ length: 30 }).map((_, i) => {
+                    const height = 30 + Math.random() * 70;
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 bg-cook-orange rounded-t"
+                        style={{ height: `${height}%` }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-cook-border">
-                <Link
-                  href={stonfiPoolUrl}
-                  target="_blank"
-                  className="btn-secondary inline-flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  View Pool on STON.fi
-                </Link>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
+                  <p className="text-lg font-bold text-cook-text">
+                    {poolInfo && priceData ? (
+                      (Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price).toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' TON'
+                    ) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
+                  <p className="text-lg font-bold text-cook-text">
+                    {poolInfo ? (
+                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2
+                      }) + ' TON'
+                    ) : 'N/A'}
+                  </p>
+                </div>
               </div>
             </div>
           )}
