@@ -480,6 +480,71 @@ export default function TokenPage() {
                   )}
                 </div>
               </div>
+              
+              {/* Market Data - Right side, same height as token name */}
+              {(swapCoffeeData || dyorData || priceData) && (
+                <div className="flex-shrink-0 text-right min-w-[140px]">
+                  {/* Price */}
+                  <div className="flex items-center gap-1.5 justify-end mb-1 flex-wrap">
+                    <span className="text-xs text-cook-text-secondary whitespace-nowrap">Price: </span>
+                    <div className="text-lg font-bold text-cook-text whitespace-nowrap">
+                      {swapCoffeeData?.priceUsd ? (
+                        `$${swapCoffeeData.priceUsd.toFixed(4)}`
+                      ) : dyorData?.priceUsd ? (
+                        `$${dyorData.priceUsd.toFixed(4)}`
+                      ) : priceData?.price ? (
+                        `$${priceData.price.toFixed(4)}`
+                      ) : (
+                        'N/A'
+                      )}
+                    </div>
+                    {/* Price Change */}
+                    {(swapCoffeeData || dyorData || priceData) && (
+                      <span className={`text-xs font-semibold whitespace-nowrap ${
+                        (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
+                        {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Market Cap and Liquidity */}
+                  <div className="flex flex-col items-end gap-1 text-xs">
+                    <div className="whitespace-nowrap">
+                      <span className="text-cook-text-secondary">MCap: </span>
+                      <span className="font-bold text-cook-text">
+                        {swapCoffeeData?.mcap ? (
+                          formatCurrency(swapCoffeeData.mcap)
+                        ) : dyorData?.mcap ? (
+                          formatCurrency(dyorData.mcap)
+                        ) : priceData && tokenInfo ? (
+                          formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
+                        ) : (
+                          'N/A'
+                        )}
+                      </span>
+                    </div>
+                    <div className="whitespace-nowrap">
+                      <span className="text-cook-text-secondary">Liq: </span>
+                      <span className="font-bold text-cook-text">
+                        {swapCoffeeData?.tvlUsd ? (
+                          formatCurrency(swapCoffeeData.tvlUsd)
+                        ) : dyorData?.liquidityUsd ? (
+                          formatCurrency(dyorData.liquidityUsd)
+                        ) : dyorLiquidity ? (
+                          formatCurrency(dyorLiquidity)
+                        ) : poolInfo && poolInfo.reserve1 !== '0' ? (
+                          formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
+                        ) : (
+                          'N/A'
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-start justify-between gap-4 mb-6">
@@ -555,108 +620,6 @@ export default function TokenPage() {
               </div>
             </div>
           </div>
-
-          {/* Market Data */}
-          {(swapCoffeeData || dyorData || poolInfo || priceData) && (
-            <div className="card mb-6">
-              <h2 className="text-xl font-bold text-cook-text mb-4">Market Data</h2>
-              
-              {/* Price Chart Placeholder */}
-              {(swapCoffeeData || dyorData || priceData) && (
-                <div className="mb-6 p-4 bg-cook-bg-secondary rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-cook-text-secondary">Price</span>
-                    {(swapCoffeeData || dyorData || priceData) && (
-                      <span className={`text-lg font-bold ${(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}{(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-2xl font-bold text-cook-text mb-2">
-                    {swapCoffeeData?.priceUsd 
-                      ? `$${swapCoffeeData.priceUsd.toFixed(6)} USD`
-                      : dyorData?.priceUsd 
-                      ? `$${dyorData.priceUsd.toFixed(6)} USD`
-                      : priceData?.price 
-                      ? `$${priceData.price.toFixed(6)} USD`
-                      : dyorData?.price 
-                      ? `${dyorData.price.toFixed(8)} TON`
-                      : 'Calculating...'}
-                  </div>
-                  {swapCoffeeData?.priceUsd && (
-                    <div className="text-sm text-cook-text-secondary mb-4">
-                      ${swapCoffeeData.priceUsd.toFixed(6)} USD
-                    </div>
-                  )}
-                  {dyorData?.priceUsd && !swapCoffeeData && (
-                    <div className="text-sm text-cook-text-secondary mb-4">
-                      ${dyorData.priceUsd.toFixed(6)} USD
-                    </div>
-                  )}
-                  {/* Simple chart placeholder */}
-                  <div className="h-32 bg-white dark:bg-gray-800 rounded-lg flex items-end justify-between gap-1 p-2">
-                    {Array.from({ length: 30 }).map((_, i) => {
-                      const height = 30 + Math.random() * 70;
-                      return (
-                        <div
-                          key={i}
-                          className="flex-1 bg-cook-orange rounded-t"
-                          style={{ height: `${height}%` }}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Market Cap</p>
-                  <p className="text-lg font-bold text-cook-text">
-                    {swapCoffeeData?.mcap ? (
-                      formatCurrency(swapCoffeeData.mcap) + ' USD'
-                    ) : dyorData?.mcap ? (
-                      dyorData.mcap.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : priceData && tokenInfo ? (
-                      (Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price).toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-cook-text-secondary mb-1">Liquidity</p>
-                  <p className="text-lg font-bold text-cook-text">
-                    {swapCoffeeData?.tvlUsd ? (
-                      '$' + swapCoffeeData.tvlUsd.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : dyorData?.liquidityUsd ? (
-                      '$' + dyorData.liquidityUsd.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : dyorLiquidity ? (
-                      '$' + dyorLiquidity.toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' USD'
-                    ) : poolInfo && poolInfo.reserve1 !== '0' ? (
-                      (Number(poolInfo.reserve1) / Math.pow(10, 9) * 2).toLocaleString('en-US', {
-                        maximumFractionDigits: 2,
-                        minimumFractionDigits: 2
-                      }) + ' TON'
-                    ) : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Trade Section */}
           <div className="card mb-6">
