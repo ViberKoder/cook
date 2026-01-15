@@ -452,139 +452,146 @@ export default function TokenPage() {
 
           {/* Token Header */}
           <div className="card mb-6">
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
-                {tokenInfo.image ? (
-                  <Image 
-                    src={tokenInfo.image} 
-                    alt={tokenInfo.name}
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
-                    unoptimized
-                    onError={(e) => (e.currentTarget.style.display = 'none')}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-cook-text-secondary">
-                    {tokenInfo.symbol?.charAt(0) || '?'}
-                  </div>
-                )}
-              </div>
-              <div className="flex-grow">
-                <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
-                <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
-                <div className="flex items-center gap-4 flex-wrap">
-                  {!tokenInfo.adminAddress && (
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
-                      Decentralized
-                    </span>
+            {/* Top section: Avatar, Name, Market Data, Trade Button */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
+              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
+                  {tokenInfo.image ? (
+                    <Image 
+                      src={tokenInfo.image} 
+                      alt={tokenInfo.name}
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-cook-text-secondary">
+                      {tokenInfo.symbol?.charAt(0) || '?'}
+                    </div>
                   )}
                 </div>
-              </div>
-              
-              {/* Market Data - Right side, same height as token name */}
-              {(swapCoffeeData || dyorData || priceData) && (
-                <div className="flex-shrink-0 text-right min-w-0 sm:min-w-[140px] md:min-w-[186px] ml-auto sm:ml-0">
-                  {/* Price */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 justify-end mb-1 flex-wrap">
-                    <span className="text-[10px] sm:text-xs md:text-sm text-cook-text-secondary whitespace-nowrap">Price: </span>
-                    <div className="text-sm sm:text-lg md:text-2xl font-bold text-cook-text whitespace-nowrap">
-                      {swapCoffeeData?.priceUsd ? (
-                        `$${swapCoffeeData.priceUsd.toFixed(4)}`
-                      ) : dyorData?.priceUsd ? (
-                        `$${dyorData.priceUsd.toFixed(4)}`
-                      ) : priceData?.price ? (
-                        `$${priceData.price.toFixed(4)}`
-                      ) : (
-                        'N/A'
-                      )}
-                    </div>
-                    {/* Price Change */}
-                    {(swapCoffeeData || dyorData || priceData) && (
-                      <span className={`text-[10px] sm:text-xs md:text-sm font-semibold whitespace-nowrap ${
-                        (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
-                        {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                <div className="flex-grow min-w-0">
+                  <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
+                  <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {!tokenInfo.adminAddress && (
+                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
+                        Decentralized
                       </span>
                     )}
                   </div>
-                  {/* Market Cap and Liquidity */}
-                  <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-[10px] sm:text-xs md:text-sm">
-                    <div className="whitespace-nowrap">
-                      <span className="text-cook-text-secondary">MCap: </span>
-                      <span className="font-bold text-cook-text">
-                        {swapCoffeeData?.mcap ? (
-                          formatCurrency(swapCoffeeData.mcap)
-                        ) : dyorData?.mcap ? (
-                          formatCurrency(dyorData.mcap)
-                        ) : priceData && tokenInfo ? (
-                          formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
+                </div>
+              </div>
+              
+              {/* Market Data and Trade Button - Right side on desktop, below on mobile */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto sm:ml-auto">
+                {/* Market Data */}
+                {(swapCoffeeData || dyorData || priceData) && (
+                  <div className="flex-shrink-0 text-right w-full sm:w-auto sm:min-w-[140px] md:min-w-[186px] overflow-hidden">
+                    {/* Price */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 justify-end sm:justify-end mb-1 flex-wrap">
+                      <span className="text-[10px] sm:text-xs md:text-sm text-cook-text-secondary">Price: </span>
+                      <div className="text-sm sm:text-lg md:text-2xl font-bold text-cook-text break-words">
+                        {swapCoffeeData?.priceUsd ? (
+                          `$${swapCoffeeData.priceUsd.toFixed(4)}`
+                        ) : dyorData?.priceUsd ? (
+                          `$${dyorData.priceUsd.toFixed(4)}`
+                        ) : priceData?.price ? (
+                          `$${priceData.price.toFixed(4)}`
                         ) : (
                           'N/A'
                         )}
-                      </span>
+                      </div>
+                      {/* Price Change */}
+                      {(swapCoffeeData || dyorData || priceData) && (
+                        <span className={`text-[10px] sm:text-xs md:text-sm font-semibold ${
+                          (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
+                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                        </span>
+                      )}
                     </div>
-                    <div className="whitespace-nowrap">
-                      <span className="text-cook-text-secondary">Liq: </span>
-                      <span className="font-bold text-cook-text">
-                        {swapCoffeeData?.tvlUsd ? (
-                          formatCurrency(swapCoffeeData.tvlUsd)
-                        ) : dyorData?.liquidityUsd ? (
-                          formatCurrency(dyorData.liquidityUsd)
-                        ) : dyorLiquidity ? (
-                          formatCurrency(dyorLiquidity)
-                        ) : poolInfo && poolInfo.reserve1 !== '0' ? (
-                          formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
-                        ) : (
-                          'N/A'
-                        )}
-                      </span>
+                    {/* Market Cap and Liquidity */}
+                    <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-[10px] sm:text-xs md:text-sm">
+                      <div>
+                        <span className="text-cook-text-secondary">MCap: </span>
+                        <span className="font-bold text-cook-text break-words">
+                          {swapCoffeeData?.mcap ? (
+                            formatCurrency(swapCoffeeData.mcap)
+                          ) : dyorData?.mcap ? (
+                            formatCurrency(dyorData.mcap)
+                          ) : priceData && tokenInfo ? (
+                            formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
+                          ) : (
+                            'N/A'
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-cook-text-secondary">Liq: </span>
+                        <span className="font-bold text-cook-text break-words">
+                          {swapCoffeeData?.tvlUsd ? (
+                            formatCurrency(swapCoffeeData.tvlUsd)
+                          ) : dyorData?.liquidityUsd ? (
+                            formatCurrency(dyorData.liquidityUsd)
+                          ) : dyorLiquidity ? (
+                            formatCurrency(dyorLiquidity)
+                          ) : poolInfo && poolInfo.reserve1 !== '0' ? (
+                            formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
+                          ) : (
+                            'N/A'
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+                
+                {/* Trade Button */}
+                <Link
+                  href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
+                  target="_blank"
+                  className="flex-shrink-0 py-4 px-8 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto" 
+                  style={{
+                    background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
+                  }}
+                >
+                  <Image
+                    src="https://pbs.twimg.com/profile_images/1957769581809807360/Hne_kG84.jpg"
+                    alt="DTrade"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                    unoptimized
+                  />
+                  Trade on DTrade
+                </Link>
+              </div>
             </div>
 
-            <div className="flex items-start justify-between gap-4 mb-6 flex-col sm:flex-row">
-              {tokenInfo.description && (
-                <div className="flex-grow w-full sm:w-auto">
-                  <p className="text-cook-text-secondary">
-                    {tokenInfo.description.length > 75 && !showFullDescription
-                      ? `${tokenInfo.description.substring(0, 75)}...`
-                      : tokenInfo.description}
-                  </p>
-                  {tokenInfo.description.length > 75 && (
-                    <button
-                      onClick={() => setShowFullDescription(!showFullDescription)}
-                      className="mt-2 text-cook-orange hover:underline text-sm font-medium"
-                    >
-                      {showFullDescription ? 'Скрыть' : 'Раскрыть'}
-                    </button>
-                  )}
-                </div>
-              )}
-              <Link
-                href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
-                target="_blank"
-                className="flex-shrink-0 py-4 px-8 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105" 
-                style={{
-                  background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
-                }}
-              >
-                <Image
-                  src="https://pbs.twimg.com/profile_images/1957769581809807360/Hne_kG84.jpg"
-                  alt="DTrade"
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                  unoptimized
-                />
-                Trade on DTrade
-              </Link>
-            </div>
+            {/* Description - Bottom on mobile, same row on desktop */}
+            {tokenInfo.description && (
+              <div className="mb-6 order-last sm:order-none">
+                <p className="text-cook-text-secondary">
+                  {tokenInfo.description.length > 75 && !showFullDescription
+                    ? `${tokenInfo.description.substring(0, 75)}...`
+                    : tokenInfo.description}
+                </p>
+                {tokenInfo.description.length > 75 && (
+                  <button
+                    onClick={() => setShowFullDescription(!showFullDescription)}
+                    className="mt-2 text-cook-orange hover:underline text-sm font-medium"
+                  >
+                    {showFullDescription ? 'Скрыть' : 'Раскрыть'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Token Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-cook-border">
