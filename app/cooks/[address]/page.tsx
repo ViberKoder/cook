@@ -454,7 +454,7 @@ export default function TokenPage() {
           <div className="card mb-6">
             {/* Top section: Avatar, Name, Market Data, Trade Button */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
-              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto flex-1 min-w-0">
                 <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
                   {tokenInfo.image ? (
                     <Image 
@@ -473,90 +473,93 @@ export default function TokenPage() {
                   )}
                 </div>
                 <div className="flex-grow min-w-0">
-                  <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
-                  <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    {!tokenInfo.adminAddress && (
-                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
-                        Decentralized
-                      </span>
+                  <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
+                    <div className="flex-grow min-w-0">
+                      <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
+                      <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
+                      <div className="flex items-center gap-4 flex-wrap">
+                        {!tokenInfo.adminAddress && (
+                          <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium">
+                            Decentralized
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Market Data - Next to name and ticker on mobile, right side on desktop */}
+                    {(swapCoffeeData || dyorData || priceData) && (
+                      <div className="flex-shrink-0 text-right sm:ml-auto overflow-hidden">
+                        {/* Price */}
+                        <div className="flex items-center gap-1 sm:gap-1.5 justify-end mb-1 flex-wrap">
+                          <span className="text-xs sm:text-xs md:text-sm text-cook-text-secondary">Price: </span>
+                          <div className="text-base sm:text-lg md:text-2xl font-bold text-cook-text break-words">
+                            {swapCoffeeData?.priceUsd ? (
+                              `$${swapCoffeeData.priceUsd.toFixed(4)}`
+                            ) : dyorData?.priceUsd ? (
+                              `$${dyorData.priceUsd.toFixed(4)}`
+                            ) : priceData?.price ? (
+                              `$${priceData.price.toFixed(4)}`
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                          {/* Price Change */}
+                          {(swapCoffeeData || dyorData || priceData) && (
+                            <span className={`text-xs sm:text-xs md:text-sm font-semibold ${
+                              (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
+                              {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+                        {/* Market Cap and Liquidity */}
+                        <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-xs sm:text-xs md:text-sm">
+                          <div>
+                            <span className="text-cook-text-secondary">MCap: </span>
+                            <span className="font-bold text-cook-text break-words">
+                              {swapCoffeeData?.mcap ? (
+                                formatCurrency(swapCoffeeData.mcap)
+                              ) : dyorData?.mcap ? (
+                                formatCurrency(dyorData.mcap)
+                              ) : priceData && tokenInfo ? (
+                                formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
+                              ) : (
+                                'N/A'
+                              )}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-cook-text-secondary">Liq: </span>
+                            <span className="font-bold text-cook-text break-words">
+                              {swapCoffeeData?.tvlUsd ? (
+                                formatCurrency(swapCoffeeData.tvlUsd)
+                              ) : dyorData?.liquidityUsd ? (
+                                formatCurrency(dyorData.liquidityUsd)
+                              ) : dyorLiquidity ? (
+                                formatCurrency(dyorLiquidity)
+                              ) : poolInfo && poolInfo.reserve1 !== '0' ? (
+                                formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
+                              ) : (
+                                'N/A'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
               
-              {/* Market Data and Trade Button - Right side on desktop, below on mobile */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto sm:ml-auto">
-                {/* Market Data */}
-                {(swapCoffeeData || dyorData || priceData) && (
-                  <div className="flex-shrink-0 text-right w-full sm:w-auto sm:min-w-[140px] md:min-w-[186px] overflow-hidden">
-                    {/* Price */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 justify-end sm:justify-end mb-1 flex-wrap">
-                      <span className="text-[10px] sm:text-xs md:text-sm text-cook-text-secondary">Price: </span>
-                      <div className="text-sm sm:text-lg md:text-2xl font-bold text-cook-text break-words">
-                        {swapCoffeeData?.priceUsd ? (
-                          `$${swapCoffeeData.priceUsd.toFixed(4)}`
-                        ) : dyorData?.priceUsd ? (
-                          `$${dyorData.priceUsd.toFixed(4)}`
-                        ) : priceData?.price ? (
-                          `$${priceData.price.toFixed(4)}`
-                        ) : (
-                          'N/A'
-                        )}
-                      </div>
-                      {/* Price Change */}
-                      {(swapCoffeeData || dyorData || priceData) && (
-                        <span className={`text-[10px] sm:text-xs md:text-sm font-semibold ${
-                          (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 ? '+' : ''}
-                          {(swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0).toFixed(2)}%
-                        </span>
-                      )}
-                    </div>
-                    {/* Market Cap and Liquidity */}
-                    <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-[10px] sm:text-xs md:text-sm">
-                      <div>
-                        <span className="text-cook-text-secondary">MCap: </span>
-                        <span className="font-bold text-cook-text break-words">
-                          {swapCoffeeData?.mcap ? (
-                            formatCurrency(swapCoffeeData.mcap)
-                          ) : dyorData?.mcap ? (
-                            formatCurrency(dyorData.mcap)
-                          ) : priceData && tokenInfo ? (
-                            formatCurrency(Number(tokenInfo.totalSupply) / Math.pow(10, tokenInfo.decimals) * priceData.price)
-                          ) : (
-                            'N/A'
-                          )}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-cook-text-secondary">Liq: </span>
-                        <span className="font-bold text-cook-text break-words">
-                          {swapCoffeeData?.tvlUsd ? (
-                            formatCurrency(swapCoffeeData.tvlUsd)
-                          ) : dyorData?.liquidityUsd ? (
-                            formatCurrency(dyorData.liquidityUsd)
-                          ) : dyorLiquidity ? (
-                            formatCurrency(dyorLiquidity)
-                          ) : poolInfo && poolInfo.reserve1 !== '0' ? (
-                            formatCurrency(Number(poolInfo.reserve1) / Math.pow(10, 9) * 2 * 5.5) // Approximate USD conversion
-                          ) : (
-                            'N/A'
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Trade Button */}
+              {/* Trade Button - Right side on desktop, below on mobile */}
+              <div className="w-full sm:w-auto sm:ml-auto">
                 <Link
                   href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
                   target="_blank"
-                  className="flex-shrink-0 py-4 px-8 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto" 
+                  className="flex-shrink-0 py-4 sm:py-6 px-8 sm:px-11 text-white font-bold text-lg sm:text-xl rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto" 
                   style={{
                     background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
                   }}
@@ -566,7 +569,7 @@ export default function TokenPage() {
                     alt="DTrade"
                     width={32}
                     height={32}
-                    className="rounded-full"
+                    className="rounded-full sm:w-10 sm:h-10"
                     unoptimized
                   />
                   Trade on DTrade
