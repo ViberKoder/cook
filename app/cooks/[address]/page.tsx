@@ -47,6 +47,7 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTrade, setShowTrade] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const [priceData, setPriceData] = useState<{ price: number; change24h: number } | null>(null);
   const [dyorData, setDyorData] = useState<{
     price: number;
@@ -483,11 +484,11 @@ export default function TokenPage() {
               
               {/* Market Data - Right side, same height as token name */}
               {(swapCoffeeData || dyorData || priceData) && (
-                <div className="flex-shrink-0 text-right min-w-[140px]">
+                <div className="flex-shrink-0 text-right min-w-0 sm:min-w-[140px] md:min-w-[186px] ml-auto sm:ml-0">
                   {/* Price */}
-                  <div className="flex items-center gap-1.5 justify-end mb-1 flex-wrap">
-                    <span className="text-xs text-cook-text-secondary whitespace-nowrap">Price: </span>
-                    <div className="text-lg font-bold text-cook-text whitespace-nowrap">
+                  <div className="flex items-center gap-1 sm:gap-1.5 justify-end mb-1 flex-wrap">
+                    <span className="text-[10px] sm:text-xs md:text-sm text-cook-text-secondary whitespace-nowrap">Price: </span>
+                    <div className="text-sm sm:text-lg md:text-2xl font-bold text-cook-text whitespace-nowrap">
                       {swapCoffeeData?.priceUsd ? (
                         `$${swapCoffeeData.priceUsd.toFixed(4)}`
                       ) : dyorData?.priceUsd ? (
@@ -500,7 +501,7 @@ export default function TokenPage() {
                     </div>
                     {/* Price Change */}
                     {(swapCoffeeData || dyorData || priceData) && (
-                      <span className={`text-xs font-semibold whitespace-nowrap ${
+                      <span className={`text-[10px] sm:text-xs md:text-sm font-semibold whitespace-nowrap ${
                         (swapCoffeeData?.priceChange24h ?? dyorData?.priceChange24h ?? priceData?.change24h ?? 0) >= 0 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
@@ -511,7 +512,7 @@ export default function TokenPage() {
                     )}
                   </div>
                   {/* Market Cap and Liquidity */}
-                  <div className="flex flex-col items-end gap-1 text-xs">
+                  <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-[10px] sm:text-xs md:text-sm">
                     <div className="whitespace-nowrap">
                       <span className="text-cook-text-secondary">MCap: </span>
                       <span className="font-bold text-cook-text">
@@ -547,9 +548,23 @@ export default function TokenPage() {
               )}
             </div>
 
-            <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-start justify-between gap-4 mb-6 flex-col sm:flex-row">
               {tokenInfo.description && (
-                <p className="text-cook-text-secondary flex-grow">{tokenInfo.description}</p>
+                <div className="flex-grow w-full sm:w-auto">
+                  <p className="text-cook-text-secondary">
+                    {tokenInfo.description.length > 75 && !showFullDescription
+                      ? `${tokenInfo.description.substring(0, 75)}...`
+                      : tokenInfo.description}
+                  </p>
+                  {tokenInfo.description.length > 75 && (
+                    <button
+                      onClick={() => setShowFullDescription(!showFullDescription)}
+                      className="mt-2 text-cook-orange hover:underline text-sm font-medium"
+                    >
+                      {showFullDescription ? 'Скрыть' : 'Раскрыть'}
+                    </button>
+                  )}
+                </div>
               )}
               <Link
                 href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
