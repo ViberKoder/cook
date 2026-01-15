@@ -473,7 +473,7 @@ export default function TokenPage() {
                   )}
                 </div>
                 <div className="flex-grow min-w-0">
-                  <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                     <div className="flex-grow min-w-0">
                       <h1 className="text-3xl font-bold text-cook-text mb-2">{tokenInfo.name}</h1>
                       <p className="text-xl text-cook-text-secondary mb-4">${tokenInfo.symbol}</p>
