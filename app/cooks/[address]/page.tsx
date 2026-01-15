@@ -453,7 +453,7 @@ export default function TokenPage() {
           {/* Token Header */}
           <div className="card mb-6">
             {/* Top section: Avatar, Name, Market Data, Trade Button */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 mb-6">
               <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto flex-1 min-w-0">
                 <div className="w-24 h-24 rounded-2xl bg-cook-bg-secondary overflow-hidden flex-shrink-0 border border-cook-border">
                   {tokenInfo.image ? (
@@ -516,10 +516,10 @@ export default function TokenPage() {
                           )}
                         </div>
                         {/* Market Cap and Liquidity */}
-                        <div className="flex flex-col items-end gap-0.5 sm:gap-1 text-xs sm:text-xs md:text-sm">
-                          <div>
-                            <span className="text-cook-text-secondary">MCap: </span>
-                            <span className="font-bold text-cook-text break-words">
+                        <div className="flex flex-col items-end gap-0.5 sm:gap-1">
+                          <div className="flex items-center gap-1 sm:gap-1.5 justify-end flex-wrap">
+                            <span className="text-xs sm:text-xs md:text-sm text-cook-text-secondary">MCap: </span>
+                            <span className="text-base sm:text-lg md:text-2xl font-bold text-cook-text break-words">
                               {swapCoffeeData?.mcap ? (
                                 formatCurrency(swapCoffeeData.mcap)
                               ) : dyorData?.mcap ? (
@@ -531,9 +531,9 @@ export default function TokenPage() {
                               )}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-cook-text-secondary">Liq: </span>
-                            <span className="font-bold text-cook-text break-words">
+                          <div className="flex items-center gap-1 sm:gap-1.5 justify-end flex-wrap">
+                            <span className="text-xs sm:text-xs md:text-sm text-cook-text-secondary">Liq: </span>
+                            <span className="text-base sm:text-lg md:text-2xl font-bold text-cook-text break-words">
                               {swapCoffeeData?.tvlUsd ? (
                                 formatCurrency(swapCoffeeData.tvlUsd)
                               ) : dyorData?.liquidityUsd ? (
@@ -559,7 +559,7 @@ export default function TokenPage() {
                 <Link
                   href={`https://t.me/dtrade?start=cook_${tokenInfo.address}`}
                   target="_blank"
-                  className="flex-shrink-0 py-4 sm:py-6 px-8 sm:px-11 text-white font-bold text-lg sm:text-xl rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto" 
+                  className="flex-shrink-0 py-4 sm:py-5 px-8 sm:px-9 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto" 
                   style={{
                     background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%, #1a1a1a 100%)',
                   }}
@@ -569,7 +569,7 @@ export default function TokenPage() {
                     alt="DTrade"
                     width={32}
                     height={32}
-                    className="rounded-full sm:w-10 sm:h-10"
+                    className="rounded-full sm:w-8 sm:h-8"
                     unoptimized
                   />
                   Trade on DTrade
