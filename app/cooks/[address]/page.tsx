@@ -573,19 +573,15 @@ export default function TokenPage() {
                     )}
                   </div>
                   <div className="text-2xl font-bold text-cook-text mb-2">
-                    {swapCoffeeData?.priceUsd ? (
-                      `$${swapCoffeeData.priceUsd.toFixed(6)} USD`
-                    ) : dyorData?.priceUsd ? (
-                      `$${dyorData.priceUsd.toFixed(6)} USD`
-                    ) : priceData ? (
-                      `$${priceData.price.toFixed(6)} USD`
-                    ) : dyorData?.price ? (
-                      `${dyorData.price.toFixed(8)} TON`
-                    ) : priceData ? (
-                      `${priceData.price.toFixed(8)} TON`
-                    ) : (
-                      'Calculating...'
-                    )}
+                    {swapCoffeeData?.priceUsd 
+                      ? `$${swapCoffeeData.priceUsd.toFixed(6)} USD`
+                      : dyorData?.priceUsd 
+                      ? `$${dyorData.priceUsd.toFixed(6)} USD`
+                      : priceData?.price 
+                      ? `$${priceData.price.toFixed(6)} USD`
+                      : dyorData?.price 
+                      ? `${dyorData.price.toFixed(8)} TON`
+                      : 'Calculating...'}
                   </div>
                   {swapCoffeeData?.priceUsd && (
                     <div className="text-sm text-cook-text-secondary mb-4">
